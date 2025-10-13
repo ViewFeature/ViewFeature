@@ -76,166 +76,166 @@ import Observation
 /// - ``isTaskRunning(id:)``
 @Observable
 public final class Store<Feature: StoreFeature> {
-  private var _state: Feature.State
-  private let taskManager: TaskManager
-  private let handler: ActionHandler<Feature.Action, Feature.State>
-  private let feature: Feature
-  private let logger: Logger
+    private var _state: Feature.State
+    private let taskManager: TaskManager
+    private let handler: ActionHandler<Feature.Action, Feature.State>
+    private let feature: Feature
+    private let logger: Logger
 
-  /// Exposes the current state
-  public var state: Feature.State {
-    _state
-  }
-
-  // MARK: - Initialization
-
-  /// Primary initializer with full DIP compliance
-  public init(
-    initialState: Feature.State,
-    feature: Feature,
-    taskManager: TaskManager = TaskManager()
-  ) {
-    self.feature = feature
-    self._state = initialState
-    self.taskManager = taskManager
-    self.handler = feature.handle()
-
-    let subsystem = Bundle.main.bundleIdentifier ?? "com.viewfeature.library"
-    let featureName = String(describing: Feature.self)
-    self.logger = Logger(label: "\(subsystem).Store.\(featureName)")
-  }
-
-  // MARK: - Action Dispatch API
-
-  /// Dispatches an action and processes it through the handler
-  ///
-  /// - Parameter action: The action to dispatch
-  /// - Returns: A Task that completes when the action processing finishes.
-  ///   You can await this task if you need to ensure the action is fully processed.
-  ///
-  /// ## Example
-  /// ```swift
-  /// // Fire and forget
-  /// store.send(.increment)
-  ///
-  /// // Wait for completion
-  /// await store.send(.loadData).value
-  /// ```
-  @discardableResult
-  public func send(_ action: Feature.Action) -> Task<Void, Never> {
-    Task { @MainActor in
-      await self.processAction(action)
+    /// Exposes the current state
+    public var state: Feature.State {
+        _state
     }
-  }
 
-  // MARK: - Private Implementation
+    // MARK: - Initialization
 
-  private func processAction(_ action: Feature.Action) async {
-    var mutableState = _state
-    let actionTask = await handler.handle(action: action, state: &mutableState)
-    _state = mutableState
-    await executeTask(actionTask.storeTask)
-  }
+    /// Primary initializer with full DIP compliance
+    public init(
+        initialState: Feature.State,
+        feature: Feature,
+        taskManager: TaskManager = TaskManager()
+    ) {
+        self.feature = feature
+        self._state = initialState
+        self.taskManager = taskManager
+        self.handler = feature.handle()
 
-  private func executeTask(_ storeTask: StoreTask<Feature.Action, Feature.State>) async {
-    switch storeTask {
-    case .none:
-      break
-
-    case .run(let id, let operation, let onError):
-      let errorHandler = createErrorHandler(from: onError)
-      let backgroundTask = taskManager.executeTask(id: id, operation: operation, onError: errorHandler)
-      await backgroundTask.value
-
-    case .cancel(let id):
-      taskManager.cancelTaskInternal(id: id)
+        let subsystem = Bundle.main.bundleIdentifier ?? "com.viewfeature.library"
+        let featureName = String(describing: Feature.self)
+        self.logger = Logger(label: "\(subsystem).Store.\(featureName)")
     }
-  }
 
-  private func createErrorHandler(
-    from onError: ((Error, inout Feature.State) -> Void)?
-  ) -> ((Error) async -> Void)? {
-    onError.map { handler -> ((Error) async -> Void) in
-      { (error: Error) async in
-        var currentState = self._state
-        handler(error, &currentState)
-        self._state = currentState
-      }
+    // MARK: - Action Dispatch API
+
+    /// Dispatches an action and processes it through the handler
+    ///
+    /// - Parameter action: The action to dispatch
+    /// - Returns: A Task that completes when the action processing finishes.
+    ///   You can await this task if you need to ensure the action is fully processed.
+    ///
+    /// ## Example
+    /// ```swift
+    /// // Fire and forget
+    /// store.send(.increment)
+    ///
+    /// // Wait for completion
+    /// await store.send(.loadData).value
+    /// ```
+    @discardableResult
+    public func send(_ action: Feature.Action) -> Task<Void, Never> {
+        Task { @MainActor in
+            await self.processAction(action)
+        }
     }
-  }
 
-  // MARK: - Task Management API
+    // MARK: - Private Implementation
 
-  /// Cancels a running task by its ID.
-  ///
-  /// This method provides direct task cancellation from the View layer.
-  ///
-  /// ## Recommended Approach: Action-Based Cancellation
-  /// For better testability and state consistency, prefer using Actions:
-  /// ```swift
-  /// enum Action {
-  ///   case startDownload
-  ///   case cancelDownload
-  /// }
-  ///
-  /// case .startDownload:
-  ///   return .run(id: "download") { ... }
-  ///
-  /// case .cancelDownload:
-  ///   return .cancel(id: "download")
-  /// ```
-  ///
-  /// ## Direct Cancellation Use Cases
-  /// Use this method for:
-  /// - Emergency stops
-  /// - User-initiated cancellations outside normal flow
-  /// - Cleanup in View lifecycle (`.onDisappear`)
-  ///
-  /// ## Example
-  /// ```swift
-  /// Button("Cancel Download") {
-  ///   store.cancelTask(id: "download")
-  /// }
-  /// ```
-  ///
-  /// - Parameter id: The task identifier (see ``TaskID`` for supported types)
-  public func cancelTask<ID: TaskID>(id: ID) {
-    taskManager.cancelTask(id: id)
-  }
+    private func processAction(_ action: Feature.Action) async {
+        var mutableState = _state
+        let actionTask = await handler.handle(action: action, state: &mutableState)
+        _state = mutableState
+        await executeTask(actionTask.storeTask)
+    }
 
-  public func cancelAllTasks() {
-    taskManager.cancelAllTasks()
-  }
+    private func executeTask(_ storeTask: StoreTask<Feature.Action, Feature.State>) async {
+        switch storeTask {
+        case .none:
+            break
 
-  public var runningTaskCount: Int {
-    taskManager.runningTaskCount
-  }
+        case .run(let id, let operation, let onError):
+            let errorHandler = createErrorHandler(from: onError)
+            let backgroundTask = taskManager.executeTask(id: id, operation: operation, onError: errorHandler)
+            await backgroundTask.value
 
-  public func isTaskRunning<ID: TaskID>(id: ID) -> Bool {
-    taskManager.isTaskRunning(id: id)
-  }
+        case .cancel(let id):
+            taskManager.cancelTaskInternal(id: id)
+        }
+    }
 
-  /// Waits for a specific task to complete.
-  ///
-  /// This method provides deterministic waiting for background task completion,
-  /// eliminating the need for time-based delays in tests.
-  ///
-  /// - Parameter id: The task identifier (see ``TaskID`` for supported types)
-  ///
-  /// ## Example
-  /// ```swift
-  /// // In tests - deterministic waiting
-  /// await store.send(.startDownload).value
-  /// await store.waitForTask(id: "download")
-  /// XCTAssertEqual(store.state.downloadComplete, true)
-  ///
-  /// // Sequential task execution
-  /// await store.send(.task1).value
-  /// await store.waitForTask(id: "task1")
-  /// await store.send(.task2).value
-  /// await store.waitForTask(id: "task2")
-  /// ```
-  public func waitForTask<ID: TaskID>(id: ID) async {
-    await taskManager.waitForTask(id: id)
-  }
+    private func createErrorHandler(
+        from onError: ((Error, inout Feature.State) -> Void)?
+    ) -> ((Error) async -> Void)? {
+        onError.map { handler -> ((Error) async -> Void) in
+            { (error: Error) async in
+                var currentState = self._state
+                handler(error, &currentState)
+                self._state = currentState
+            }
+        }
+    }
+
+    // MARK: - Task Management API
+
+    /// Cancels a running task by its ID.
+    ///
+    /// This method provides direct task cancellation from the View layer.
+    ///
+    /// ## Recommended Approach: Action-Based Cancellation
+    /// For better testability and state consistency, prefer using Actions:
+    /// ```swift
+    /// enum Action {
+    ///   case startDownload
+    ///   case cancelDownload
+    /// }
+    ///
+    /// case .startDownload:
+    ///   return .run(id: "download") { ... }
+    ///
+    /// case .cancelDownload:
+    ///   return .cancel(id: "download")
+    /// ```
+    ///
+    /// ## Direct Cancellation Use Cases
+    /// Use this method for:
+    /// - Emergency stops
+    /// - User-initiated cancellations outside normal flow
+    /// - Cleanup in View lifecycle (`.onDisappear`)
+    ///
+    /// ## Example
+    /// ```swift
+    /// Button("Cancel Download") {
+    ///   store.cancelTask(id: "download")
+    /// }
+    /// ```
+    ///
+    /// - Parameter id: The task identifier (see ``TaskID`` for supported types)
+    public func cancelTask<ID: TaskID>(id: ID) {
+        taskManager.cancelTask(id: id)
+    }
+
+    public func cancelAllTasks() {
+        taskManager.cancelAllTasks()
+    }
+
+    public var runningTaskCount: Int {
+        taskManager.runningTaskCount
+    }
+
+    public func isTaskRunning<ID: TaskID>(id: ID) -> Bool {
+        taskManager.isTaskRunning(id: id)
+    }
+
+    /// Waits for a specific task to complete.
+    ///
+    /// This method provides deterministic waiting for background task completion,
+    /// eliminating the need for time-based delays in tests.
+    ///
+    /// - Parameter id: The task identifier (see ``TaskID`` for supported types)
+    ///
+    /// ## Example
+    /// ```swift
+    /// // In tests - deterministic waiting
+    /// await store.send(.startDownload).value
+    /// await store.waitForTask(id: "download")
+    /// XCTAssertEqual(store.state.downloadComplete, true)
+    ///
+    /// // Sequential task execution
+    /// await store.send(.task1).value
+    /// await store.waitForTask(id: "task1")
+    /// await store.send(.task2).value
+    /// await store.waitForTask(id: "task2")
+    /// ```
+    public func waitForTask<ID: TaskID>(id: ID) async {
+        await taskManager.waitForTask(id: id)
+    }
 }

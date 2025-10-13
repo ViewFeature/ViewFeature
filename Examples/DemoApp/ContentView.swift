@@ -1,30 +1,30 @@
 import SwiftUI
 
 struct ContentView: View {
-  var body: some View {
-    NavigationStack {
-      List {
-        Section("Basic Examples") {
-          NavigationLink("Counter") {
-            CounterView()
-          }
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Basic Examples") {
+                    NavigationLink("Counter") {
+                        CounterView()
+                    }
 
-          NavigationLink("Todo List") {
-            TodoView()
-          }
-        }
+                    NavigationLink("Todo List") {
+                        TodoView()
+                    }
+                }
 
-        Section("Advanced Examples") {
-          NavigationLink("User Management") {
-            UserView()
-          }
+                Section("Advanced Examples") {
+                    NavigationLink("User Management") {
+                        UserView()
+                    }
+                }
+            }
+            .navigationTitle("ViewFeature Demo")
         }
-      }
-      .navigationTitle("ViewFeature Demo")
     }
-  }
 }
 
 #Preview {
-  ContentView()
+    ContentView()
 }

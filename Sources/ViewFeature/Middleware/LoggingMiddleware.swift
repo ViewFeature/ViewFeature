@@ -80,144 +80,144 @@ import Logging
 /// ### Properties
 /// - ``id``
 public struct LoggingMiddleware: ActionMiddleware {
-  // MARK: - Constants
+    // MARK: - Constants
 
-  private static let millisecondsPerSecond: Double = 1000.0
-  private static let durationFormatPrecision = "%.2f"
+    private static let millisecondsPerSecond: Double = 1000.0
+    private static let durationFormatPrecision = "%.2f"
 
-  // MARK: - Properties
+    // MARK: - Properties
 
-  /// Unique identifier for this middleware instance.
-  ///
-  /// Used by ``MiddlewareManager`` for tracking and debugging.
-  public let id = "ViewFeature.Logging"
+    /// Unique identifier for this middleware instance.
+    ///
+    /// Used by ``MiddlewareManager`` for tracking and debugging.
+    public let id = "ViewFeature.Logging"
 
-  private let logger: Logger
-  private let logLevel: Logger.Level
+    private let logger: Logger
+    private let logLevel: Logger.Level
 
-  /// Creates a new logging middleware with specified configuration.
-  ///
-  /// The middleware automatically configures the subsystem from the app's bundle identifier
-  /// and combines it with the category to create a hierarchical logging label.
-  ///
-  /// - Parameters:
-  ///   - category: The logging category (default: "ViewFeature")
-  ///   - logLevel: Minimum log level to emit (default: .debug)
-  ///
-  /// ## Example
-  /// ```swift
-  /// // Basic usage with defaults
-  /// let logging = LoggingMiddleware()
-  ///
-  /// // Custom category for feature-specific logs
-  /// let userLogging = LoggingMiddleware(
-  ///   category: "UserManagement",
-  ///   logLevel: .info
-  /// )
-  ///
-  /// // Production configuration
-  /// let prodLogging = LoggingMiddleware(
-  ///   category: "ProductionApp",
-  ///   logLevel: .error  // Only log errors
-  /// )
-  /// ```
-  ///
-  /// - Note: The full logger label will be "bundleId.category" (e.g., "com.example.app.UserManagement")
-  public init(category: String = "ViewFeature", logLevel: Logger.Level = .debug) {
-    let subsystem = Bundle.main.bundleIdentifier ?? "com.viewfeature.library"
-    self.logger = Logger(label: "\(subsystem).\(category)")
-    self.logLevel = logLevel
-  }
+    /// Creates a new logging middleware with specified configuration.
+    ///
+    /// The middleware automatically configures the subsystem from the app's bundle identifier
+    /// and combines it with the category to create a hierarchical logging label.
+    ///
+    /// - Parameters:
+    ///   - category: The logging category (default: "ViewFeature")
+    ///   - logLevel: Minimum log level to emit (default: .debug)
+    ///
+    /// ## Example
+    /// ```swift
+    /// // Basic usage with defaults
+    /// let logging = LoggingMiddleware()
+    ///
+    /// // Custom category for feature-specific logs
+    /// let userLogging = LoggingMiddleware(
+    ///   category: "UserManagement",
+    ///   logLevel: .info
+    /// )
+    ///
+    /// // Production configuration
+    /// let prodLogging = LoggingMiddleware(
+    ///   category: "ProductionApp",
+    ///   logLevel: .error  // Only log errors
+    /// )
+    /// ```
+    ///
+    /// - Note: The full logger label will be "bundleId.category" (e.g., "com.example.app.UserManagement")
+    public init(category: String = "ViewFeature", logLevel: Logger.Level = .debug) {
+        let subsystem = Bundle.main.bundleIdentifier ?? "com.viewfeature.library"
+        self.logger = Logger(label: "\(subsystem).\(category)")
+        self.logLevel = logLevel
+    }
 
-  /// Called before an action is processed.
-  ///
-  /// Logs the action start event at debug level with an emoji marker for easy identification.
-  ///
-  /// - Parameters:
-  ///   - action: The action about to be processed
-  ///   - state: The current state (read-only)
-  ///
-  /// ## Output Format
-  /// ```
-  /// 🎬 Action Started
-  /// Action: CounterAction.increment
-  /// ```
-  public func beforeAction<Action, State>(
-    _ action: Action,
-    state: State
-  ) async throws {
-    guard shouldLog(.debug) else { return }
+    /// Called before an action is processed.
+    ///
+    /// Logs the action start event at debug level with an emoji marker for easy identification.
+    ///
+    /// - Parameters:
+    ///   - action: The action about to be processed
+    ///   - state: The current state (read-only)
+    ///
+    /// ## Output Format
+    /// ```
+    /// 🎬 Action Started
+    /// Action: CounterAction.increment
+    /// ```
+    public func beforeAction<Action, State>(
+        _ action: Action,
+        state: State
+    ) async throws {
+        guard shouldLog(.debug) else { return }
 
-    logger.debug(
-      """
+        logger.debug(
+            """
       🎬 Action Started
       Action: \(String(describing: action))
       """)
-  }
+    }
 
-  /// Called after an action is successfully processed.
-  ///
-  /// Logs the action completion event at info level, including the action and execution duration
-  /// in milliseconds with high precision.
-  ///
-  /// - Parameters:
-  ///   - action: The action that was processed
-  ///   - state: The updated state (read-only)
-  ///   - result: The task returned by the action handler
-  ///   - duration: Time taken to process the action (in seconds)
-  ///
-  /// ## Output Format
-  /// ```
-  /// ✅ Action Completed
-  /// Action: UserAction.login(credentials)
-  /// Duration: 234.56ms
-  /// ```
-  public func afterAction<Action, State>(
-    _ action: Action,
-    state: State,
-    result: ActionTask<Action, State>,
-    duration: TimeInterval
-  ) async throws {
-    guard shouldLog(.info) else { return }
+    /// Called after an action is successfully processed.
+    ///
+    /// Logs the action completion event at info level, including the action and execution duration
+    /// in milliseconds with high precision.
+    ///
+    /// - Parameters:
+    ///   - action: The action that was processed
+    ///   - state: The updated state (read-only)
+    ///   - result: The task returned by the action handler
+    ///   - duration: Time taken to process the action (in seconds)
+    ///
+    /// ## Output Format
+    /// ```
+    /// ✅ Action Completed
+    /// Action: UserAction.login(credentials)
+    /// Duration: 234.56ms
+    /// ```
+    public func afterAction<Action, State>(
+        _ action: Action,
+        state: State,
+        result: ActionTask<Action, State>,
+        duration: TimeInterval
+    ) async throws {
+        guard shouldLog(.info) else { return }
 
-    logger.info(
-      """
+        logger.info(
+            """
       ✅ Action Completed
       Action: \(String(describing: action))
       Duration: \(String(format: Self.durationFormatPrecision, duration * Self.millisecondsPerSecond))ms
       """)
-  }
+    }
 
-  /// Called when an error occurs during action processing.
-  ///
-  /// Logs the error at error level with full context including the action that failed
-  /// and the error's localized description.
-  ///
-  /// - Parameters:
-  ///   - error: The error that occurred
-  ///   - action: The action that caused the error
-  ///   - state: The current state (read-only)
-  ///
-  /// ## Output Format
-  /// ```
-  /// ❌ Action Failed
-  /// Action: DataAction.fetchUser(id: 123)
-  /// Error: The Internet connection appears to be offline.
-  /// ```
-  public func onError<Action, State>(
-    _ error: Error,
-    action: Action,
-    state: State
-  ) async throws {
-    logger.error(
-      """
+    /// Called when an error occurs during action processing.
+    ///
+    /// Logs the error at error level with full context including the action that failed
+    /// and the error's localized description.
+    ///
+    /// - Parameters:
+    ///   - error: The error that occurred
+    ///   - action: The action that caused the error
+    ///   - state: The current state (read-only)
+    ///
+    /// ## Output Format
+    /// ```
+    /// ❌ Action Failed
+    /// Action: DataAction.fetchUser(id: 123)
+    /// Error: The Internet connection appears to be offline.
+    /// ```
+    public func onError<Action, State>(
+        _ error: Error,
+        action: Action,
+        state: State
+    ) async throws {
+        logger.error(
+            """
       ❌ Action Failed
       Action: \(String(describing: action))
       Error: \(error.localizedDescription)
       """)
-  }
+    }
 
-  private func shouldLog(_ level: Logger.Level) -> Bool {
-    level >= logLevel
-  }
+    private func shouldLog(_ level: Logger.Level) -> Bool {
+        level >= logLevel
+    }
 }

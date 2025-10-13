@@ -10,16 +10,16 @@
 /// - ``run(id:operation:onError:)``
 /// - ``cancel(id:)``
 public enum StoreTask<Action, State> {
-  /// No task to execute
-  case none
+    /// No task to execute
+    case none
 
-  /// Execute an asynchronous operation
-  case run(
-    id: String,
-    operation: () async throws -> Void,
-    onError: ((Error, inout State) -> Void)? = nil
-  )
+    /// Execute an asynchronous operation
+    case run(
+            id: String,
+            operation: () async throws -> Void,
+            onError: ((Error, inout State) -> Void)? = nil
+         )
 
-  /// Cancel a running task
-  case cancel(id: String)
+    /// Cancel a running task
+    case cancel(id: String)
 }

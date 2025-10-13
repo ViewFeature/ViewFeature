@@ -2,99 +2,99 @@ import SwiftUI
 import ViewFeature
 
 struct CounterView: View {
-  @State private var store = Store(
-    initialState: CounterFeature.State(),
-    feature: CounterFeature()
-  )
+    @State private var store = Store(
+        initialState: CounterFeature.State(),
+        feature: CounterFeature()
+    )
 
-  var body: some View {
-    VStack(spacing: 30) {
-      Text("\(store.state.count)")
-        .font(.system(size: 80, weight: .bold, design: .rounded))
-        .foregroundStyle(.primary)
-        .contentTransition(.numericText())
+    var body: some View {
+        VStack(spacing: 30) {
+            Text("\(store.state.count)")
+                .font(.system(size: 80, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary)
+                .contentTransition(.numericText())
 
-      VStack(spacing: 15) {
-        HStack(spacing: 15) {
-          Button {
-            store.send(.decrement)
-          } label: {
-            Image(systemName: "minus.circle.fill")
-              .font(.system(size: 50))
-          }
-          .buttonStyle(.plain)
+            VStack(spacing: 15) {
+                HStack(spacing: 15) {
+                    Button {
+                        store.send(.decrement)
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(size: 50))
+                    }
+                    .buttonStyle(.plain)
 
-          Button {
-            store.send(.increment)
-          } label: {
-            Image(systemName: "plus.circle.fill")
-              .font(.system(size: 50))
-          }
-          .buttonStyle(.plain)
-        }
+                    Button {
+                        store.send(.increment)
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 50))
+                    }
+                    .buttonStyle(.plain)
+                }
 
-        Button {
-          store.send(.reset)
-        } label: {
-          Text("Reset")
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.secondary.opacity(0.2))
-            .cornerRadius(10)
-        }
-        .buttonStyle(.plain)
+                Button {
+                    store.send(.reset)
+                } label: {
+                    Text("Reset")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.secondary.opacity(0.2))
+                        .cornerRadius(10)
+                }
+                .buttonStyle(.plain)
 
-        // Action経由でタスクを開始（推奨パターン）
-        Button {
-          Task {
-            store.send(.delayedIncrement)
-            try? await Task.sleep(for: .seconds(3))
-            store.send(.increment)
-            store.send(.finishLoading)
-          }
-        } label: {
-          HStack {
-            if store.state.isLoading {
-              ProgressView()
-                .progressViewStyle(.circular)
+                // Action経由でタスクを開始（推奨パターン）
+                Button {
+                    Task {
+                        store.send(.delayedIncrement)
+                        try? await Task.sleep(for: .seconds(3))
+                        store.send(.increment)
+                        store.send(.finishLoading)
+                    }
+                } label: {
+                    HStack {
+                        if store.state.isLoading {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                        }
+                        Text("Delayed +1 (3s)")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue.opacity(0.2))
+                    .cornerRadius(10)
+                }
+                .buttonStyle(.plain)
+                .disabled(store.state.isLoading)
+
+                // Action経由でタスクをキャンセル（推奨パターン）
+                Button {
+                    store.send(.cancelDelayedIncrement)
+                } label: {
+                    Text("Cancel Task")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red.opacity(0.2))
+                        .foregroundColor(.red)
+                        .cornerRadius(10)
+                }
+                .buttonStyle(.plain)
+                .disabled(!store.state.isLoading)
             }
-            Text("Delayed +1 (3s)")
-          }
-          .frame(maxWidth: .infinity)
-          .padding()
-          .background(Color.blue.opacity(0.2))
-          .cornerRadius(10)
+            .padding(.horizontal, 40)
         }
-        .buttonStyle(.plain)
-        .disabled(store.state.isLoading)
-
-        // Action経由でタスクをキャンセル（推奨パターン）
-        Button {
-          store.send(.cancelDelayedIncrement)
-        } label: {
-          Text("Cancel Task")
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(Color.red.opacity(0.2))
-            .foregroundColor(.red)
-            .cornerRadius(10)
+        .navigationTitle("Counter")
+        // 直接キャンセル（代替パターン）: View離脱時の自動クリーンアップ
+        .onDisappear {
+            // ユーザーが画面を離れた時に実行中のタスクをキャンセル
+            store.cancelTask(id: "delayed-increment")
         }
-        .buttonStyle(.plain)
-        .disabled(!store.state.isLoading)
-      }
-      .padding(.horizontal, 40)
     }
-    .navigationTitle("Counter")
-    // 直接キャンセル（代替パターン）: View離脱時の自動クリーンアップ
-    .onDisappear {
-      // ユーザーが画面を離れた時に実行中のタスクをキャンセル
-      store.cancelTask(id: "delayed-increment")
-    }
-  }
 }
 
 #Preview {
-  NavigationStack {
-    CounterView()
-  }
+    NavigationStack {
+        CounterView()
+    }
 }

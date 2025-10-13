@@ -10,18 +10,18 @@ import Foundation
 /// ### Identifying Middleware
 /// - ``id``
 public protocol BaseActionMiddleware: Sendable {
-  /// Unique identifier for this middleware instance.
-  ///
-  /// Used for logging, debugging, and middleware ordering. Should be a descriptive
-  /// string that uniquely identifies this middleware type.
-  ///
-  /// ## Example
-  /// ```swift
-  /// public struct MyMiddleware: ActionMiddleware {
-  ///   public let id = "com.myapp.MyMiddleware"
-  /// }
-  /// ```
-  var id: String { get }
+    /// Unique identifier for this middleware instance.
+    ///
+    /// Used for logging, debugging, and middleware ordering. Should be a descriptive
+    /// string that uniquely identifies this middleware type.
+    ///
+    /// ## Example
+    /// ```swift
+    /// public struct MyMiddleware: ActionMiddleware {
+    ///   public let id = "com.myapp.MyMiddleware"
+    /// }
+    /// ```
+    var id: String { get }
 }
 
 /// Middleware that executes before an action is processed.
@@ -51,13 +51,13 @@ public protocol BaseActionMiddleware: Sendable {
 /// ### Processing Actions
 /// - ``beforeAction(_:state:)``
 public protocol BeforeActionMiddleware: BaseActionMiddleware {
-  /// Called before an action is processed.
-  ///
-  /// - Parameters:
-  ///   - action: The action about to be processed
-  ///   - state: The current state (read-only)
-  /// - Throws: Any error to prevent action processing
-  func beforeAction<Action, State>(_ action: Action, state: State) async throws
+    /// Called before an action is processed.
+    ///
+    /// - Parameters:
+    ///   - action: The action about to be processed
+    ///   - state: The current state (read-only)
+    /// - Throws: Any error to prevent action processing
+    func beforeAction<Action, State>(_ action: Action, state: State) async throws
 }
 
 /// Middleware that executes after an action is processed.
@@ -93,16 +93,16 @@ public protocol BeforeActionMiddleware: BaseActionMiddleware {
 /// ### Processing Actions
 /// - ``afterAction(_:state:result:duration:)``
 public protocol AfterActionMiddleware: BaseActionMiddleware {
-  /// Called after an action is processed.
-  ///
-  /// - Parameters:
-  ///   - action: The action that was processed
-  ///   - state: The updated state (read-only)
-  ///   - result: The task returned by the action handler
-  ///   - duration: Time taken to process the action (in seconds)
-  /// - Throws: Any error (will be passed to error handling middleware)
-  func afterAction<Action, State>(
-    _ action: Action, state: State, result: ActionTask<Action, State>, duration: TimeInterval)
+    /// Called after an action is processed.
+    ///
+    /// - Parameters:
+    ///   - action: The action that was processed
+    ///   - state: The updated state (read-only)
+    ///   - result: The task returned by the action handler
+    ///   - duration: Time taken to process the action (in seconds)
+    /// - Throws: Any error (will be passed to error handling middleware)
+    func afterAction<Action, State>(
+        _ action: Action, state: State, result: ActionTask<Action, State>, duration: TimeInterval)
     async throws
 }
 
@@ -137,14 +137,14 @@ public protocol AfterActionMiddleware: BaseActionMiddleware {
 /// ### Handling Errors
 /// - ``onError(_:action:state:)``
 public protocol ErrorHandlingMiddleware: BaseActionMiddleware {
-  /// Called when an error occurs during action processing.
-  ///
-  /// - Parameters:
-  ///   - error: The error that occurred
-  ///   - action: The action that caused the error
-  ///   - state: The current state (read-only)
-  /// - Throws: Any error (will be logged but won't stop other error handlers)
-  func onError<Action, State>(_ error: Error, action: Action, state: State) async throws
+    /// Called when an error occurs during action processing.
+    ///
+    /// - Parameters:
+    ///   - error: The error that occurred
+    ///   - action: The action that caused the error
+    ///   - state: The current state (read-only)
+    /// - Throws: Any error (will be logged but won't stop other error handlers)
+    func onError<Action, State>(_ error: Error, action: Action, state: State) async throws
 }
 
 /// Full-featured middleware that supports all processing stages.
@@ -184,7 +184,7 @@ public protocol ErrorHandlingMiddleware: BaseActionMiddleware {
 /// - ``AfterActionMiddleware``
 /// - ``ErrorHandlingMiddleware``
 public protocol ActionMiddleware: BeforeActionMiddleware, AfterActionMiddleware,
-  ErrorHandlingMiddleware {
+                                  ErrorHandlingMiddleware {
 }
 
 // MARK: - Default Implementations
@@ -195,10 +195,10 @@ public protocol ActionMiddleware: BeforeActionMiddleware, AfterActionMiddleware,
 ///   you should override this method to provide meaningful functionality. The default implementation
 ///   exists only to support protocol composition in ``ActionMiddleware``.
 extension BeforeActionMiddleware {
-  public func beforeAction<Action, State>(_ action: Action, state: State) async throws {
-    // Default no-op implementation
-    // Override this method to add before-action logic
-  }
+    public func beforeAction<Action, State>(_ action: Action, state: State) async throws {
+        // Default no-op implementation
+        // Override this method to add before-action logic
+    }
 }
 
 /// Default implementation for AfterActionMiddleware
@@ -207,12 +207,12 @@ extension BeforeActionMiddleware {
 ///   you should override this method to provide meaningful functionality. The default implementation
 ///   exists only to support protocol composition in ``ActionMiddleware``.
 extension AfterActionMiddleware {
-  public func afterAction<Action, State>(
-    _ action: Action, state: State, result: ActionTask<Action, State>, duration: TimeInterval
-  ) async throws {
-    // Default no-op implementation
-    // Override this method to add after-action logic
-  }
+    public func afterAction<Action, State>(
+        _ action: Action, state: State, result: ActionTask<Action, State>, duration: TimeInterval
+    ) async throws {
+        // Default no-op implementation
+        // Override this method to add after-action logic
+    }
 }
 
 /// Default implementation for ErrorHandlingMiddleware
@@ -221,8 +221,8 @@ extension AfterActionMiddleware {
 ///   you should override this method to provide meaningful functionality. The default implementation
 ///   exists only to support protocol composition in ``ActionMiddleware``.
 extension ErrorHandlingMiddleware {
-  public func onError<Action, State>(_ error: Error, action: Action, state: State) async throws {
-    // Default no-op implementation
-    // Override this method to add error handling logic
-  }
+    public func onError<Action, State>(_ error: Error, action: Action, state: State) async throws {
+        // Default no-op implementation
+        // Override this method to add error handling logic
+    }
 }

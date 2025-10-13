@@ -74,192 +74,192 @@ import Foundation
 /// - ``cancelTaskInternal(id:)``
 @MainActor
 public final class TaskManager {
-  private var runningTasks: [String: Task<Void, Never>] = [:]
+    private var runningTasks: [String: Task<Void, Never>] = [:]
 
-  /// Creates a new TaskManager instance.
-  ///
-  /// Initializes an empty task tracking dictionary ready to manage asynchronous operations.
-  ///
-  /// ## Example
-  /// ```swift
-  /// let taskManager = TaskManager()
-  /// ```
-  public init() {}
+    /// Creates a new TaskManager instance.
+    ///
+    /// Initializes an empty task tracking dictionary ready to manage asynchronous operations.
+    ///
+    /// ## Example
+    /// ```swift
+    /// let taskManager = TaskManager()
+    /// ```
+    public init() {}
 
-  /// The number of currently running tasks.
-  ///
-  /// Use this property to monitor task activity and prevent resource exhaustion.
-  ///
-  /// ## Example
-  /// ```swift
-  /// print("Active tasks: \(taskManager.runningTaskCount)")
-  /// if taskManager.runningTaskCount > 10 {
-  ///   print("Warning: Many concurrent tasks")
-  /// }
-  /// ```
-  public var runningTaskCount: Int {
-    runningTasks.count
-  }
-
-  /// Checks if a specific task is currently running.
-  ///
-  /// - Parameter id: The unique identifier for the task
-  /// - Returns: `true` if the task is running, `false` otherwise
-  ///
-  /// ## Example
-  /// ```swift
-  /// if taskManager.isTaskRunning(id: "fetchUser") {
-  ///   print("User fetch in progress")
-  /// } else {
-  ///   print("User fetch not started or completed")
-  /// }
-  /// ```
-  public func isTaskRunning<ID: TaskID>(id: ID) -> Bool {
-    let stringId = String(describing: id)
-    return runningTasks[stringId] != nil
-  }
-
-  /// Waits for a specific task to complete.
-  ///
-  /// This method allows you to wait for a background task to finish without using
-  /// time-based delays. If the task doesn't exist, this method returns immediately.
-  ///
-  /// - Parameter id: The unique identifier for the task to wait for
-  ///
-  /// ## Example
-  /// ```swift
-  /// // Start a background task
-  /// await store.send(.startDownload).value
-  ///
-  /// // Wait for the task to complete
-  /// await store.waitForTask(id: "download")
-  ///
-  /// // Now the task is guaranteed to be complete
-  /// XCTAssertFalse(store.isTaskRunning(id: "download"))
-  /// ```
-  ///
-  /// ## Testing Use Case
-  /// This is particularly useful in tests to ensure deterministic behavior:
-  /// ```swift
-  /// await store.send(.fetch("data")).value
-  /// await store.waitForTask(id: "fetch-data")
-  /// // No need for Task.sleep() - task is guaranteed complete
-  /// XCTAssertEqual(store.state.data, expectedData)
-  /// ```
-  public func waitForTask<ID: TaskID>(id: ID) async {
-    let stringId = String(describing: id)
-    await runningTasks[stringId]?.value
-  }
-
-  /// Cancels a specific running task by its identifier.
-  ///
-  /// If the task is found, it will be cancelled and removed from tracking.
-  /// If the task doesn't exist or has already completed, this method does nothing.
-  ///
-  /// - Parameter id: The unique identifier for the task to cancel
-  ///
-  /// ## Example
-  /// ```swift
-  /// // Start a long-running task
-  /// taskManager.executeTask(id: "uploadFile", operation: { /* ... */ })
-  ///
-  /// // Cancel it if user navigates away
-  /// taskManager.cancelTask(id: "uploadFile")
-  /// ```
-  public func cancelTask<ID: TaskID>(id: ID) {
-    let stringId = String(describing: id)
-    cancelTaskInternal(id: stringId)
-  }
-
-  /// Cancels all currently running tasks.
-  ///
-  /// This method iterates through all tracked tasks, cancels them, and clears
-  /// the tracking dictionary. Useful for cleanup when a feature is dismissed or
-  /// the app enters the background.
-  ///
-  /// ## Example
-  /// ```swift
-  /// // Cancel all tasks when view disappears
-  /// func viewDidDisappear() {
-  ///   taskManager.cancelAllTasks()
-  /// }
-  /// ```
-  public func cancelAllTasks() {
-    runningTasks.values.forEach { $0.cancel() }
-    runningTasks.removeAll()
-  }
-
-  /// Executes an asynchronous operation as a tracked task and returns the Task.
-  ///
-  /// Creates and tracks a new task with automatic cleanup. If a task with the same
-  /// ID already exists, the old task is cancelled before starting the new one.
-  /// The task runs on the MainActor and handles errors through the provided handler.
-  ///
-  /// - Parameters:
-  ///   - id: Unique identifier for the task (string representation)
-  ///   - operation: The asynchronous operation to execute
-  ///   - onError: Optional error handler called if the operation throws
-  /// - Returns: The created Task that can be awaited for completion
-  ///
-  /// ## Example
-  /// ```swift
-  /// let task = taskManager.executeTask(
-  ///   id: "loadProfile",
-  ///   operation: {
-  ///     let profile = try await api.fetchProfile()
-  ///     await store.send(.profileLoaded(profile))
-  ///   },
-  ///   onError: { error in
-  ///     await store.send(.profileLoadFailed(error))
-  ///   }
-  /// )
-  ///
-  /// // Optionally wait for completion
-  /// await task.value
-  /// ```
-  ///
-  /// - Note: Tasks automatically remove themselves from tracking upon completion
-  @discardableResult
-  public func executeTask(
-    id: String,
-    operation: @escaping () async throws -> Void,
-    onError: ((Error) async -> Void)?
-  ) -> Task<Void, Never> {
-    if let existingTask = runningTasks[id] {
-      existingTask.cancel()
-      runningTasks.removeValue(forKey: id)
+    /// The number of currently running tasks.
+    ///
+    /// Use this property to monitor task activity and prevent resource exhaustion.
+    ///
+    /// ## Example
+    /// ```swift
+    /// print("Active tasks: \(taskManager.runningTaskCount)")
+    /// if taskManager.runningTaskCount > 10 {
+    ///   print("Warning: Many concurrent tasks")
+    /// }
+    /// ```
+    public var runningTaskCount: Int {
+        runningTasks.count
     }
 
-    // Create task with automatic cleanup on completion
-    let task = Task { [weak self] in
-      defer {
-        // Automatically remove completed task from tracking
-        self?.runningTasks.removeValue(forKey: id)
-      }
+    /// Checks if a specific task is currently running.
+    ///
+    /// - Parameter id: The unique identifier for the task
+    /// - Returns: `true` if the task is running, `false` otherwise
+    ///
+    /// ## Example
+    /// ```swift
+    /// if taskManager.isTaskRunning(id: "fetchUser") {
+    ///   print("User fetch in progress")
+    /// } else {
+    ///   print("User fetch not started or completed")
+    /// }
+    /// ```
+    public func isTaskRunning<ID: TaskID>(id: ID) -> Bool {
+        let stringId = String(describing: id)
+        return runningTasks[stringId] != nil
+    }
 
-      do {
-        try await operation()
-      } catch {
-        if let errorHandler = onError {
-          await errorHandler(error)
+    /// Waits for a specific task to complete.
+    ///
+    /// This method allows you to wait for a background task to finish without using
+    /// time-based delays. If the task doesn't exist, this method returns immediately.
+    ///
+    /// - Parameter id: The unique identifier for the task to wait for
+    ///
+    /// ## Example
+    /// ```swift
+    /// // Start a background task
+    /// await store.send(.startDownload).value
+    ///
+    /// // Wait for the task to complete
+    /// await store.waitForTask(id: "download")
+    ///
+    /// // Now the task is guaranteed to be complete
+    /// XCTAssertFalse(store.isTaskRunning(id: "download"))
+    /// ```
+    ///
+    /// ## Testing Use Case
+    /// This is particularly useful in tests to ensure deterministic behavior:
+    /// ```swift
+    /// await store.send(.fetch("data")).value
+    /// await store.waitForTask(id: "fetch-data")
+    /// // No need for Task.sleep() - task is guaranteed complete
+    /// XCTAssertEqual(store.state.data, expectedData)
+    /// ```
+    public func waitForTask<ID: TaskID>(id: ID) async {
+        let stringId = String(describing: id)
+        await runningTasks[stringId]?.value
+    }
+
+    /// Cancels a specific running task by its identifier.
+    ///
+    /// If the task is found, it will be cancelled and removed from tracking.
+    /// If the task doesn't exist or has already completed, this method does nothing.
+    ///
+    /// - Parameter id: The unique identifier for the task to cancel
+    ///
+    /// ## Example
+    /// ```swift
+    /// // Start a long-running task
+    /// taskManager.executeTask(id: "uploadFile", operation: { /* ... */ })
+    ///
+    /// // Cancel it if user navigates away
+    /// taskManager.cancelTask(id: "uploadFile")
+    /// ```
+    public func cancelTask<ID: TaskID>(id: ID) {
+        let stringId = String(describing: id)
+        cancelTaskInternal(id: stringId)
+    }
+
+    /// Cancels all currently running tasks.
+    ///
+    /// This method iterates through all tracked tasks, cancels them, and clears
+    /// the tracking dictionary. Useful for cleanup when a feature is dismissed or
+    /// the app enters the background.
+    ///
+    /// ## Example
+    /// ```swift
+    /// // Cancel all tasks when view disappears
+    /// func viewDidDisappear() {
+    ///   taskManager.cancelAllTasks()
+    /// }
+    /// ```
+    public func cancelAllTasks() {
+        runningTasks.values.forEach { $0.cancel() }
+        runningTasks.removeAll()
+    }
+
+    /// Executes an asynchronous operation as a tracked task and returns the Task.
+    ///
+    /// Creates and tracks a new task with automatic cleanup. If a task with the same
+    /// ID already exists, the old task is cancelled before starting the new one.
+    /// The task runs on the MainActor and handles errors through the provided handler.
+    ///
+    /// - Parameters:
+    ///   - id: Unique identifier for the task (string representation)
+    ///   - operation: The asynchronous operation to execute
+    ///   - onError: Optional error handler called if the operation throws
+    /// - Returns: The created Task that can be awaited for completion
+    ///
+    /// ## Example
+    /// ```swift
+    /// let task = taskManager.executeTask(
+    ///   id: "loadProfile",
+    ///   operation: {
+    ///     let profile = try await api.fetchProfile()
+    ///     await store.send(.profileLoaded(profile))
+    ///   },
+    ///   onError: { error in
+    ///     await store.send(.profileLoadFailed(error))
+    ///   }
+    /// )
+    ///
+    /// // Optionally wait for completion
+    /// await task.value
+    /// ```
+    ///
+    /// - Note: Tasks automatically remove themselves from tracking upon completion
+    @discardableResult
+    public func executeTask(
+        id: String,
+        operation: @escaping () async throws -> Void,
+        onError: ((Error) async -> Void)?
+    ) -> Task<Void, Never> {
+        if let existingTask = runningTasks[id] {
+            existingTask.cancel()
+            runningTasks.removeValue(forKey: id)
         }
-      }
+
+        // Create task with automatic cleanup on completion
+        let task = Task { [weak self] in
+            defer {
+                // Automatically remove completed task from tracking
+                self?.runningTasks.removeValue(forKey: id)
+            }
+
+            do {
+                try await operation()
+            } catch {
+                if let errorHandler = onError {
+                    await errorHandler(error)
+                }
+            }
+        }
+
+        runningTasks[id] = task
+        return task
     }
 
-    runningTasks[id] = task
-    return task
-  }
-
-  /// Internal method to cancel a task by string identifier.
-  ///
-  /// This method provides low-level task cancellation without generic type conversion.
-  /// Used internally by ``cancelTask(id:)`` and by ``Store`` for direct task management.
-  ///
-  /// - Parameter id: The string identifier of the task to cancel
-  ///
-  /// - Note: This is public for Store's internal use but typically shouldn't be called directly
-  public func cancelTaskInternal(id: String) {
-    runningTasks[id]?.cancel()
-    runningTasks.removeValue(forKey: id)
-  }
+    /// Internal method to cancel a task by string identifier.
+    ///
+    /// This method provides low-level task cancellation without generic type conversion.
+    /// Used internally by ``cancelTask(id:)`` and by ``Store`` for direct task management.
+    ///
+    /// - Parameter id: The string identifier of the task to cancel
+    ///
+    /// - Note: This is public for Store's internal use but typically shouldn't be called directly
+    public func cancelTaskInternal(id: String) {
+        runningTasks[id]?.cancel()
+        runningTasks.removeValue(forKey: id)
+    }
 }
