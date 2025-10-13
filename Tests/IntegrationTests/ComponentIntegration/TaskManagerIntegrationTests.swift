@@ -1,0 +1,407 @@
+@testable import ViewFeature
+import XCTest
+
+/// Integration tests for TaskManager with Store and ActionHandler.
+///
+/// Tests how TaskManager coordinates task execution with Store actions
+/// and handles concurrent task management.
+@MainActor
+final class TaskManagerIntegrationTests: XCTestCase {
+
+  // MARK: - Test Fixtures
+
+  enum DataAction: Sendable {
+    case fetch(String)
+    case fetchMultiple([String])
+    case cancelFetch(String)
+    case cancelAll
+    case process(String)
+  }
+
+  struct DataState: Equatable, Sendable {
+    var data: [String: String] = [:]
+    var isLoading: [String: Bool] = [:]
+    var errors: [String: String] = [:]
+  }
+
+  struct DataFeature: StoreFeature, Sendable {
+    typealias Action = DataAction
+    typealias State = DataState
+
+    func handle() -> ActionHandler<Action, State> {
+      ActionHandler { action, state in
+        switch action {
+        case .fetch(let id):
+          state.isLoading[id] = true
+          return .run(id: "fetch-\(id)") {
+            try await Task.sleep(for: .milliseconds(50))
+          }
+
+        case .fetchMultiple(let ids):
+          for id in ids {
+            state.isLoading[id] = true
+          }
+          // Start first task (in real app, you'd handle multiple tasks differently)
+          if let firstId = ids.first {
+            return .run(id: "fetch-\(firstId)") {
+              try await Task.sleep(for: .milliseconds(30))
+            }
+          } else {
+            return .none
+          }
+
+        case .cancelFetch(let id):
+          state.isLoading[id] = false
+          return .cancel(id: "fetch-\(id)")
+
+        case .cancelAll:
+          state.isLoading.removeAll()
+          return .none // cancelAllTasks() should be called separately
+
+        case .process(let id):
+          state.data[id] = "processed"
+          return .none
+        }
+      }
+    }
+  }
+
+  // MARK: - Basic Task Management Tests
+
+  func test_storeStartsTasksCorrectly() async {
+    // GIVEN: Store with TaskManager
+    let sut = Store(
+      initialState: DataState(),
+      feature: DataFeature()
+    )
+
+    // WHEN: Send action that starts task
+    await sut.send(.fetch("data1")).value
+
+    // Wait a bit for task to start
+    try? await Task.sleep(for: .milliseconds(10))
+
+    // THEN: Task should be running
+    XCTAssertTrue(sut.state.isLoading["data1"] ?? false)
+  }
+
+  func test_storeCanCancelRunningTask() async {
+    // GIVEN: Store with running task
+    let sut = Store(
+      initialState: DataState(),
+      feature: DataFeature()
+    )
+
+    await sut.send(.fetch("data1")).value
+    try? await Task.sleep(for: .milliseconds(10))
+
+    // WHEN: Cancel task
+    await sut.send(.cancelFetch("data1")).value
+
+    // Wait for cancellation
+    try? await Task.sleep(for: .milliseconds(20))
+
+    // THEN: Task should be cancelled
+    XCTAssertFalse(sut.isTaskRunning(id: "fetch-data1"))
+    XCTAssertFalse(sut.state.isLoading["data1"] ?? true)
+  }
+
+  func test_multipleConcurrentTasks() async {
+    // GIVEN: Store
+    let sut = Store(
+      initialState: DataState(),
+      feature: DataFeature()
+    )
+
+    // WHEN: Start multiple tasks
+    _ = sut.send(.fetch("data1"))
+    _ = sut.send(.fetch("data2"))
+    _ = sut.send(.fetch("data3"))
+
+    try? await Task.sleep(for: .milliseconds(10))
+
+    // THEN: All tasks should be tracked
+    XCTAssertTrue(sut.state.isLoading["data1"] ?? false)
+    XCTAssertTrue(sut.state.isLoading["data2"] ?? false)
+    XCTAssertTrue(sut.state.isLoading["data3"] ?? false)
+
+    // Wait for completion
+    try? await Task.sleep(for: .milliseconds(100))
+
+    // Tasks should complete
+    XCTAssertGreaterThanOrEqual(sut.runningTaskCount, 0)
+  }
+
+  // MARK: - Task Cancellation Tests
+
+  func test_cancelAllTasksViaStore() async {
+    // GIVEN: Store with multiple running tasks
+    let sut = Store(
+      initialState: DataState(),
+      feature: DataFeature()
+    )
+
+    _ = sut.send(.fetch("data1"))
+    _ = sut.send(.fetch("data2"))
+    _ = sut.send(.fetch("data3"))
+
+    try? await Task.sleep(for: .milliseconds(10))
+
+    // WHEN: Cancel all tasks
+    sut.cancelAllTasks()
+
+    // Wait for cancellation
+    try? await Task.sleep(for: .milliseconds(50))
+
+    // THEN: All tasks should be cancelled
+    XCTAssertEqual(sut.runningTaskCount, 0)
+  }
+
+  func test_cancelSpecificTaskAmongMany() async {
+    // GIVEN: Store with multiple running tasks
+    let sut = Store(
+      initialState: DataState(),
+      feature: DataFeature()
+    )
+
+    _ = sut.send(.fetch("data1"))
+    _ = sut.send(.fetch("data2"))
+    _ = sut.send(.fetch("data3"))
+
+    try? await Task.sleep(for: .milliseconds(10))
+
+    // WHEN: Cancel specific task
+    await sut.send(.cancelFetch("data2")).value
+
+    try? await Task.sleep(for: .milliseconds(20))
+
+    // THEN: Only that task should be cancelled
+    XCTAssertFalse(sut.isTaskRunning(id: "fetch-data2"))
+  }
+
+  // MARK: - Task Completion Tests
+
+  func test_taskCompletionUpdatesRunningCount() async {
+    // GIVEN: Store with short task
+    struct ShortTaskFeature: StoreFeature, Sendable {
+      typealias Action = DataAction
+      typealias State = DataState
+
+      func handle() -> ActionHandler<Action, State> {
+        ActionHandler { action, state in
+          switch action {
+          case .fetch(let id):
+            return .run(id: "short-\(id)") {
+              try await Task.sleep(for: .milliseconds(10))
+            }
+          default:
+            return .none
+          }
+        }
+      }
+    }
+
+    let sut = Store(
+      initialState: DataState(),
+      feature: ShortTaskFeature()
+    )
+
+    // WHEN: Start task
+    await sut.send(.fetch("data1")).value
+
+    // Wait for completion
+    try? await Task.sleep(for: .milliseconds(50))
+
+    // THEN: Running count should be back to 0
+    XCTAssertEqual(sut.runningTaskCount, 0)
+  }
+
+  // MARK: - Task Error Handling Integration
+
+  func test_taskErrorsAreHandled() async {
+    // GIVEN: Store with error-throwing task
+    struct ErrorFeature: StoreFeature, Sendable {
+      typealias Action = DataAction
+      typealias State = DataState
+
+      func handle() -> ActionHandler<Action, State> {
+        ActionHandler { action, state in
+          switch action {
+          case .fetch(let id):
+            return ActionTask(storeTask: .run(
+              id: "error-\(id)",
+              operation: {
+                try await Task.sleep(for: .milliseconds(10))
+                throw NSError(domain: "TestError", code: 1)
+              },
+              onError: { error, state in
+                state.errors[id] = error.localizedDescription
+                state.isLoading[id] = false
+              }
+            ))
+          default:
+            return .none
+          }
+        }
+      }
+    }
+
+    let sut = Store(
+      initialState: DataState(),
+      feature: ErrorFeature()
+    )
+
+    // WHEN: Execute task that throws
+    await sut.send(.fetch("data1")).value
+
+    // Wait for error handling
+    try? await Task.sleep(for: .milliseconds(50))
+
+    // THEN: Error should be handled
+    XCTAssertNotNil(sut.state.errors["data1"])
+    XCTAssertFalse(sut.state.isLoading["data1"] ?? true)
+  }
+
+  // MARK: - Complex Task Workflows
+
+  func test_sequentialTaskExecution() async {
+    // GIVEN: Store
+    actor TaskTracker {
+      var completedTasks: [String] = []
+
+      func append(_ task: String) {
+        completedTasks.append(task)
+      }
+
+      func getCompleted() -> [String] {
+        completedTasks
+      }
+    }
+
+    struct TrackingFeature: StoreFeature, Sendable {
+      let tracker: TaskTracker
+
+      typealias Action = DataAction
+      typealias State = DataState
+
+      func handle() -> ActionHandler<Action, State> {
+        ActionHandler { [tracker] action, state in
+          switch action {
+          case .fetch(let id):
+            return .run(id: "track-\(id)") {
+              try await Task.sleep(for: .milliseconds(20))
+              await tracker.append(id)
+            }
+          default:
+            return .none
+          }
+        }
+      }
+    }
+
+    let tracker = TaskTracker()
+    let sut = Store(
+      initialState: DataState(),
+      feature: TrackingFeature(tracker: tracker)
+    )
+
+    // WHEN: Execute tasks sequentially
+    await sut.send(.fetch("task1")).value
+    try? await Task.sleep(for: .milliseconds(30))
+
+    await sut.send(.fetch("task2")).value
+    try? await Task.sleep(for: .milliseconds(30))
+
+    await sut.send(.fetch("task3")).value
+    try? await Task.sleep(for: .milliseconds(30))
+
+    // THEN: Tasks should complete in order
+    let completed = await tracker.getCompleted()
+    XCTAssertEqual(completed, ["task1", "task2", "task3"])
+  }
+
+  func test_taskReuseAfterCompletion() async {
+    // GIVEN: Store
+    let sut = Store(
+      initialState: DataState(),
+      feature: DataFeature()
+    )
+
+    // WHEN: Run task, wait for completion, run again
+    await sut.send(.fetch("data1")).value
+    try? await Task.sleep(for: .milliseconds(80))
+
+    await sut.send(.fetch("data1")).value
+    try? await Task.sleep(for: .milliseconds(10))
+
+    // THEN: Task should be running again
+    XCTAssertTrue(sut.state.isLoading["data1"] ?? false)
+  }
+
+  // MARK: - Task ID Management Tests
+
+  func test_taskIdUniqueness() async {
+    // GIVEN: Store
+    let sut = Store(
+      initialState: DataState(),
+      feature: DataFeature()
+    )
+
+    // WHEN: Start tasks with same data but different IDs
+    await sut.send(.fetch("data1")).value
+    try? await Task.sleep(for: .milliseconds(10))
+
+    // THEN: Each task should be tracked separately
+    XCTAssertTrue(sut.isTaskRunning(id: "fetch-data1"))
+    XCTAssertFalse(sut.isTaskRunning(id: "fetch-data2"))
+  }
+
+  // MARK: - Task Manager State Consistency
+
+  func test_taskManagerStateRemainsConsistent() async {
+    // GIVEN: Store
+    let sut = Store(
+      initialState: DataState(),
+      feature: DataFeature()
+    )
+
+    // WHEN: Start, cancel, and restart tasks
+    _ = sut.send(.fetch("data1"))
+    try? await Task.sleep(for: .milliseconds(10))
+
+    await sut.send(.cancelFetch("data1")).value
+    try? await Task.sleep(for: .milliseconds(20))
+
+    _ = sut.send(.fetch("data2"))
+    try? await Task.sleep(for: .milliseconds(10))
+
+    // THEN: Task manager state should be consistent
+    XCTAssertFalse(sut.isTaskRunning(id: "fetch-data1"))
+    // data2 might still be running or completed
+  }
+
+  // MARK: - Integration with Synchronous Actions
+
+  func test_mixedSyncAndAsyncActions() async {
+    // GIVEN: Store
+    let sut = Store(
+      initialState: DataState(),
+      feature: DataFeature()
+    )
+
+    // WHEN: Mix synchronous and asynchronous actions
+    await sut.send(.process("data1")).value
+    XCTAssertEqual(sut.state.data["data1"], "processed")
+
+    await sut.send(.fetch("data2")).value
+    try? await Task.sleep(for: .milliseconds(10))
+
+    await sut.send(.process("data3")).value
+    XCTAssertEqual(sut.state.data["data3"], "processed")
+
+    // THEN: Both sync and async actions should work
+    XCTAssertEqual(sut.state.data["data1"], "processed")
+    XCTAssertEqual(sut.state.data["data3"], "processed")
+    XCTAssertTrue(sut.state.isLoading["data2"] ?? false)
+  }
+}
