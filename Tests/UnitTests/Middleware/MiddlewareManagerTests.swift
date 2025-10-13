@@ -1,5 +1,6 @@
+import Foundation
 import Logging
-import XCTest
+import Testing
 
 @testable import ViewFeature
 
@@ -7,7 +8,7 @@ import XCTest
 ///
 /// Tests every public method, property, and code path in MiddlewareManager.swift
 @MainActor
-final class MiddlewareManagerTests: XCTestCase {
+@Suite struct MiddlewareManagerTests {
   // MARK: - Test Fixtures
 
   enum TestAction: Sendable {
@@ -23,23 +24,23 @@ final class MiddlewareManagerTests: XCTestCase {
 
   // MARK: - init(middlewares:)
 
-  func test_init_withEmptyArray() async {
+  @Test func init_withEmptyArray() async {
     // GIVEN & WHEN: Create manager with empty array
     let sut = MiddlewareManager<TestAction, TestState>()
 
     // THEN: Should have no middlewares
-    XCTAssertEqual(sut.allMiddlewares.count, 0)
+    #expect(sut.allMiddlewares.count == 0)
   }
 
-  func test_init_withDefaultParameter() async {
+  @Test func init_withDefaultParameter() async {
     // GIVEN & WHEN: Create manager with default parameter
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [])
 
     // THEN: Should have no middlewares
-    XCTAssertEqual(sut.allMiddlewares.count, 0)
+    #expect(sut.allMiddlewares.count == 0)
   }
 
-  func test_init_withInitialMiddlewares() async {
+  @Test func init_withInitialMiddlewares() async {
     // GIVEN: Some middlewares
     let middleware1 = LoggingMiddleware()
     let middleware2 = LoggingMiddleware()
@@ -48,10 +49,10 @@ final class MiddlewareManagerTests: XCTestCase {
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [middleware1, middleware2])
 
     // THEN: Should have 2 middlewares
-    XCTAssertEqual(sut.allMiddlewares.count, 2)
+    #expect(sut.allMiddlewares.count == 2)
   }
 
-  func test_init_withMultipleMiddlewares() async {
+  @Test func init_withMultipleMiddlewares() async {
     // GIVEN: Multiple middlewares
     let middlewares: [any BaseActionMiddleware] = [
       LoggingMiddleware(),
@@ -64,20 +65,20 @@ final class MiddlewareManagerTests: XCTestCase {
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: middlewares)
 
     // THEN: Should have all middlewares
-    XCTAssertEqual(sut.allMiddlewares.count, 4)
+    #expect(sut.allMiddlewares.count == 4)
   }
 
   // MARK: - allMiddlewares
 
-  func test_allMiddlewares_returnsEmptyArrayInitially() async {
+  @Test func allMiddlewares_returnsEmptyArrayInitially() async {
     // GIVEN & WHEN: Fresh manager
     let sut = MiddlewareManager<TestAction, TestState>()
 
     // THEN: Should return empty array
-    XCTAssertTrue(sut.allMiddlewares.isEmpty)
+    #expect(sut.allMiddlewares.isEmpty)
   }
 
-  func test_allMiddlewares_returnsInitialMiddlewares() async {
+  @Test func allMiddlewares_returnsInitialMiddlewares() async {
     // GIVEN: Manager with initial middlewares
     let middleware = LoggingMiddleware()
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [middleware])
@@ -86,11 +87,11 @@ final class MiddlewareManagerTests: XCTestCase {
     let result = sut.allMiddlewares
 
     // THEN: Should return initial middleware
-    XCTAssertEqual(result.count, 1)
-    XCTAssertEqual(result[0].id, "ViewFeature.Logging")
+    #expect(result.count == 1)
+    #expect(result[0].id == "ViewFeature.Logging")
   }
 
-  func test_allMiddlewares_reflectsAddedMiddlewares() async {
+  @Test func allMiddlewares_reflectsAddedMiddlewares() async {
     // GIVEN: Manager
     let sut = MiddlewareManager<TestAction, TestState>()
     let middleware = LoggingMiddleware()
@@ -99,13 +100,13 @@ final class MiddlewareManagerTests: XCTestCase {
     sut.addMiddleware(middleware)
 
     // THEN: Should reflect added middleware
-    XCTAssertEqual(sut.allMiddlewares.count, 1)
-    XCTAssertEqual(sut.allMiddlewares[0].id, "ViewFeature.Logging")
+    #expect(sut.allMiddlewares.count == 1)
+    #expect(sut.allMiddlewares[0].id == "ViewFeature.Logging")
   }
 
   // MARK: - addMiddleware(_:)
 
-  func test_addMiddleware_addsToEmptyManager() async {
+  @Test func addMiddleware_addsToEmptyManager() async {
     // GIVEN: Empty manager
     let sut = MiddlewareManager<TestAction, TestState>()
     let middleware = LoggingMiddleware()
@@ -114,10 +115,10 @@ final class MiddlewareManagerTests: XCTestCase {
     sut.addMiddleware(middleware)
 
     // THEN: Should have 1 middleware
-    XCTAssertEqual(sut.allMiddlewares.count, 1)
+    #expect(sut.allMiddlewares.count == 1)
   }
 
-  func test_addMiddleware_maintainsOrder() async {
+  @Test func addMiddleware_maintainsOrder() async {
     // GIVEN: Manager
     let sut = MiddlewareManager<TestAction, TestState>()
     let middleware1 = LoggingMiddleware(category: "First")
@@ -130,13 +131,13 @@ final class MiddlewareManagerTests: XCTestCase {
     sut.addMiddleware(middleware3)
 
     // THEN: Should maintain order (all have same ID)
-    XCTAssertEqual(sut.allMiddlewares.count, 3)
-    XCTAssertEqual(sut.allMiddlewares[0].id, "ViewFeature.Logging")
-    XCTAssertEqual(sut.allMiddlewares[1].id, "ViewFeature.Logging")
-    XCTAssertEqual(sut.allMiddlewares[2].id, "ViewFeature.Logging")
+    #expect(sut.allMiddlewares.count == 3)
+    #expect(sut.allMiddlewares[0].id == "ViewFeature.Logging")
+    #expect(sut.allMiddlewares[1].id == "ViewFeature.Logging")
+    #expect(sut.allMiddlewares[2].id == "ViewFeature.Logging")
   }
 
-  func test_addMiddleware_canAddMultipleTimes() async {
+  @Test func addMiddleware_canAddMultipleTimes() async {
     // GIVEN: Manager
     let sut = MiddlewareManager<TestAction, TestState>()
 
@@ -146,12 +147,12 @@ final class MiddlewareManagerTests: XCTestCase {
     sut.addMiddleware(LoggingMiddleware())
 
     // THEN: Should have all 3
-    XCTAssertEqual(sut.allMiddlewares.count, 3)
+    #expect(sut.allMiddlewares.count == 3)
   }
 
   // MARK: - addMiddlewares(_:)
 
-  func test_addMiddlewares_addsMultipleAtOnce() async {
+  @Test func addMiddlewares_addsMultipleAtOnce() async {
     // GIVEN: Manager and middlewares
     let sut = MiddlewareManager<TestAction, TestState>()
     let middlewares: [any BaseActionMiddleware] = [
@@ -163,10 +164,10 @@ final class MiddlewareManagerTests: XCTestCase {
     sut.addMiddlewares(middlewares)
 
     // THEN: Should have both
-    XCTAssertEqual(sut.allMiddlewares.count, 2)
+    #expect(sut.allMiddlewares.count == 2)
   }
 
-  func test_addMiddlewares_withEmptyArray() async {
+  @Test func addMiddlewares_withEmptyArray() async {
     // GIVEN: Manager
     let sut = MiddlewareManager<TestAction, TestState>()
 
@@ -174,10 +175,10 @@ final class MiddlewareManagerTests: XCTestCase {
     sut.addMiddlewares([])
 
     // THEN: Should have no middlewares
-    XCTAssertEqual(sut.allMiddlewares.count, 0)
+    #expect(sut.allMiddlewares.count == 0)
   }
 
-  func test_addMiddlewares_maintainsOrderOfArray() async {
+  @Test func addMiddlewares_maintainsOrderOfArray() async {
     // GIVEN: Manager and ordered middlewares
     let sut = MiddlewareManager<TestAction, TestState>()
     let middlewares: [any BaseActionMiddleware] = [
@@ -190,10 +191,10 @@ final class MiddlewareManagerTests: XCTestCase {
     sut.addMiddlewares(middlewares)
 
     // THEN: Should maintain array order (all have same ID)
-    XCTAssertEqual(sut.allMiddlewares.count, 3)
+    #expect(sut.allMiddlewares.count == 3)
   }
 
-  func test_addMiddlewares_appendsToExisting() async {
+  @Test func addMiddlewares_appendsToExisting() async {
     // GIVEN: Manager with existing middleware
     let sut = MiddlewareManager<TestAction, TestState>()
     sut.addMiddleware(LoggingMiddleware())
@@ -207,12 +208,12 @@ final class MiddlewareManagerTests: XCTestCase {
     sut.addMiddlewares(newMiddlewares)
 
     // THEN: Should append to existing
-    XCTAssertEqual(sut.allMiddlewares.count, 3)
+    #expect(sut.allMiddlewares.count == 3)
   }
 
   // MARK: - executeBeforeAction(action:state:)
 
-  func test_executeBeforeAction_executesSuccessfully() async throws {
+  @Test func executeBeforeAction_executesSuccessfully() async throws {
     // GIVEN: Manager with middleware
     let middleware = LoggingMiddleware(logLevel: .debug)
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [middleware])
@@ -221,10 +222,10 @@ final class MiddlewareManagerTests: XCTestCase {
     try await sut.executeBeforeAction(action: TestAction.increment, state: TestState())
 
     // THEN: Should not throw
-    XCTAssertTrue(true)
+    #expect(true)
   }
 
-  func test_executeBeforeAction_withNoMiddlewares() async throws {
+  @Test func executeBeforeAction_withNoMiddlewares() async throws {
     // GIVEN: Manager with no middlewares
     let sut = MiddlewareManager<TestAction, TestState>()
 
@@ -232,7 +233,7 @@ final class MiddlewareManagerTests: XCTestCase {
     try await sut.executeBeforeAction(action: TestAction.increment, state: TestState())
   }
 
-  func test_executeBeforeAction_withMultipleMiddlewares() async throws {
+  @Test func executeBeforeAction_withMultipleMiddlewares() async throws {
     // GIVEN: Manager with multiple middlewares
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [
       LoggingMiddleware(logLevel: .debug),
@@ -243,7 +244,7 @@ final class MiddlewareManagerTests: XCTestCase {
     try await sut.executeBeforeAction(action: TestAction.increment, state: TestState())
   }
 
-  func test_executeBeforeAction_withComplexState() async throws {
+  @Test func executeBeforeAction_withComplexState() async throws {
     // GIVEN: Manager with middleware
     let middleware = LoggingMiddleware(logLevel: .debug)
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [middleware])
@@ -255,7 +256,7 @@ final class MiddlewareManagerTests: XCTestCase {
 
   // MARK: - executeAfterAction(action:state:result:duration:)
 
-  func test_executeAfterAction_executesSuccessfully() async throws {
+  @Test func executeAfterAction_executesSuccessfully() async throws {
     // GIVEN: Manager with middleware
     let middleware = LoggingMiddleware(logLevel: .info)
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [middleware])
@@ -270,10 +271,10 @@ final class MiddlewareManagerTests: XCTestCase {
     )
 
     // THEN: Should not throw
-    XCTAssertTrue(true)
+    #expect(true)
   }
 
-  func test_executeAfterAction_withNoMiddlewares() async throws {
+  @Test func executeAfterAction_withNoMiddlewares() async throws {
     // GIVEN: Manager with no middlewares
     let sut = MiddlewareManager<TestAction, TestState>()
     let result: ActionTask<TestAction, TestState> = .none
@@ -287,7 +288,7 @@ final class MiddlewareManagerTests: XCTestCase {
     )
   }
 
-  func test_executeAfterAction_passesDuration() async throws {
+  @Test func executeAfterAction_passesDuration() async throws {
     // GIVEN: Manager with middleware
     let middleware = LoggingMiddleware(logLevel: .info)
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [middleware])
@@ -302,10 +303,10 @@ final class MiddlewareManagerTests: XCTestCase {
     )
 
     // THEN: Should execute without error
-    XCTAssertTrue(true)
+    #expect(true)
   }
 
-  func test_executeAfterAction_withMultipleMiddlewares() async throws {
+  @Test func executeAfterAction_withMultipleMiddlewares() async throws {
     // GIVEN: Manager with multiple middlewares
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [
       LoggingMiddleware(logLevel: .info),
@@ -322,7 +323,7 @@ final class MiddlewareManagerTests: XCTestCase {
     )
   }
 
-  func test_executeAfterAction_withRunTask() async throws {
+  @Test func executeAfterAction_withRunTask() async throws {
     // GIVEN: Manager with middleware
     let middleware = LoggingMiddleware(logLevel: .info)
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [middleware])
@@ -337,7 +338,7 @@ final class MiddlewareManagerTests: XCTestCase {
     )
   }
 
-  func test_executeAfterAction_withCancelTask() async throws {
+  @Test func executeAfterAction_withCancelTask() async throws {
     // GIVEN: Manager with middleware
     let middleware = LoggingMiddleware(logLevel: .info)
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [middleware])
@@ -354,7 +355,7 @@ final class MiddlewareManagerTests: XCTestCase {
 
   // MARK: - executeErrorHandling(error:action:state:)
 
-  func test_executeErrorHandling_executesSuccessfully() async {
+  @Test func executeErrorHandling_executesSuccessfully() async {
     // GIVEN: Manager with middleware
     let middleware = LoggingMiddleware()
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [middleware])
@@ -368,10 +369,10 @@ final class MiddlewareManagerTests: XCTestCase {
     )
 
     // THEN: Should not throw
-    XCTAssertTrue(true)
+    #expect(true)
   }
 
-  func test_executeErrorHandling_withNoMiddlewares() async {
+  @Test func executeErrorHandling_withNoMiddlewares() async {
     // GIVEN: Manager with no middlewares
     let sut = MiddlewareManager<TestAction, TestState>()
     let error = NSError(domain: "Test", code: 1)
@@ -384,10 +385,10 @@ final class MiddlewareManagerTests: XCTestCase {
     )
 
     // THEN: Should not crash
-    XCTAssertTrue(true)
+    #expect(true)
   }
 
-  func test_executeErrorHandling_withMultipleMiddlewares() async {
+  @Test func executeErrorHandling_withMultipleMiddlewares() async {
     // GIVEN: Manager with multiple middlewares
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [
       LoggingMiddleware(),
@@ -403,10 +404,10 @@ final class MiddlewareManagerTests: XCTestCase {
     )
 
     // THEN: Should execute both
-    XCTAssertTrue(true)
+    #expect(true)
   }
 
-  func test_executeErrorHandling_withLocalizedError() async {
+  @Test func executeErrorHandling_withLocalizedError() async {
     // GIVEN: Manager with middleware
     let middleware = LoggingMiddleware()
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [middleware])
@@ -424,10 +425,10 @@ final class MiddlewareManagerTests: XCTestCase {
     )
 
     // THEN: Should handle localized error
-    XCTAssertTrue(true)
+    #expect(true)
   }
 
-  func test_executeErrorHandling_doesNotThrow() async {
+  @Test func executeErrorHandling_doesNotThrow() async {
     // GIVEN: Manager with middleware
     let middleware = LoggingMiddleware()
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [middleware])
@@ -441,10 +442,10 @@ final class MiddlewareManagerTests: XCTestCase {
     )
 
     // THEN: Should complete without throwing
-    XCTAssertTrue(true)
+    #expect(true)
   }
 
-  func test_executeErrorHandling_resilientToMiddlewareFailures() async {
+  @Test func executeErrorHandling_resilientToMiddlewareFailures() async {
     // GIVEN: Middleware that throws during error handling
     struct FailingMiddleware: ErrorHandlingMiddleware {
       let id = "FailingMiddleware"
@@ -480,10 +481,10 @@ final class MiddlewareManagerTests: XCTestCase {
 
     // THEN: Should not crash and should continue with remaining middleware
     // The resilience mechanism logs the failure but doesn't throw
-    XCTAssertTrue(true)
+    #expect(true)
   }
 
-  func test_executeErrorHandling_logsMiddlewareFailures() async {
+  @Test func executeErrorHandling_logsMiddlewareFailures() async {
     // GIVEN: Multiple middlewares where some fail
     struct FirstFailingMiddleware: ErrorHandlingMiddleware {
       let id = "FirstFailing"
@@ -525,10 +526,10 @@ final class MiddlewareManagerTests: XCTestCase {
 
     // THEN: Should execute all middleware despite failures
     // Both failures are logged, last one succeeds
-    XCTAssertTrue(true)
+    #expect(true)
   }
 
-  func test_executeErrorHandling_continuesToNextMiddlewareAfterFailure() async {
+  @Test func executeErrorHandling_continuesToNextMiddlewareAfterFailure() async {
     // GIVEN: Failing middleware followed by successful one
     struct FailingMiddleware: ErrorHandlingMiddleware {
       let id = "FailingMiddleware"
@@ -571,12 +572,12 @@ final class MiddlewareManagerTests: XCTestCase {
     )
 
     // THEN: Second middleware should still execute despite first one failing
-    XCTAssertTrue(successfulMiddlewareExecuted)
+    #expect(successfulMiddlewareExecuted)
   }
 
   // MARK: - Integration Tests
 
-  func test_allOperations_withSingleMiddleware() async throws {
+  @Test func allOperations_withSingleMiddleware() async throws {
     // GIVEN: Manager with single middleware
     let middleware = LoggingMiddleware(logLevel: .debug)
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [middleware])
@@ -597,10 +598,10 @@ final class MiddlewareManagerTests: XCTestCase {
     )
 
     // THEN: All phases should execute successfully
-    XCTAssertTrue(true)
+    #expect(true)
   }
 
-  func test_mixedMiddlewares_executeCorrectly() async throws {
+  @Test func mixedMiddlewares_executeCorrectly() async throws {
     // GIVEN: Manager with multiple middlewares
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [
       LoggingMiddleware(logLevel: .debug),
@@ -624,10 +625,10 @@ final class MiddlewareManagerTests: XCTestCase {
     )
 
     // THEN: All should execute successfully
-    XCTAssertTrue(true)
+    #expect(true)
   }
 
-  func test_middlewareOrder_maintainedThroughExecution() async throws {
+  @Test func middlewareOrder_maintainedThroughExecution() async throws {
     // GIVEN: Manager with ordered middlewares
     let middleware1 = LoggingMiddleware(logLevel: .debug)
     let middleware2 = LoggingMiddleware(logLevel: .debug)
@@ -640,10 +641,10 @@ final class MiddlewareManagerTests: XCTestCase {
     try await sut.executeBeforeAction(action: TestAction.increment, state: TestState())
 
     // THEN: Should execute without error (order maintained internally)
-    XCTAssertEqual(sut.allMiddlewares.count, 3)
+    #expect(sut.allMiddlewares.count == 3)
   }
 
-  func test_dynamicMiddlewareAddition() async throws {
+  @Test func dynamicMiddlewareAddition() async throws {
     // GIVEN: Manager
     let sut = MiddlewareManager<TestAction, TestState>()
 
@@ -655,6 +656,6 @@ final class MiddlewareManagerTests: XCTestCase {
     try await sut.executeBeforeAction(action: TestAction.increment, state: TestState())
 
     // THEN: Should work with dynamically added middlewares
-    XCTAssertEqual(sut.allMiddlewares.count, 2)
+    #expect(sut.allMiddlewares.count == 2)
   }
 }

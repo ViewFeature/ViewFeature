@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 
 @testable import ViewFeature
 
@@ -7,7 +8,7 @@ import XCTest
 /// Tests full user scenarios where Store, ActionHandler, Middleware, and TaskManager
 /// work together to handle complex application flows.
 @MainActor
-final class StoreFullWorkflowTests: XCTestCase {
+@Suite struct StoreFullWorkflowTests {
   // MARK: - Test Fixtures
 
   enum UserAction: Sendable {
@@ -70,7 +71,7 @@ final class StoreFullWorkflowTests: XCTestCase {
 
   // MARK: - Login Workflow Tests
 
-  func test_fullLoginWorkflow() async {
+  @Test func fullLoginWorkflow() async {
     // GIVEN: Store with initial state
     let sut = Store(
       initialState: UserState(),
@@ -80,22 +81,22 @@ final class StoreFullWorkflowTests: XCTestCase {
     // WHEN: Execute full login workflow
     // Step 1: Load user
     await sut.send(.loadUser("user123")).value
-    XCTAssertTrue(sut.state.isLoading)
-    XCTAssertEqual(sut.state.userId, "user123")
+    #expect(sut.state.isLoading)
+    #expect(sut.state.userId == "user123")
 
     // Step 2: Update profile
     await sut.send(.updateProfile(name: "John Doe", email: "john@example.com")).value
-    XCTAssertEqual(sut.state.userName, "John Doe")
-    XCTAssertEqual(sut.state.userEmail, "john@example.com")
-    XCTAssertTrue(sut.state.isLoggedIn)
-    XCTAssertFalse(sut.state.isLoading)
+    #expect(sut.state.userName == "John Doe")
+    #expect(sut.state.userEmail == "john@example.com")
+    #expect(sut.state.isLoggedIn)
+    #expect(!sut.state.isLoading)
 
     // THEN: User should be fully logged in
-    XCTAssertEqual(sut.state.userId, "user123")
-    XCTAssertTrue(sut.state.isLoggedIn)
+    #expect(sut.state.userId == "user123")
+    #expect(sut.state.isLoggedIn)
   }
 
-  func test_logoutCancelsOngoingLoad() async {
+  @Test func logoutCancelsOngoingLoad() async {
     // GIVEN: Store with ongoing load
     let sut = Store(
       initialState: UserState(),
@@ -105,21 +106,21 @@ final class StoreFullWorkflowTests: XCTestCase {
     // Start loading user
     _ = sut.send(.loadUser("user456"))
     try? await Task.sleep(for: .milliseconds(10))
-    XCTAssertTrue(sut.state.isLoading)
+    #expect(sut.state.isLoading)
 
     // WHEN: Logout while loading
     await sut.send(.logout).value
 
     // THEN: State should be reset and task cancelled
-    XCTAssertFalse(sut.state.isLoading)
-    XCTAssertFalse(sut.state.isLoggedIn)
-    XCTAssertNil(sut.state.userId)
-    XCTAssertNil(sut.state.userName)
+    #expect(!sut.state.isLoading)
+    #expect(!sut.state.isLoggedIn)
+    #expect(sut.state.userId == nil)
+    #expect(sut.state.userName == nil)
   }
 
   // MARK: - Multi-Action Workflows
 
-  func test_multipleSequentialActions() async {
+  @Test func multipleSequentialActions() async {
     // GIVEN: Store
     let sut = Store(
       initialState: UserState(),
@@ -138,13 +139,13 @@ final class StoreFullWorkflowTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(50))
 
     // THEN: All actions should be processed
-    XCTAssertEqual(sut.state.userId, "user789")
-    XCTAssertEqual(sut.state.userName, "Jane Doe")
-    XCTAssertEqual(sut.state.refreshCount, 2)
-    XCTAssertTrue(sut.state.isLoggedIn)
+    #expect(sut.state.userId == "user789")
+    #expect(sut.state.userName == "Jane Doe")
+    #expect(sut.state.refreshCount == 2)
+    #expect(sut.state.isLoggedIn)
   }
 
-  func test_complexStateTransitions() async {
+  @Test func complexStateTransitions() async {
     // GIVEN: Store
     let sut = Store(
       initialState: UserState(),
@@ -157,7 +158,7 @@ final class StoreFullWorkflowTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(10))
 
     await sut.send(.cancelLoad).value
-    XCTAssertFalse(sut.state.isLoading)
+    #expect(!sut.state.isLoading)
 
     await sut.send(.loadUser("user2")).value
     await sut.send(.updateProfile(name: "User 2", email: "user2@example.com")).value
@@ -167,13 +168,13 @@ final class StoreFullWorkflowTests: XCTestCase {
     await sut.send(.logout).value
 
     // THEN: Should end in clean state
-    XCTAssertFalse(sut.state.isLoggedIn)
-    XCTAssertNil(sut.state.userId)
+    #expect(!sut.state.isLoggedIn)
+    #expect(sut.state.userId == nil)
   }
 
   // MARK: - Concurrent Actions
 
-  func test_concurrentActionProcessing() async {
+  @Test func concurrentActionProcessing() async {
     // GIVEN: Store
     let sut = Store(
       initialState: UserState(),
@@ -193,14 +194,14 @@ final class StoreFullWorkflowTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(100))
 
     // THEN: All actions should be processed
-    XCTAssertEqual(sut.state.userName, "Test")
-    XCTAssertTrue(sut.state.isLoggedIn)
-    XCTAssertGreaterThanOrEqual(sut.state.refreshCount, 1)
+    #expect(sut.state.userName == "Test")
+    #expect(sut.state.isLoggedIn)
+    #expect(sut.state.refreshCount >= 1)
   }
 
   // MARK: - Task Cancellation Workflows
 
-  func test_multipleCancellations() async {
+  @Test func multipleCancellations() async {
     // GIVEN: Store with multiple running tasks
     let sut = Store(
       initialState: UserState(),
@@ -216,12 +217,12 @@ final class StoreFullWorkflowTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(100))
 
     // THEN: All tasks should be cancelled
-    XCTAssertEqual(sut.runningTaskCount, 0)
+    #expect(sut.runningTaskCount == 0)
   }
 
   // MARK: - Data Refresh Workflows
 
-  func test_repeatedRefreshes() async {
+  @Test func repeatedRefreshes() async {
     // GIVEN: Store
     let sut = Store(
       initialState: UserState(),
@@ -235,12 +236,12 @@ final class StoreFullWorkflowTests: XCTestCase {
     }
 
     // THEN: All refreshes should be counted
-    XCTAssertEqual(sut.state.refreshCount, 5)
+    #expect(sut.state.refreshCount == 5)
   }
 
   // MARK: - State Consistency Tests
 
-  func test_stateConsistencyDuringWorkflow() async {
+  @Test func stateConsistencyDuringWorkflow() async {
     // GIVEN: Store
     let sut = Store(
       initialState: UserState(),
@@ -249,13 +250,13 @@ final class StoreFullWorkflowTests: XCTestCase {
 
     // WHEN: Execute workflow and check consistency at each step
     await sut.send(.loadUser("user123")).value
-    XCTAssertTrue(sut.state.isLoading)
-    XCTAssertNil(sut.state.userName)  // Should be nil before update
+    #expect(sut.state.isLoading)
+    #expect(sut.state.userName == nil)  // Should be nil before update
 
     await sut.send(.updateProfile(name: "Test User", email: "test@example.com")).value
-    XCTAssertFalse(sut.state.isLoading)
-    XCTAssertNotNil(sut.state.userName)
-    XCTAssertTrue(sut.state.isLoggedIn)
+    #expect(!sut.state.isLoading)
+    #expect(sut.state.userName != nil)
+    #expect(sut.state.isLoggedIn)
 
     let userId = sut.state.userId
     let userName = sut.state.userName
@@ -263,7 +264,7 @@ final class StoreFullWorkflowTests: XCTestCase {
     await sut.send(.refreshData).value
 
     // THEN: User data should remain consistent after refresh
-    XCTAssertEqual(sut.state.userId, userId)
-    XCTAssertEqual(sut.state.userName, userName)
+    #expect(sut.state.userId == userId)
+    #expect(sut.state.userName == userName)
   }
 }

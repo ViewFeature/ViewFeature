@@ -1,10 +1,11 @@
-import XCTest
+import Foundation
+import Testing
 
 @testable import ViewFeature
 
 /// Tests for TestStore's flexible assertion patterns (assert and KeyPath-based)
 @MainActor
-final class TestStoreFlexibleAssertionsTests: XCTestCase {
+@Suite struct TestStoreFlexibleAssertionsTests {
   // MARK: - Test State without Equatable
 
   // Non-Equatable state with complex properties
@@ -51,7 +52,7 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
 
   // MARK: - Pattern 1: Custom Assertions Tests
 
-  func testSend_withCustomAssert_verifiesMultipleProperties() async {
+  @Test func testSend_withCustomAssert_verifiesMultipleProperties() async {
     let store = TestStore(
       initialState: NonEquatableState(),
       feature: TestFeature()
@@ -60,26 +61,26 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     await store.send(
       TestAction.increment,
       assert: { state in
-        XCTAssertEqual(state.count, 1)
+        #expect(state.count == 1)
       })
 
     await store.send(
       TestAction.setName("Alice"),
       assert: { state in
-        XCTAssertEqual(state.name, "Alice")
-        XCTAssertEqual(state.count, 1)
+        #expect(state.name == "Alice")
+        #expect(state.count == 1)
       })
 
     await store.send(
       TestAction.activate,
       assert: { state in
-        XCTAssertTrue(state.isActive)
-        XCTAssertEqual(state.name, "Alice")
-        XCTAssertEqual(state.count, 1)
+        #expect(state.isActive)
+        #expect(state.name == "Alice")
+        #expect(state.count == 1)
       })
   }
 
-  func testSend_withCustomAssert_canTestComplexProperties() async {
+  @Test func testSend_withCustomAssert_canTestComplexProperties() async {
     let store = TestStore(
       initialState: NonEquatableState(),
       feature: TestFeature()
@@ -89,21 +90,21 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
       TestAction.addTag("swift"),
       assert: { state in
         // Can access complex properties
-        XCTAssertTrue(state.tags.contains("swift"))
+        #expect(state.tags.contains("swift"))
       })
 
     await store.send(
       TestAction.addTag("testing"),
       assert: { state in
-        XCTAssertTrue(state.tags.contains("swift"))
-        XCTAssertTrue(state.tags.contains("testing"))
-        XCTAssertEqual(state.tags.count, 2)
+        #expect(state.tags.contains("swift"))
+        #expect(state.tags.contains("testing"))
+        #expect(state.tags.count == 2)
       })
   }
 
   // MARK: - Pattern 2: KeyPath Assertions Tests
 
-  func testSend_withKeyPath_verifiesSingleProperty() async {
+  @Test func testSend_withKeyPath_verifiesSingleProperty() async {
     let store = TestStore(
       initialState: NonEquatableState(),
       feature: TestFeature()
@@ -116,7 +117,7 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     await store.send(TestAction.activate, \.isActive, true)
   }
 
-  func testSend_withKeyPath_providesHelpfulErrorMessages() async {
+  @Test func testSend_withKeyPath_providesHelpfulErrorMessages() async {
     let store = TestStore(
       initialState: NonEquatableState(),
       feature: TestFeature()
@@ -132,60 +133,60 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
 
   // MARK: - Basic send Tests
 
-  func testSend_withoutAssert_allowsManualVerification() async {
+  @Test func testSend_withoutAssert_allowsManualVerification() async {
     let store = TestStore(
       initialState: NonEquatableState(),
       feature: TestFeature()
     )
 
     let state1 = await store.send(TestAction.increment)
-    XCTAssertEqual(state1.count, 1)
+    #expect(state1.count == 1)
 
     let state2 = await store.send(TestAction.setName("Charlie"))
-    XCTAssertEqual(state2.name, "Charlie")
-    XCTAssertEqual(state2.count, 1)
+    #expect(state2.name == "Charlie")
+    #expect(state2.count == 1)
   }
 
   // MARK: - State Access Tests
 
-  func testState_providesDirectAccess() async {
+  @Test func testState_providesDirectAccess() async {
     let store = TestStore(
       initialState: NonEquatableState(),
       feature: TestFeature()
     )
 
-    XCTAssertEqual(store.state.count, 0)
+    #expect(store.state.count == 0)
 
     await store.send(TestAction.increment)
-    XCTAssertEqual(store.state.count, 1)
+    #expect(store.state.count == 1)
 
     await store.send(TestAction.setName("David"))
-    XCTAssertEqual(store.state.name, "David")
+    #expect(store.state.name == "David")
   }
 
   // MARK: - Action History Tests
 
-  func testActionHistory_tracksAllActions() async {
+  @Test func testActionHistory_tracksAllActions() async {
     let store = TestStore(
       initialState: NonEquatableState(),
       feature: TestFeature()
     )
 
-    XCTAssertEqual(store.actionHistory.count, 0)
+    #expect(store.actionHistory.count == 0)
 
     await store.send(TestAction.increment)
-    XCTAssertEqual(store.actionHistory.count, 1)
+    #expect(store.actionHistory.count == 1)
 
     await store.send(TestAction.setName("Eve"))
-    XCTAssertEqual(store.actionHistory.count, 2)
+    #expect(store.actionHistory.count == 2)
 
     await store.send(TestAction.activate)
-    XCTAssertEqual(store.actionHistory.count, 3)
+    #expect(store.actionHistory.count == 3)
   }
 
   // MARK: - Hybrid Pattern Tests
 
-  func testHybridPattern_combinesKeyPathAndCustomAssert() async {
+  @Test func testHybridPattern_combinesKeyPathAndCustomAssert() async {
     let store = TestStore(
       initialState: NonEquatableState(),
       feature: TestFeature()
@@ -198,17 +199,17 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     await store.send(
       TestAction.setName("Frank"),
       assert: { state in
-        XCTAssertEqual(state.name, "Frank")
-        XCTAssertEqual(state.count, 1)
-        XCTAssertFalse(state.isActive)
+        #expect(state.name == "Frank")
+        #expect(state.count == 1)
+        #expect(!state.isActive)
       })
 
     // Mix both patterns as needed
     await store.send(TestAction.activate, \.isActive, true)
 
-    XCTAssertEqual(store.state.count, 1)
-    XCTAssertEqual(store.state.name, "Frank")
-    XCTAssertTrue(store.state.isActive)
+    #expect(store.state.count == 1)
+    #expect(store.state.name == "Frank")
+    #expect(store.state.isActive)
   }
 
   // MARK: - Comparison with Regular TestStore
@@ -242,7 +243,7 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     }
   }
 
-  func testTestStore_supportsAllPatternsWithEquatableState() async {
+  @Test func testTestStore_supportsAllPatternsWithEquatableState() async {
     // TestStore supports all three patterns with Equatable states
     let store = TestStore(
       initialState: EquatableState(),
@@ -256,8 +257,8 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     await store.send(
       SimpleAction.setName("Grace"),
       assert: { state in
-        XCTAssertEqual(state.name, "Grace")
-        XCTAssertEqual(state.count, 1)
+        #expect(state.name == "Grace")
+        #expect(state.count == 1)
       })
 
     // Pattern 3: Full state comparison (most strict, Equatable only)
@@ -266,13 +267,13 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
       state.name = "Grace"
     }
 
-    XCTAssertEqual(store.state.count, 2)
-    XCTAssertEqual(store.state.name, "Grace")
+    #expect(store.state.count == 2)
+    #expect(store.state.name == "Grace")
   }
 
   // MARK: - Failure Scenario Tests
 
-  func testSend_withEquatableExpectation_detectsStateMismatch() async {
+  @Test func testSend_withEquatableExpectation_detectsStateMismatch() async {
     // This test intentionally causes a failure to exercise the failure path
     // for code coverage. We use a custom assertion provider to capture the failure.
 
@@ -309,8 +310,8 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     }
 
     // THEN: Failure should have been detected and recorded
-    XCTAssertFalse(assertionProvider.failures.isEmpty, "Should have recorded assertion failure")
-    XCTAssertTrue(
+    #expect(!assertionProvider.failures.isEmpty, "Should have recorded assertion failure")
+    #expect(
       assertionProvider.failures[0].contains("State mismatch"),
       "Should contain state mismatch message")
 
@@ -352,7 +353,7 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     }
   }
 
-  func testSend_withCancelTask_executesCancellation() async {
+  @Test func testSend_withCancelTask_executesCancellation() async {
     // GIVEN: Store that can create and cancel tasks
     let store = TestStore(
       initialState: CancelTaskState(),
@@ -362,7 +363,7 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
 
     // WHEN: Start a task
     await store.send(CancelTaskAction.startTask("test-task"), \.isRunning, true)
-    XCTAssertEqual(store.state.taskId, "test-task")
+    #expect(store.state.taskId == "test-task")
 
     // WHEN: Cancel the task
     await store.send(CancelTaskAction.cancelTask("test-task")) { state in
@@ -371,11 +372,11 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     }
 
     // THEN: Task should be cancelled and state updated
-    XCTAssertFalse(store.state.isRunning)
-    XCTAssertNil(store.state.taskId)
+    #expect(!store.state.isRunning)
+    #expect(store.state.taskId == nil)
   }
 
-  func testSend_withMultipleCancelTasks_handlesMultipleCancellations() async {
+  @Test func testSend_withMultipleCancelTasks_handlesMultipleCancellations() async {
     // GIVEN: Store with multiple tasks
     let store = TestStore(
       initialState: CancelTaskState(),
@@ -392,7 +393,7 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     await store.send(CancelTaskAction.cancelTask("task-2"), \.isRunning, false)
 
     // THEN: All tasks cancelled
-    XCTAssertFalse(store.state.isRunning)
+    #expect(!store.state.isRunning)
   }
 
   // MARK: - Error Handler Tests
@@ -445,7 +446,7 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     }
   }
 
-  func testSend_withTaskError_handlesErrorGracefully() async {
+  @Test func testSend_withTaskError_handlesErrorGracefully() async {
     // GIVEN: Store that can throw errors
     let store = TestStore(
       initialState: ErrorHandlerState(),
@@ -457,10 +458,10 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     await store.send(ErrorHandlerAction.throwError)
 
     // THEN: Store should handle error without crashing
-    XCTAssertEqual(store.state.count, 0)
+    #expect(store.state.count == 0)
   }
 
-  func testSend_withTaskErrorAndHandler_executesErrorHandler() async {
+  @Test func testSend_withTaskErrorAndHandler_executesErrorHandler() async {
     // GIVEN: Store with error handler
     let store = TestStore(
       initialState: ErrorHandlerState(),
@@ -475,11 +476,11 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(50))
 
     // THEN: Error handler should have updated state
-    XCTAssertEqual(store.state.errorMessage, "Handled error")
-    XCTAssertEqual(store.state.lastError, "Error caught")
+    #expect(store.state.errorMessage == "Handled error")
+    #expect(store.state.lastError == "Error caught")
   }
 
-  func testSend_withSuccessBeforeError_maintainsPreviousState() async {
+  @Test func testSend_withSuccessBeforeError_maintainsPreviousState() async {
     // GIVEN: Store with some state
     let store = TestStore(
       initialState: ErrorHandlerState(),
@@ -494,10 +495,10 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     await store.send(ErrorHandlerAction.throwError)
 
     // THEN: Previous state should be maintained
-    XCTAssertEqual(store.state.count, 2)
+    #expect(store.state.count == 2)
   }
 
-  func testSend_withMultipleErrorHandlers_executesAllHandlers() async {
+  @Test func testSend_withMultipleErrorHandlers_executesAllHandlers() async {
     // GIVEN: Store with error handling
     let store = TestStore(
       initialState: ErrorHandlerState(),
@@ -513,7 +514,7 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(50))
 
     // THEN: All handlers should execute
-    XCTAssertNotNil(store.state.errorMessage)
-    XCTAssertEqual(store.state.lastError, "Error caught")
+    #expect(store.state.errorMessage != nil)
+    #expect(store.state.lastError == "Error caught")
   }
 }

@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 
 @testable import ViewFeature
 
@@ -6,7 +7,7 @@ import XCTest
 ///
 /// Tests every public method and property in ActionTask.swift
 @MainActor
-final class ActionTaskTests: XCTestCase {
+@Suite struct ActionTaskTests {
   // MARK: - Test Fixtures
 
   enum TestAction {
@@ -20,20 +21,20 @@ final class ActionTaskTests: XCTestCase {
 
   // MARK: - noTask
 
-  func test_noTask_createsTaskWithNoTask() {
+  @Test func noTask_createsTaskWithNoTask() {
     // GIVEN & WHEN: Create a noTask
     let sut: ActionTask<TestAction, TestState> = .none
 
     // THEN: Should have noTask storeTask
     switch sut.storeTask {
     case .none:
-      XCTAssertTrue(true, "noTask created successfully")
+      #expect(true, "noTask created successfully")
     case .run, .cancel:
-      XCTFail("Expected noTask, got different task type")
+      Issue.record("Expected noTask, got different task type")
     }
   }
 
-  func test_noTask_canBeCreatedMultipleTimes() {
+  @Test func noTask_canBeCreatedMultipleTimes() {
     // GIVEN & WHEN: Create multiple noTasks
     let task1: ActionTask<TestAction, TestState> = .none
     let task2: ActionTask<TestAction, TestState> = .none
@@ -41,22 +42,22 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Both should be noTask type
     switch task1.storeTask {
     case .none:
-      XCTAssertTrue(true)
+      #expect(true)
     default:
-      XCTFail("task1 should be noTask")
+      Issue.record("task1 should be noTask")
     }
 
     switch task2.storeTask {
     case .none:
-      XCTAssertTrue(true)
+      #expect(true)
     default:
-      XCTFail("task2 should be noTask")
+      Issue.record("task2 should be noTask")
     }
   }
 
   // MARK: - run(id:operation:)
 
-  func test_run_withExplicitId() {
+  @Test func run_withExplicitId() {
     // GIVEN: An explicit task ID
     let taskId = "my-custom-task"
 
@@ -66,27 +67,27 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should have run storeTask with correct ID
     switch sut.storeTask {
     case .run(let id, _, _):
-      XCTAssertEqual(id, taskId)
+      #expect(id == taskId)
     case .none, .cancel:
-      XCTFail("Expected run task, got different type")
+      Issue.record("Expected run task, got different type")
     }
   }
 
-  func test_run_withoutId_generatesAutomaticId() {
+  @Test func run_withoutId_generatesAutomaticId() {
     // GIVEN & WHEN: Create a run task without explicit ID
     let sut: ActionTask<TestAction, TestState> = .run {}
 
     // THEN: Should have run storeTask with auto-generated ID
     switch sut.storeTask {
     case .run(let id, _, _):
-      XCTAssertTrue(id.hasPrefix("auto-task-"), "ID should have auto-task prefix")
-      XCTAssertTrue(id.count > "auto-task-".count, "ID should have unique suffix")
+      #expect(id.hasPrefix("auto-task-"), "ID should have auto-task prefix")
+      #expect(id.count > "auto-task-".count, "ID should have unique suffix")
     case .none, .cancel:
-      XCTFail("Expected run task, got different type")
+      Issue.record("Expected run task, got different type")
     }
   }
 
-  func test_run_withoutId_generatesDifferentIdsForConsecutiveCalls() {
+  @Test func run_withoutId_generatesDifferentIdsForConsecutiveCalls() {
     // GIVEN & WHEN: Create multiple run tasks without IDs
     let task1: ActionTask<TestAction, TestState> = .run {}
     let task2: ActionTask<TestAction, TestState> = .run {}
@@ -103,15 +104,15 @@ final class ActionTaskTests: XCTestCase {
       id2 = id
     }
 
-    XCTAssertNotNil(id1)
-    XCTAssertNotNil(id2)
+    #expect(id1 != nil)
+    #expect(id2 != nil)
     // Note: IDs might be the same if created within same millisecond
     // but both should be valid auto-task IDs
-    XCTAssertTrue(id1!.hasPrefix("auto-task-"))
-    XCTAssertTrue(id2!.hasPrefix("auto-task-"))
+    #expect(id1!.hasPrefix("auto-task-"))
+    #expect(id2!.hasPrefix("auto-task-"))
   }
 
-  func test_run_storesOperation() {
+  @Test func run_storesOperation() {
     // GIVEN: An operation
     let operation: @Sendable () async throws -> Void = {}
 
@@ -123,13 +124,13 @@ final class ActionTaskTests: XCTestCase {
     case .run(_, let storedOperation, _):
       // Operation is stored - we can't easily test it's the same closure
       // but we verify it's a run task with an operation
-      XCTAssertNotNil(storedOperation)
+      #expect(storedOperation != nil)
     case .none, .cancel:
-      XCTFail("Expected run task")
+      Issue.record("Expected run task")
     }
   }
 
-  func test_run_withLongId() {
+  @Test func run_withLongId() {
     // GIVEN: A very long task ID
     let longId = String(repeating: "a", count: 1000)
 
@@ -139,14 +140,14 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should accept and store the long ID
     switch sut.storeTask {
     case .run(let id, _, _):
-      XCTAssertEqual(id, longId)
-      XCTAssertEqual(id.count, 1000)
+      #expect(id == longId)
+      #expect(id.count == 1000)
     default:
-      XCTFail("Expected run task")
+      Issue.record("Expected run task")
     }
   }
 
-  func test_run_withSpecialCharactersInId() {
+  @Test func run_withSpecialCharactersInId() {
     // GIVEN: An ID with special characters
     let specialId = "task-🎉-日本語-123"
 
@@ -156,15 +157,15 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should accept and store the ID with special characters
     switch sut.storeTask {
     case .run(let id, _, _):
-      XCTAssertEqual(id, specialId)
+      #expect(id == specialId)
     default:
-      XCTFail("Expected run task")
+      Issue.record("Expected run task")
     }
   }
 
   // MARK: - cancel(id:)
 
-  func test_cancel_withStringId() {
+  @Test func cancel_withStringId() {
     // GIVEN: A string task ID
     let taskId = "task-to-cancel"
 
@@ -174,13 +175,13 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should have cancel storeTask with correct ID
     switch sut.storeTask {
     case .cancel(let id):
-      XCTAssertEqual(id, taskId)
+      #expect(id == taskId)
     case .none, .run:
-      XCTFail("Expected cancel task, got different type")
+      Issue.record("Expected cancel task, got different type")
     }
   }
 
-  func test_cancel_withIntId() {
+  @Test func cancel_withIntId() {
     // GIVEN: An integer task ID
     let taskId = 42
 
@@ -190,13 +191,13 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should convert to string and store
     switch sut.storeTask {
     case .cancel(let id):
-      XCTAssertEqual(id, "42")
+      #expect(id == "42")
     case .none, .run:
-      XCTFail("Expected cancel task")
+      Issue.record("Expected cancel task")
     }
   }
 
-  func test_cancel_withEnumId() {
+  @Test func cancel_withEnumId() {
     // GIVEN: An enum as task ID
     enum TaskId: String {
       case fetchData
@@ -209,13 +210,13 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should convert enum to string
     switch sut.storeTask {
     case .cancel(let id):
-      XCTAssertEqual(id, "fetchData")
+      #expect(id == "fetchData")
     case .none, .run:
-      XCTFail("Expected cancel task")
+      Issue.record("Expected cancel task")
     }
   }
 
-  func test_cancel_withCustomHashableType() {
+  @Test func cancel_withCustomHashableType() {
     // GIVEN: A custom hashable type
     struct CustomTaskId: Hashable, Sendable, CustomStringConvertible {
       let value: String
@@ -230,13 +231,13 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should use CustomStringConvertible
     switch sut.storeTask {
     case .cancel(let id):
-      XCTAssertEqual(id, "custom-123")
+      #expect(id == "custom-123")
     case .none, .run:
-      XCTFail("Expected cancel task")
+      Issue.record("Expected cancel task")
     }
   }
 
-  func test_cancel_withUUIDId() {
+  @Test func cancel_withUUIDId() {
     // GIVEN: A UUID as task ID
     let uuid = UUID()
 
@@ -246,15 +247,15 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should convert UUID to string
     switch sut.storeTask {
     case .cancel(let id):
-      XCTAssertEqual(id, uuid.uuidString)
+      #expect(id == uuid.uuidString)
     case .none, .run:
-      XCTFail("Expected cancel task")
+      Issue.record("Expected cancel task")
     }
   }
 
   // MARK: - Integration Tests
 
-  func test_allTaskTypes_canBeCreatedWithSameActionAndStateTypes() {
+  @Test func allTaskTypes_canBeCreatedWithSameActionAndStateTypes() {
     // GIVEN & WHEN: Create all three task types
     let noTask: ActionTask<TestAction, TestState> = .none
     let runTask: ActionTask<TestAction, TestState> = .run(id: "test") {}
@@ -262,24 +263,24 @@ final class ActionTaskTests: XCTestCase {
 
     // THEN: All should be valid tasks
     switch noTask.storeTask {
-    case .none: XCTAssertTrue(true)
-    default: XCTFail("noTask failed")
+    case .none: #expect(true)
+    default: Issue.record("noTask failed")
     }
 
     switch runTask.storeTask {
-    case .run: XCTAssertTrue(true)
-    default: XCTFail("runTask failed")
+    case .run: #expect(true)
+    default: Issue.record("runTask failed")
     }
 
     switch cancelTask.storeTask {
-    case .cancel: XCTAssertTrue(true)
-    default: XCTFail("cancelTask failed")
+    case .cancel: #expect(true)
+    default: Issue.record("cancelTask failed")
     }
   }
 
   // MARK: - catch(_:)
 
-  func test_catch_withNoneTask_returnsUnchangedTask() {
+  @Test func catch_withNoneTask_returnsUnchangedTask() {
     // GIVEN: A none task
     let sut: ActionTask<TestAction, TestState> = .none
 
@@ -289,13 +290,13 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should return unchanged none task
     switch result.storeTask {
     case .none:
-      XCTAssertTrue(true, "Task should remain as none")
+      #expect(true, "Task should remain as none")
     default:
-      XCTFail("Expected none task, got different type")
+      Issue.record("Expected none task, got different type")
     }
   }
 
-  func test_catch_withCancelTask_returnsUnchangedTask() {
+  @Test func catch_withCancelTask_returnsUnchangedTask() {
     // GIVEN: A cancel task
     let sut: ActionTask<TestAction, TestState> = .cancel(id: "test")
 
@@ -305,13 +306,13 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should return unchanged cancel task
     switch result.storeTask {
     case .cancel(let id):
-      XCTAssertEqual(id, "test", "Task should remain as cancel with same ID")
+      #expect(id == "test", "Task should remain as cancel with same ID")
     default:
-      XCTFail("Expected cancel task, got different type")
+      Issue.record("Expected cancel task, got different type")
     }
   }
 
-  func test_catch_withRunTask_attachesErrorHandler() {
+  @Test func catch_withRunTask_attachesErrorHandler() {
     // GIVEN: A run task without error handler
     let sut: ActionTask<TestAction, TestState> = .run(id: "test") {}
 
@@ -323,14 +324,14 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should have run task with error handler
     switch result.storeTask {
     case .run(let id, _, let onError):
-      XCTAssertEqual(id, "test")
-      XCTAssertNotNil(onError, "Error handler should be attached")
+      #expect(id == "test")
+      #expect(onError != nil, "Error handler should be attached")
     default:
-      XCTFail("Expected run task with error handler")
+      Issue.record("Expected run task with error handler")
     }
   }
 
-  func test_catch_withRunTaskWithoutId_attachesErrorHandler() {
+  @Test func catch_withRunTaskWithoutId_attachesErrorHandler() {
     // GIVEN: A run task with auto-generated ID
     let sut: ActionTask<TestAction, TestState> = .run {}
 
@@ -340,14 +341,14 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should preserve auto-generated ID and attach handler
     switch result.storeTask {
     case .run(let id, _, let onError):
-      XCTAssertTrue(id.hasPrefix("auto-task-"), "Should preserve auto-generated ID")
-      XCTAssertNotNil(onError, "Error handler should be attached")
+      #expect(id.hasPrefix("auto-task-"), "Should preserve auto-generated ID")
+      #expect(onError != nil, "Error handler should be attached")
     default:
-      XCTFail("Expected run task with error handler")
+      Issue.record("Expected run task with error handler")
     }
   }
 
-  func test_catch_canChainMultipleTimes() {
+  @Test func catch_canChainMultipleTimes() {
     // GIVEN: A run task
     let sut: ActionTask<TestAction, TestState> = .run(id: "test") {}
 
@@ -360,15 +361,15 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should have the last error handler
     switch result.storeTask {
     case .run(_, _, let onError):
-      XCTAssertNotNil(onError, "Should have error handler")
+      #expect(onError != nil, "Should have error handler")
     // Note: Can't easily test which handler is attached in unit test
     // This is tested in integration tests
     default:
-      XCTFail("Expected run task")
+      Issue.record("Expected run task")
     }
   }
 
-  func test_catch_preservesTaskId() {
+  @Test func catch_preservesTaskId() {
     // GIVEN: A run task with specific ID
     let originalId = "my-important-task"
     let sut: ActionTask<TestAction, TestState> = .run(id: originalId) {}
@@ -379,13 +380,13 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should preserve the original task ID
     switch result.storeTask {
     case .run(let id, _, _):
-      XCTAssertEqual(id, originalId, "Task ID should be preserved")
+      #expect(id == originalId, "Task ID should be preserved")
     default:
-      XCTFail("Expected run task")
+      Issue.record("Expected run task")
     }
   }
 
-  func test_catch_withComplexErrorHandler() {
+  @Test func catch_withComplexErrorHandler() {
     // GIVEN: A run task
     let sut: ActionTask<TestAction, TestState> = .run(id: "test") {}
 
@@ -398,10 +399,10 @@ final class ActionTaskTests: XCTestCase {
     // THEN: Should successfully attach the handler
     switch result.storeTask {
     case .run(let id, _, let onError):
-      XCTAssertEqual(id, "test")
-      XCTAssertNotNil(onError)
+      #expect(id == "test")
+      #expect(onError != nil)
     default:
-      XCTFail("Expected run task")
+      Issue.record("Expected run task")
     }
   }
 }

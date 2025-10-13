@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 
 @testable import ViewFeature
 
@@ -6,7 +7,7 @@ import XCTest
 ///
 /// Tests every public method and property in Store.swift
 @MainActor
-final class StoreTests: XCTestCase {
+@Suite struct StoreTests {
   // MARK: - Test Fixtures
 
   enum TestAction: Sendable {
@@ -58,7 +59,7 @@ final class StoreTests: XCTestCase {
 
   // MARK: - init(initialState:feature:taskManager:)
 
-  func test_init_withDefaultTaskManager() async {
+  @Test func init_withDefaultTaskManager() async {
     // GIVEN: Initial state and feature
     let initialState = TestState(count: 0)
     let feature = TestFeature()
@@ -67,11 +68,11 @@ final class StoreTests: XCTestCase {
     let sut = Store(initialState: initialState, feature: feature)
 
     // THEN: Should initialize correctly
-    XCTAssertEqual(sut.state.count, 0)
-    XCTAssertEqual(sut.runningTaskCount, 0)
+    #expect(sut.state.count == 0)
+    #expect(sut.runningTaskCount == 0)
   }
 
-  func test_init_withCustomTaskManager() async {
+  @Test func init_withCustomTaskManager() async {
     // GIVEN: Custom task manager
     let taskManager = TaskManager()
     let initialState = TestState(count: 5)
@@ -85,11 +86,11 @@ final class StoreTests: XCTestCase {
     )
 
     // THEN: Should use custom task manager
-    XCTAssertEqual(sut.state.count, 5)
-    XCTAssertEqual(sut.runningTaskCount, 0)
+    #expect(sut.state.count == 5)
+    #expect(sut.runningTaskCount == 0)
   }
 
-  func test_init_preservesInitialState() async {
+  @Test func init_preservesInitialState() async {
     // GIVEN: Initial state with values
     let initialState = TestState(
       count: 42,
@@ -102,14 +103,14 @@ final class StoreTests: XCTestCase {
     let sut = Store(initialState: initialState, feature: feature)
 
     // THEN: Should preserve all initial state values
-    XCTAssertEqual(sut.state.count, 42)
-    XCTAssertEqual(sut.state.errorMessage, "Initial")
-    XCTAssertTrue(sut.state.isLoading)
+    #expect(sut.state.count == 42)
+    #expect(sut.state.errorMessage == "Initial")
+    #expect(sut.state.isLoading)
   }
 
   // MARK: - state
 
-  func test_state_returnsCurrentState() async {
+  @Test func state_returnsCurrentState() async {
     // GIVEN: Store with initial state
     let sut = Store(
       initialState: TestState(count: 10),
@@ -120,10 +121,10 @@ final class StoreTests: XCTestCase {
     let state = sut.state
 
     // THEN: Should return current state
-    XCTAssertEqual(state.count, 10)
+    #expect(state.count == 10)
   }
 
-  func test_state_updatesAfterAction() async {
+  @Test func state_updatesAfterAction() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(count: 0),
@@ -134,10 +135,10 @@ final class StoreTests: XCTestCase {
     await sut.send(.increment).value
 
     // THEN: State should update
-    XCTAssertEqual(sut.state.count, 1)
+    #expect(sut.state.count == 1)
   }
 
-  func test_state_reflectsMultipleUpdates() async {
+  @Test func state_reflectsMultipleUpdates() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(count: 0),
@@ -150,12 +151,12 @@ final class StoreTests: XCTestCase {
     await sut.send(.decrement).value
 
     // THEN: State should reflect all updates
-    XCTAssertEqual(sut.state.count, 1)  // 0 + 1 + 1 - 1 = 1
+    #expect(sut.state.count == 1)  // 0 + 1 + 1 - 1 = 1
   }
 
   // MARK: - send(_:)
 
-  func test_send_processesAction() async {
+  @Test func send_processesAction() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(count: 0),
@@ -166,10 +167,10 @@ final class StoreTests: XCTestCase {
     await sut.send(.increment).value
 
     // THEN: Action should be processed
-    XCTAssertEqual(sut.state.count, 1)
+    #expect(sut.state.count == 1)
   }
 
-  func test_send_returnsTask() async {
+  @Test func send_returnsTask() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(count: 0),
@@ -180,11 +181,10 @@ final class StoreTests: XCTestCase {
     let task = sut.send(.increment)
 
     // THEN: Should return Task<Void, Never>
-    XCTAssertNotNil(task)
     await task.value
   }
 
-  func test_send_handlesNoTask() async {
+  @Test func send_handlesNoTask() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(count: 0),
@@ -195,11 +195,11 @@ final class StoreTests: XCTestCase {
     await sut.send(.increment).value
 
     // THEN: Should process synchronously
-    XCTAssertEqual(sut.state.count, 1)
-    XCTAssertEqual(sut.runningTaskCount, 0)
+    #expect(sut.state.count == 1)
+    #expect(sut.runningTaskCount == 0)
   }
 
-  func test_send_handlesRunTask() async {
+  @Test func send_handlesRunTask() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(count: 0),
@@ -210,13 +210,13 @@ final class StoreTests: XCTestCase {
     await sut.send(.asyncOp).value
 
     // THEN: Should update state and run task
-    XCTAssertTrue(sut.state.isLoading)
+    #expect(sut.state.isLoading)
 
     // Wait for task to complete
     try? await Task.sleep(for: .milliseconds(50))
   }
 
-  func test_send_handlesCancelTask() async {
+  @Test func send_handlesCancelTask() async {
     // GIVEN: Store with running task
     let sut = Store(
       initialState: TestState(count: 0),
@@ -232,10 +232,10 @@ final class StoreTests: XCTestCase {
 
     // THEN: Task should be cancelled
     try? await Task.sleep(for: .milliseconds(20))
-    XCTAssertFalse(sut.isTaskRunning(id: "async"))
+    #expect(!sut.isTaskRunning(id: "async"))
   }
 
-  func test_send_processesMultipleActionsSequentially() async {
+  @Test func send_processesMultipleActionsSequentially() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(count: 0),
@@ -249,10 +249,10 @@ final class StoreTests: XCTestCase {
     await sut.send(.decrement).value
 
     // THEN: All actions should process
-    XCTAssertEqual(sut.state.count, 2)  // +1 +1 +1 -1 = 2
+    #expect(sut.state.count == 2)  // +1 +1 +1 -1 = 2
   }
 
-  func test_send_canBeDiscarded() async {
+  @Test func send_canBeDiscarded() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(count: 0),
@@ -266,12 +266,12 @@ final class StoreTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(10))
 
     // THEN: Action should still process
-    XCTAssertEqual(sut.state.count, 1)
+    #expect(sut.state.count == 1)
   }
 
   // MARK: - Task Management
 
-  func test_runningTaskCount_startsAtZero() async {
+  @Test func runningTaskCount_startsAtZero() async {
     // GIVEN: New store
     let sut = Store(
       initialState: TestState(),
@@ -279,10 +279,10 @@ final class StoreTests: XCTestCase {
     )
 
     // THEN: Should have no running tasks
-    XCTAssertEqual(sut.runningTaskCount, 0)
+    #expect(sut.runningTaskCount == 0)
   }
 
-  func test_runningTaskCount_increasesWithRunTask() async {
+  @Test func runningTaskCount_increasesWithRunTask() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(),
@@ -296,10 +296,10 @@ final class StoreTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(5))
 
     // THEN: Should have running task
-    XCTAssertGreaterThanOrEqual(sut.runningTaskCount, 0)
+    #expect(sut.runningTaskCount >= 0)
   }
 
-  func test_isTaskRunning_returnsFalseForNonexistent() async {
+  @Test func isTaskRunning_returnsFalseForNonexistent() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(),
@@ -310,10 +310,10 @@ final class StoreTests: XCTestCase {
     let isRunning = sut.isTaskRunning(id: "nonexistent")
 
     // THEN: Should return false
-    XCTAssertFalse(isRunning)
+    #expect(!isRunning)
   }
 
-  func test_isTaskRunning_returnsTrueForRunning() async {
+  @Test func isTaskRunning_returnsTrueForRunning() async {
     // GIVEN: Store with running task
     let sut = Store(
       initialState: TestState(),
@@ -332,7 +332,7 @@ final class StoreTests: XCTestCase {
     _ = isRunning
   }
 
-  func test_cancelAllTasks_cancelsRunningTasks() async {
+  @Test func cancelAllTasks_cancelsRunningTasks() async {
     // GIVEN: Store with running tasks
     let sut = Store(
       initialState: TestState(),
@@ -350,10 +350,10 @@ final class StoreTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(20))
 
     // THEN: All tasks should be cancelled
-    XCTAssertEqual(sut.runningTaskCount, 0)
+    #expect(sut.runningTaskCount == 0)
   }
 
-  func test_cancelAllTasks_canBeCalledWhenNoTasks() async {
+  @Test func cancelAllTasks_canBeCalledWhenNoTasks() async {
     // GIVEN: Store with no tasks
     let sut = Store(
       initialState: TestState(),
@@ -364,12 +364,12 @@ final class StoreTests: XCTestCase {
     sut.cancelAllTasks()
 
     // THEN: Should not crash
-    XCTAssertEqual(sut.runningTaskCount, 0)
+    #expect(sut.runningTaskCount == 0)
   }
 
   // MARK: - Error Handling
 
-  func test_errorHandling_logsError() async {
+  @Test func errorHandling_logsError() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(),
@@ -384,10 +384,10 @@ final class StoreTests: XCTestCase {
 
     // THEN: Error should be logged (no crash)
     // We can't directly verify logging, but we verify no crash
-    XCTAssertEqual(sut.state.count, 0)
+    #expect(sut.state.count == 0)
   }
 
-  func test_createErrorHandler_withNonNilHandler() async {
+  @Test func createErrorHandler_withNonNilHandler() async {
     // GIVEN: Feature with StoreTask-level error handler
     struct ErrorHandlingFeature: StoreFeature, Sendable {
       typealias Action = TestAction
@@ -429,11 +429,11 @@ final class StoreTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(50))
 
     // THEN: Error handler should have been called
-    XCTAssertTrue(sut.state.errorMessage?.contains("Error caught") ?? false)
-    XCTAssertFalse(sut.state.isLoading)
+    #expect(sut.state.errorMessage?.contains("Error caught") ?? false)
+    #expect(!sut.state.isLoading)
   }
 
-  func test_createErrorHandler_withNilHandler() async {
+  @Test func createErrorHandler_withNilHandler() async {
     // GIVEN: Feature returning StoreTask with nil onError
     struct NoErrorHandlerFeature: StoreFeature, Sendable {
       typealias Action = TestAction
@@ -471,10 +471,10 @@ final class StoreTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(50))
 
     // THEN: Should not crash, error is silently handled
-    XCTAssertNil(sut.state.errorMessage)
+    #expect(sut.state.errorMessage == nil)
   }
 
-  func test_createErrorHandler_updatesState() async {
+  @Test func createErrorHandler_updatesState() async {
     // GIVEN: Feature with error handler that modifies state
     struct StateModifyingFeature: StoreFeature, Sendable {
       typealias Action = TestAction
@@ -515,13 +515,13 @@ final class StoreTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(50))
 
     // THEN: State should be modified by error handler
-    XCTAssertEqual(sut.state.count, 999)
-    XCTAssertEqual(sut.state.errorMessage, "Modified")
+    #expect(sut.state.count == 999)
+    #expect(sut.state.errorMessage == "Modified")
   }
 
   // MARK: - Integration Tests
 
-  func test_fullWorkflow_synchronousActions() async {
+  @Test func fullWorkflow_synchronousActions() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(count: 0),
@@ -530,19 +530,19 @@ final class StoreTests: XCTestCase {
 
     // WHEN: Execute full workflow
     await sut.send(.increment).value
-    XCTAssertEqual(sut.state.count, 1)
+    #expect(sut.state.count == 1)
 
     await sut.send(.increment).value
-    XCTAssertEqual(sut.state.count, 2)
+    #expect(sut.state.count == 2)
 
     await sut.send(.decrement).value
-    XCTAssertEqual(sut.state.count, 1)
+    #expect(sut.state.count == 1)
 
     // THEN: Final state correct
-    XCTAssertEqual(sut.state.count, 1)
+    #expect(sut.state.count == 1)
   }
 
-  func test_fullWorkflow_mixedActions() async {
+  @Test func fullWorkflow_mixedActions() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(count: 0),
@@ -551,22 +551,22 @@ final class StoreTests: XCTestCase {
 
     // WHEN: Mix synchronous and asynchronous actions
     await sut.send(.increment).value
-    XCTAssertEqual(sut.state.count, 1)
+    #expect(sut.state.count == 1)
 
     await sut.send(.asyncOp).value
-    XCTAssertTrue(sut.state.isLoading)
+    #expect(sut.state.isLoading)
 
     await sut.send(.increment).value
-    XCTAssertEqual(sut.state.count, 2)
+    #expect(sut.state.count == 2)
 
     // Wait for async task
     try? await Task.sleep(for: .milliseconds(50))
 
     // THEN: All actions processed
-    XCTAssertEqual(sut.state.count, 2)
+    #expect(sut.state.count == 2)
   }
 
-  func test_concurrentActions_processCorrectly() async {
+  @Test func concurrentActions_processCorrectly() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(count: 0),
@@ -583,10 +583,10 @@ final class StoreTests: XCTestCase {
     await task3.value
 
     // THEN: All increments should apply
-    XCTAssertEqual(sut.state.count, 3)
+    #expect(sut.state.count == 3)
   }
 
-  func test_storeWithComplexFeature() async {
+  @Test func storeWithComplexFeature() async {
     // GIVEN: Store with complex initial state
     let initialState = TestState(
       count: 100,
@@ -600,20 +600,20 @@ final class StoreTests: XCTestCase {
 
     // WHEN: Execute complex scenario
     await sut.send(.increment).value
-    XCTAssertEqual(sut.state.count, 101)
+    #expect(sut.state.count == 101)
 
     await sut.send(.decrement).value
-    XCTAssertEqual(sut.state.count, 100)
+    #expect(sut.state.count == 100)
 
     await sut.send(.asyncOp).value
-    XCTAssertTrue(sut.state.isLoading)
+    #expect(sut.state.isLoading)
 
     // THEN: State should be consistent
-    XCTAssertEqual(sut.state.count, 100)
-    XCTAssertTrue(sut.state.isLoading)
+    #expect(sut.state.count == 100)
+    #expect(sut.state.isLoading)
   }
 
-  func test_taskCancellation_integration() async {
+  @Test func taskCancellation_integration() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(),
@@ -628,10 +628,10 @@ final class StoreTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(20))
 
     // THEN: Task should be cancelled
-    XCTAssertFalse(sut.isTaskRunning(id: "async"))
+    #expect(!sut.isTaskRunning(id: "async"))
   }
 
-  func test_multipleTasksCancellation() async {
+  @Test func multipleTasksCancellation() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TestState(),
@@ -646,12 +646,12 @@ final class StoreTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(20))
 
     // THEN: All tasks cancelled
-    XCTAssertEqual(sut.runningTaskCount, 0)
+    #expect(sut.runningTaskCount == 0)
   }
 
   // MARK: - cancelTask(id:) Tests
 
-  func test_cancelTask_stopsRunningTask() async {
+  @Test func cancelTask_stopsRunningTask() async {
     // GIVEN: Store with a running task
     let sut = Store(
       initialState: TestState(),
@@ -663,7 +663,7 @@ final class StoreTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(5))
 
     // Verify task is running
-    XCTAssertTrue(sut.isTaskRunning(id: "async"))
+    #expect(sut.isTaskRunning(id: "async"))
 
     // WHEN: Cancel the task by ID
     sut.cancelTask(id: "async")
@@ -672,10 +672,10 @@ final class StoreTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(20))
 
     // THEN: Task should be stopped
-    XCTAssertFalse(sut.isTaskRunning(id: "async"))
+    #expect(!sut.isTaskRunning(id: "async"))
   }
 
-  func test_cancelTask_withMultipleTasks_cancelsOnlySpecifiedTask() async {
+  @Test func cancelTask_withMultipleTasks_cancelsOnlySpecifiedTask() async {
     // GIVEN: Feature with multiple async tasks
     struct MultiTaskFeature: StoreFeature, Sendable {
       typealias Action = TestAction
@@ -715,24 +715,24 @@ final class StoreTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(5))
 
     // Verify all tasks are running
-    XCTAssertTrue(sut.isTaskRunning(id: "task1"))
-    XCTAssertTrue(sut.isTaskRunning(id: "task2"))
-    XCTAssertTrue(sut.isTaskRunning(id: "task3"))
+    #expect(sut.isTaskRunning(id: "task1"))
+    #expect(sut.isTaskRunning(id: "task2"))
+    #expect(sut.isTaskRunning(id: "task3"))
 
     // WHEN: Cancel only task2
     sut.cancelTask(id: "task2")
     try? await Task.sleep(for: .milliseconds(20))
 
     // THEN: Only task2 should be cancelled
-    XCTAssertTrue(sut.isTaskRunning(id: "task1"))
-    XCTAssertFalse(sut.isTaskRunning(id: "task2"))
-    XCTAssertTrue(sut.isTaskRunning(id: "task3"))
+    #expect(sut.isTaskRunning(id: "task1"))
+    #expect(!sut.isTaskRunning(id: "task2"))
+    #expect(sut.isTaskRunning(id: "task3"))
 
     // Cleanup
     sut.cancelAllTasks()
   }
 
-  func test_cancelTask_withNonexistentID_doesNotCrash() async {
+  @Test func cancelTask_withNonexistentID_doesNotCrash() async {
     // GIVEN: Store with no running tasks
     let sut = Store(
       initialState: TestState(),
@@ -743,11 +743,11 @@ final class StoreTests: XCTestCase {
     sut.cancelTask(id: "nonexistent")
 
     // THEN: Should not crash
-    XCTAssertFalse(sut.isTaskRunning(id: "nonexistent"))
-    XCTAssertEqual(sut.runningTaskCount, 0)
+    #expect(!sut.isTaskRunning(id: "nonexistent"))
+    #expect(sut.runningTaskCount == 0)
   }
 
-  func test_cancelTask_withCompletedTask_doesNotCrash() async {
+  @Test func cancelTask_withCompletedTask_doesNotCrash() async {
     // GIVEN: Store with a task that completes quickly
     struct QuickTaskFeature: StoreFeature, Sendable {
       typealias Action = TestAction
@@ -780,10 +780,10 @@ final class StoreTests: XCTestCase {
     sut.cancelTask(id: "quick")
 
     // THEN: Should not crash
-    XCTAssertFalse(sut.isTaskRunning(id: "quick"))
+    #expect(!sut.isTaskRunning(id: "quick"))
   }
 
-  func test_cancelTask_behavesLikeActionCancel() async {
+  @Test func cancelTask_behavesLikeActionCancel() async {
     // GIVEN: Store with a long-running task
     struct CancelComparisonFeature: StoreFeature, Sendable {
       typealias Action = TestAction
@@ -833,11 +833,11 @@ final class StoreTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(20))
 
     // THEN: Both methods should have the same effect
-    XCTAssertFalse(store1.isTaskRunning(id: "download1"))
-    XCTAssertFalse(store2.isTaskRunning(id: "download2"))
+    #expect(!store1.isTaskRunning(id: "download1"))
+    #expect(!store2.isTaskRunning(id: "download2"))
   }
 
-  func test_cancelTask_viewLayerScenario_downloadCancellation() async {
+  @Test func cancelTask_viewLayerScenario_downloadCancellation() async {
     // GIVEN: Realistic download scenario
     struct DownloadFeature: StoreFeature, Sendable {
       typealias State = DownloadState
@@ -907,10 +907,10 @@ final class StoreTests: XCTestCase {
     await downloadTask.value
 
     // THEN: Download should be cancelled and cleaned up
-    XCTAssertFalse(sut.isTaskRunning(id: "download"))
+    #expect(!sut.isTaskRunning(id: "download"))
   }
 
-  func test_cancelTask_withDifferentIDTypes() async {
+  @Test func cancelTask_withDifferentIDTypes() async {
     // GIVEN: Feature supporting different ID types
     struct MultiIDFeature: StoreFeature, Sendable {
       typealias Action = IDAction
@@ -966,12 +966,12 @@ final class StoreTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(20))
 
     // THEN: All tasks should be cancelled
-    XCTAssertFalse(sut.isTaskRunning(id: "stringID"))
-    XCTAssertFalse(sut.isTaskRunning(id: "42"))
-    XCTAssertFalse(sut.isTaskRunning(id: "upload"))
+    #expect(!sut.isTaskRunning(id: "stringID"))
+    #expect(!sut.isTaskRunning(id: "42"))
+    #expect(!sut.isTaskRunning(id: "upload"))
   }
 
-  func test_cancelTask_duringViewLifecycle_onDisappear() async {
+  @Test func cancelTask_duringViewLifecycle_onDisappear() async {
     // GIVEN: Feature simulating view lifecycle scenario
     struct ViewLifecycleFeature: StoreFeature, Sendable {
       typealias Action = ViewAction
@@ -1020,7 +1020,7 @@ final class StoreTests: XCTestCase {
     await appearTask.value
 
     // THEN: Task should be cleaned up
-    XCTAssertFalse(sut.state.isActive)
-    XCTAssertFalse(sut.isTaskRunning(id: "backgroundTask"))
+    #expect(!sut.state.isActive)
+    #expect(!sut.isTaskRunning(id: "backgroundTask"))
   }
 }

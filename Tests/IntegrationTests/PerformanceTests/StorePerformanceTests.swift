@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 
 @testable import ViewFeature
 
@@ -6,7 +7,7 @@ import XCTest
 ///
 /// Tests throughput, latency, and resource usage under load.
 @MainActor
-final class StorePerformanceTests: XCTestCase {
+@Suite struct StorePerformanceTests {
   // MARK: - Test Fixtures
 
   enum PerformanceAction: Sendable {
@@ -57,7 +58,7 @@ final class StorePerformanceTests: XCTestCase {
 
   // MARK: - Throughput Tests
 
-  func test_highVolumeActionProcessing() async {
+  @Test func highVolumeActionProcessing() async {
     // GIVEN: Store
     let sut = Store(
       initialState: PerformanceState(),
@@ -75,15 +76,15 @@ final class StorePerformanceTests: XCTestCase {
     let duration = Date().timeIntervalSince(startTime)
 
     // THEN: Should process efficiently
-    XCTAssertEqual(sut.state.counter, actionCount)
-    XCTAssertLessThan(
-      duration, 5.0, "Processing \(actionCount) actions took too long: \(duration)s")
+    #expect(sut.state.counter == actionCount)
+    #expect(
+      duration < 5.0, "Processing \(actionCount) actions took too long: \(duration)s")
 
     let throughput = Double(actionCount) / duration
     print("Throughput: \(Int(throughput)) actions/second")
   }
 
-  func test_batchOperationPerformance() async {
+  @Test func batchOperationPerformance() async {
     // GIVEN: Store
     let sut = Store(
       initialState: PerformanceState(),
@@ -102,13 +103,13 @@ final class StorePerformanceTests: XCTestCase {
     let duration = Date().timeIntervalSince(startTime)
 
     // THEN: Should be faster than individual operations
-    XCTAssertEqual(sut.state.counter, batchSize * batchCount)
-    XCTAssertLessThan(duration, 2.0, "Batch processing took too long: \(duration)s")
+    #expect(sut.state.counter == batchSize * batchCount)
+    #expect(duration < 2.0, "Batch processing took too long: \(duration)s")
   }
 
   // MARK: - Concurrent Action Tests
 
-  func test_concurrentActionPerformance() async {
+  @Test func concurrentActionPerformance() async {
     // GIVEN: Store
     let sut = Store(
       initialState: PerformanceState(),
@@ -130,15 +131,15 @@ final class StorePerformanceTests: XCTestCase {
     let duration = Date().timeIntervalSince(startTime)
 
     // THEN: All actions should be processed
-    XCTAssertEqual(sut.state.counter, actionCount)
-    XCTAssertLessThan(duration, 10.0, "Concurrent processing took too long: \(duration)s")
+    #expect(sut.state.counter == actionCount)
+    #expect(duration < 10.0, "Concurrent processing took too long: \(duration)s")
 
     print("Concurrent processing: \(Int(Double(actionCount) / duration)) actions/second")
   }
 
   // MARK: - Task Management Performance
 
-  func test_manyLightTasksPerformance() async {
+  @Test func manyLightTasksPerformance() async {
     // GIVEN: Store
     let sut = Store(
       initialState: PerformanceState(),
@@ -159,11 +160,11 @@ final class StorePerformanceTests: XCTestCase {
     let duration = Date().timeIntervalSince(startTime)
 
     // THEN: Should handle tasks efficiently
-    XCTAssertEqual(sut.state.operations, taskCount)
-    XCTAssertLessThan(duration, 5.0, "Light task processing took too long: \(duration)s")
+    #expect(sut.state.operations == taskCount)
+    #expect(duration < 5.0, "Light task processing took too long: \(duration)s")
   }
 
-  func test_taskCancellationPerformance() async {
+  @Test func taskCancellationPerformance() async {
     // GIVEN: Store with many running tasks
     let sut = Store(
       initialState: PerformanceState(),
@@ -184,13 +185,13 @@ final class StorePerformanceTests: XCTestCase {
     let duration = Date().timeIntervalSince(startTime)
 
     // THEN: Cancellation should be fast
-    XCTAssertLessThan(duration, 1.0, "Task cancellation took too long: \(duration)s")
-    XCTAssertEqual(sut.runningTaskCount, 0)
+    #expect(duration < 1.0, "Task cancellation took too long: \(duration)s")
+    #expect(sut.runningTaskCount == 0)
   }
 
   // MARK: - Memory Performance Tests
 
-  func test_memoryUsageUnderLoad() async {
+  @Test func memoryUsageUnderLoad() async {
     // GIVEN: Store
     let sut = Store(
       initialState: PerformanceState(),
@@ -203,13 +204,13 @@ final class StorePerformanceTests: XCTestCase {
     }
 
     // THEN: Memory should not grow unbounded
-    XCTAssertEqual(sut.state.counter, 10_000)
+    #expect(sut.state.counter == 10_000)
     // Note: Actual memory testing would require more sophisticated tooling
   }
 
   // MARK: - State Update Performance
 
-  func test_rapidStateUpdates() async {
+  @Test func rapidStateUpdates() async {
     // GIVEN: Store with complex state
     struct ComplexState: Equatable, Sendable {
       var array: [Int] = []
@@ -261,15 +262,15 @@ final class StorePerformanceTests: XCTestCase {
     let duration = Date().timeIntervalSince(startTime)
 
     // THEN: Updates should be efficient
-    XCTAssertEqual(sut.state.array.count, 1000)
-    XCTAssertEqual(sut.state.dict.count, 1000)
-    XCTAssertEqual(sut.state.counter, 1000)
-    XCTAssertLessThan(duration, 5.0, "State updates took too long: \(duration)s")
+    #expect(sut.state.array.count == 1000)
+    #expect(sut.state.dict.count == 1000)
+    #expect(sut.state.counter == 1000)
+    #expect(duration < 5.0, "State updates took too long: \(duration)s")
   }
 
   // MARK: - XCTest Performance Measurements
 
-  func test_measureActionProcessing() async {
+  @Test func measureActionProcessing() async {
     // GIVEN: Store
     let sut = Store(
       initialState: PerformanceState(),
@@ -294,10 +295,10 @@ final class StorePerformanceTests: XCTestCase {
     let avgDuration = durations.reduce(0, +) / Double(durations.count)
 
     // THEN: Baseline established
-    XCTAssertLessThan(avgDuration, 1.0, "Average processing time too long: \(avgDuration)s")
+    #expect(avgDuration < 1.0, "Average processing time too long: \(avgDuration)s")
   }
 
-  func test_measureStateAccess() async {
+  @Test func measureStateAccess() async {
     // GIVEN: Store with data
     let sut = Store(
       initialState: PerformanceState(counter: 1000),
@@ -316,19 +317,19 @@ final class StorePerformanceTests: XCTestCase {
       }
       let duration = Date().timeIntervalSince(start)
       durations.append(duration)
-      XCTAssertGreaterThan(sum, 0)
+      #expect(sum > 0)
     }
 
     let avgDuration = durations.reduce(0, +) / Double(durations.count)
 
     // THEN: State access should be fast
-    XCTAssertLessThan(avgDuration, 0.1, "Average state access time too long: \(avgDuration)s")
+    #expect(avgDuration < 0.1, "Average state access time too long: \(avgDuration)s")
     print("State access performance: \(String(format: "%.6f", avgDuration))s average")
   }
 
   // MARK: - Scalability Tests
 
-  func test_scalabilityWithMultipleStores() async {
+  @Test func scalabilityWithMultipleStores() async {
     // GIVEN: Multiple stores
     let storeCount = 10
     var stores: [Store<PerformanceFeature>] = []
@@ -354,14 +355,14 @@ final class StorePerformanceTests: XCTestCase {
 
     // THEN: All stores should process correctly
     for store in stores {
-      XCTAssertEqual(store.state.counter, 100)
+      #expect(store.state.counter == 100)
     }
-    XCTAssertLessThan(duration, 5.0, "Multiple store processing took too long: \(duration)s")
+    #expect(duration < 5.0, "Multiple store processing took too long: \(duration)s")
   }
 
   // MARK: - Real-World Scenario Tests
 
-  func test_realisticWorkloadPerformance() async {
+  @Test func realisticWorkloadPerformance() async {
     // GIVEN: Store
     let sut = Store(
       initialState: PerformanceState(),
@@ -386,15 +387,15 @@ final class StorePerformanceTests: XCTestCase {
     let duration = Date().timeIntervalSince(startTime)
 
     // THEN: Should handle mixed workload efficiently
-    XCTAssertGreaterThanOrEqual(sut.state.operations, 500)
-    XCTAssertLessThan(duration, 10.0, "Realistic workload took too long: \(duration)s")
+    #expect(sut.state.operations >= 500)
+    #expect(duration < 10.0, "Realistic workload took too long: \(duration)s")
 
     print("Realistic workload completed in \(String(format: "%.2f", duration))s")
   }
 
   // MARK: - Stress Tests
 
-  func test_extremeLoadStressTest() async {
+  @Test func extremeLoadStressTest() async {
     // GIVEN: Store
     let sut = Store(
       initialState: PerformanceState(),
@@ -416,7 +417,7 @@ final class StorePerformanceTests: XCTestCase {
     let duration = Date().timeIntervalSince(startTime)
 
     // THEN: System should remain stable
-    XCTAssertEqual(sut.state.counter, actionCount)
+    #expect(sut.state.counter == actionCount)
     print("Extreme load test: \(actionCount) actions in \(String(format: "%.2f", duration))s")
   }
 }

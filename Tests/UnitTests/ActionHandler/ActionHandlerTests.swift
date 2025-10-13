@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 
 @testable import ViewFeature
 
@@ -6,7 +7,7 @@ import XCTest
 ///
 /// Tests every public method in ActionHandler.swift
 @MainActor
-final class ActionHandlerTests: XCTestCase {
+@Suite struct ActionHandlerTests {
   // MARK: - Test Fixtures
 
   enum TestAction: Sendable {
@@ -23,7 +24,7 @@ final class ActionHandlerTests: XCTestCase {
 
   // MARK: - init(_:)
 
-  func test_init_createsHandler() async {
+  @Test func init_createsHandler() async {
     // GIVEN & WHEN: Create handler
     let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
@@ -33,10 +34,10 @@ final class ActionHandlerTests: XCTestCase {
     // THEN: Should handle actions
     var state = TestState()
     _ = await sut.handle(action: .increment, state: &state)
-    XCTAssertEqual(state.count, 1)
+    #expect(state.count == 1)
   }
 
-  func test_init_withComplexLogic() async {
+  @Test func init_withComplexLogic() async {
     // GIVEN: Handler with complex logic
     let sut = ActionHandler<TestAction, TestState> { action, state in
       switch action {
@@ -57,12 +58,12 @@ final class ActionHandlerTests: XCTestCase {
     _ = await sut.handle(action: .decrement, state: &state)
 
     // THEN: Should process all actions
-    XCTAssertEqual(state.count, 0)  // +1 -1 = 0
+    #expect(state.count == 0)  // +1 -1 = 0
   }
 
   // MARK: - handle(action:state:)
 
-  func test_handle_executesAction() async {
+  @Test func handle_executesAction() async {
     // GIVEN: Handler
     let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 5
@@ -74,15 +75,15 @@ final class ActionHandlerTests: XCTestCase {
     let task = await sut.handle(action: .increment, state: &state)
 
     // THEN: Should update state
-    XCTAssertEqual(state.count, 5)
+    #expect(state.count == 5)
     if case .none = task.storeTask {
-      XCTAssertTrue(true)
+      #expect(true)
     } else {
-      XCTFail("Expected noTask")
+      Issue.record("Expected noTask")
     }
   }
 
-  func test_handle_returnsRunTask() async {
+  @Test func handle_returnsRunTask() async {
     // GIVEN: Handler returning run task
     let sut = ActionHandler<TestAction, TestState> { _, state in
       state.isLoading = true
@@ -94,15 +95,15 @@ final class ActionHandlerTests: XCTestCase {
     let task = await sut.handle(action: .asyncOp, state: &state)
 
     // THEN: Should return run task
-    XCTAssertTrue(state.isLoading)
+    #expect(state.isLoading)
     if case .run(let id, _, _) = task.storeTask {
-      XCTAssertEqual(id, "test")
+      #expect(id == "test")
     } else {
-      XCTFail("Expected run task")
+      Issue.record("Expected run task")
     }
   }
 
-  func test_handle_returnsCancelTask() async {
+  @Test func handle_returnsCancelTask() async {
     // GIVEN: Handler returning cancel task
     let sut = ActionHandler<TestAction, TestState> { _, _ in
       .cancel(id: "cancel-me")
@@ -114,13 +115,13 @@ final class ActionHandlerTests: XCTestCase {
 
     // THEN: Should return cancel task
     if case .cancel(let id) = task.storeTask {
-      XCTAssertEqual(id, "cancel-me")
+      #expect(id == "cancel-me")
     } else {
-      XCTFail("Expected cancel task")
+      Issue.record("Expected cancel task")
     }
   }
 
-  func test_handle_multipleTimes() async {
+  @Test func handle_multipleTimes() async {
     // GIVEN: Handler
     let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
@@ -134,12 +135,12 @@ final class ActionHandlerTests: XCTestCase {
     _ = await sut.handle(action: .increment, state: &state)
 
     // THEN: Should accumulate
-    XCTAssertEqual(state.count, 3)
+    #expect(state.count == 3)
   }
 
   // MARK: - onError(_:)
 
-  func test_onError_returnsNewHandler() async {
+  @Test func onError_returnsNewHandler() async {
     // GIVEN: Base handler
     let baseHandler = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
@@ -154,10 +155,10 @@ final class ActionHandlerTests: XCTestCase {
     // THEN: Should return a working handler
     var state = TestState()
     _ = await sut.handle(action: .increment, state: &state)
-    XCTAssertEqual(state.count, 1)
+    #expect(state.count == 1)
   }
 
-  func test_onError_supportsChaining() async {
+  @Test func onError_supportsChaining() async {
     // GIVEN: Handler with multiple chained methods
     let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
@@ -173,10 +174,10 @@ final class ActionHandlerTests: XCTestCase {
     _ = await sut.handle(action: .increment, state: &state)
 
     // THEN: Should work with chaining
-    XCTAssertEqual(state.count, 1)
+    #expect(state.count == 1)
   }
 
-  func test_onError_canBeCalled() async {
+  @Test func onError_canBeCalled() async {
     // GIVEN: Handler
     let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
@@ -191,12 +192,12 @@ final class ActionHandlerTests: XCTestCase {
     _ = await sut.handle(action: .increment, state: &state)
 
     // THEN: Normal operation works
-    XCTAssertEqual(state.count, 1)
+    #expect(state.count == 1)
   }
 
   // MARK: - use(_:)
 
-  func test_use_addsMiddleware() async {
+  @Test func use_addsMiddleware() async {
     // GIVEN: Handler with middleware
     let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
@@ -209,10 +210,10 @@ final class ActionHandlerTests: XCTestCase {
     _ = await sut.handle(action: .increment, state: &state)
 
     // THEN: Should execute with middleware
-    XCTAssertEqual(state.count, 1)
+    #expect(state.count == 1)
   }
 
-  func test_use_defaultCategory() async {
+  @Test func use_defaultCategory() async {
     // GIVEN: Handler with default middleware
     let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
@@ -225,10 +226,10 @@ final class ActionHandlerTests: XCTestCase {
     _ = await sut.handle(action: .increment, state: &state)
 
     // THEN: Should execute with default middleware
-    XCTAssertEqual(state.count, 1)
+    #expect(state.count == 1)
   }
 
-  func test_use_supportsChaining() async {
+  @Test func use_supportsChaining() async {
     // GIVEN: Handler with multiple middleware
     let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
@@ -245,12 +246,12 @@ final class ActionHandlerTests: XCTestCase {
     _ = await sut.handle(action: .increment, state: &state)
 
     // THEN: Should work with multiple middleware
-    XCTAssertEqual(state.count, 1)
+    #expect(state.count == 1)
   }
 
   // MARK: - transform(_:)
 
-  func test_transform_modifiesTask() async {
+  @Test func transform_modifiesTask() async {
     // GIVEN: Handler with transform
     let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
@@ -270,15 +271,15 @@ final class ActionHandlerTests: XCTestCase {
     let task = await sut.handle(action: .increment, state: &state)
 
     // THEN: Task should be transformed
-    XCTAssertEqual(state.count, 1)
+    #expect(state.count == 1)
     if case .run(let id, _, _) = task.storeTask {
-      XCTAssertEqual(id, "transformed")
+      #expect(id == "transformed")
     } else {
-      XCTFail("Expected run task")
+      Issue.record("Expected run task")
     }
   }
 
-  func test_transform_canConvertTasks() async {
+  @Test func transform_canConvertTasks() async {
     // GIVEN: Handler that converts tasks
     let sut = ActionHandler<TestAction, TestState> { _, _ in
       .run(id: "convert") {}
@@ -298,13 +299,13 @@ final class ActionHandlerTests: XCTestCase {
 
     // THEN: Should convert to cancel
     if case .cancel(let id) = task.storeTask {
-      XCTAssertEqual(id, "convert")
+      #expect(id == "convert")
     } else {
-      XCTFail("Expected cancel task")
+      Issue.record("Expected cancel task")
     }
   }
 
-  func test_transform_leavesNoTaskUnchanged() async {
+  @Test func transform_leavesNoTaskUnchanged() async {
     // GIVEN: Handler with transform
     let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
@@ -325,13 +326,13 @@ final class ActionHandlerTests: XCTestCase {
 
     // THEN: noTask should remain
     if case .none = task.storeTask {
-      XCTAssertTrue(true)
+      #expect(true)
     } else {
-      XCTFail("Expected noTask")
+      Issue.record("Expected noTask")
     }
   }
 
-  func test_transform_supportsChaining() async {
+  @Test func transform_supportsChaining() async {
     // GIVEN: Handler with all features
     let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
@@ -350,15 +351,15 @@ final class ActionHandlerTests: XCTestCase {
     let task = await sut.handle(action: .asyncOp, state: &state)
 
     // THEN: Should work with all features
-    XCTAssertEqual(state.count, 1)
+    #expect(state.count == 1)
     if case .run = task.storeTask {
-      XCTAssertTrue(true)
+      #expect(true)
     }
   }
 
   // MARK: - Integration Tests
 
-  func test_fullPipeline_successfulExecution() async {
+  @Test func fullPipeline_successfulExecution() async {
     // GIVEN: Handler with all features
     let sut = ActionHandler<TestAction, TestState> { action, state in
       switch action {
@@ -388,11 +389,11 @@ final class ActionHandlerTests: XCTestCase {
     _ = await sut.handle(action: .decrement, state: &state)
 
     // THEN: Should process all actions
-    XCTAssertEqual(state.count, 1)  // +1 +1 -1 = 1
-    XCTAssertNil(state.errorMessage)
+    #expect(state.count == 1)  // +1 +1 -1 = 1
+    #expect(state.errorMessage == nil)
   }
 
-  func test_immutabilityOfChaining() async {
+  @Test func immutabilityOfChaining() async {
     // GIVEN: Base handler
     let base = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
@@ -407,22 +408,22 @@ final class ActionHandlerTests: XCTestCase {
     // THEN: All should work independently
     var state1 = TestState()
     _ = await base.handle(action: .increment, state: &state1)
-    XCTAssertEqual(state1.count, 1)
+    #expect(state1.count == 1)
 
     var state2 = TestState()
     _ = await withMiddleware.handle(action: .increment, state: &state2)
-    XCTAssertEqual(state2.count, 1)
+    #expect(state2.count == 1)
 
     var state3 = TestState()
     _ = await withError.handle(action: .increment, state: &state3)
-    XCTAssertEqual(state3.count, 1)
+    #expect(state3.count == 1)
 
     var state4 = TestState()
     _ = await withTransform.handle(action: .increment, state: &state4)
-    XCTAssertEqual(state4.count, 1)
+    #expect(state4.count == 1)
   }
 
-  func test_complexScenario() async {
+  @Test func complexScenario() async {
     // GIVEN: Handler with complex scenario
     let sut = ActionHandler<TestAction, TestState> { action, state in
       switch action {
@@ -445,15 +446,15 @@ final class ActionHandlerTests: XCTestCase {
     // WHEN: Execute complex sequence
     var state = TestState(count: 100)
     _ = await sut.handle(action: .increment, state: &state)
-    XCTAssertEqual(state.count, 110)
+    #expect(state.count == 110)
 
     let task = await sut.handle(action: .asyncOp, state: &state)
-    XCTAssertTrue(state.isLoading)
+    #expect(state.isLoading)
     if case .run(let id, _, _) = task.storeTask {
-      XCTAssertEqual(id, "complex")
+      #expect(id == "complex")
     }
 
     _ = await sut.handle(action: .decrement, state: &state)
-    XCTAssertEqual(state.count, 105)  // 110 - 5 = 105
+    #expect(state.count == 105)  // 110 - 5 = 105
   }
 }

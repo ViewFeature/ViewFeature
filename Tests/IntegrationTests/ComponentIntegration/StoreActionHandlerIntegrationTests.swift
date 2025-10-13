@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 
 @testable import ViewFeature
 
@@ -7,7 +8,7 @@ import XCTest
 /// Tests how Store and ActionHandler work together to process actions
 /// and manage state transitions.
 @MainActor
-final class StoreActionHandlerIntegrationTests: XCTestCase {
+@Suite struct StoreActionHandlerIntegrationTests {
   // MARK: - Test Fixtures
 
   enum TodoAction: Sendable {
@@ -69,7 +70,7 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
 
   // MARK: - Basic Integration Tests
 
-  func test_storeAndHandlerProcessSimpleAction() async {
+  @Test func storeAndHandlerProcessSimpleAction() async {
     // GIVEN: Store with TodoFeature
     let sut = Store(
       initialState: TodoState(),
@@ -80,13 +81,13 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     await sut.send(.add("Buy milk")).value
 
     // THEN: State should be updated
-    XCTAssertEqual(sut.state.todos.count, 1)
-    XCTAssertEqual(sut.state.todos[0].title, "Buy milk")
-    XCTAssertEqual(sut.state.todos[0].id, 1)
-    XCTAssertFalse(sut.state.todos[0].isCompleted)
+    #expect(sut.state.todos.count == 1)
+    #expect(sut.state.todos[0].title == "Buy milk")
+    #expect(sut.state.todos[0].id == 1)
+    #expect(!sut.state.todos[0].isCompleted)
   }
 
-  func test_storeAndHandlerProcessMultipleActions() async {
+  @Test func storeAndHandlerProcessMultipleActions() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TodoState(),
@@ -99,15 +100,15 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     await sut.send(.add("Task 3")).value
 
     // THEN: All tasks should be added
-    XCTAssertEqual(sut.state.todos.count, 3)
-    XCTAssertEqual(sut.state.todos[0].title, "Task 1")
-    XCTAssertEqual(sut.state.todos[1].title, "Task 2")
-    XCTAssertEqual(sut.state.todos[2].title, "Task 3")
+    #expect(sut.state.todos.count == 3)
+    #expect(sut.state.todos[0].title == "Task 1")
+    #expect(sut.state.todos[1].title == "Task 2")
+    #expect(sut.state.todos[2].title == "Task 3")
   }
 
   // MARK: - State Mutation Tests
 
-  func test_handlerMutatesStateCorrectly() async {
+  @Test func handlerMutatesStateCorrectly() async {
     // GIVEN: Store with todos
     let sut = Store(
       initialState: TodoState(),
@@ -121,11 +122,11 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     await sut.send(.complete(1)).value
 
     // THEN: Task should be marked completed
-    XCTAssertTrue(sut.state.todos[0].isCompleted)
-    XCTAssertFalse(sut.state.todos[1].isCompleted)
+    #expect(sut.state.todos[0].isCompleted)
+    #expect(!sut.state.todos[1].isCompleted)
   }
 
-  func test_handlerDeletesCorrectly() async {
+  @Test func handlerDeletesCorrectly() async {
     // GIVEN: Store with multiple todos
     let sut = Store(
       initialState: TodoState(),
@@ -140,14 +141,14 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     await sut.send(.delete(2)).value
 
     // THEN: Task 2 should be removed
-    XCTAssertEqual(sut.state.todos.count, 2)
-    XCTAssertEqual(sut.state.todos[0].title, "Task 1")
-    XCTAssertEqual(sut.state.todos[1].title, "Task 3")
+    #expect(sut.state.todos.count == 2)
+    #expect(sut.state.todos[0].title == "Task 1")
+    #expect(sut.state.todos[1].title == "Task 3")
   }
 
   // MARK: - Complex State Transitions
 
-  func test_toggleAllWithMixedCompletionStates() async {
+  @Test func toggleAllWithMixedCompletionStates() async {
     // GIVEN: Store with mixed completion states
     let sut = Store(
       initialState: TodoState(),
@@ -163,16 +164,17 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     await sut.send(.toggleAll).value
 
     // THEN: All should be completed (not all were completed before)
-    XCTAssertTrue(sut.state.todos.allSatisfy(\.isCompleted))
+    #expect(sut.state.todos.allSatisfy(\.isCompleted))
 
     // WHEN: Toggle all again
     await sut.send(.toggleAll).value
 
     // THEN: All should be uncompleted
-    XCTAssertTrue(sut.state.todos.allSatisfy { !$0.isCompleted })
+    let allUncompleted = sut.state.todos.allSatisfy { !$0.isCompleted }
+    #expect(allUncompleted)
   }
 
-  func test_clearCompletedRemovesOnlyCompletedTasks() async {
+  @Test func clearCompletedRemovesOnlyCompletedTasks() async {
     // GIVEN: Store with mixed completion states
     let sut = Store(
       initialState: TodoState(),
@@ -189,14 +191,14 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     await sut.send(.clearCompleted).value
 
     // THEN: Only uncompleted task should remain
-    XCTAssertEqual(sut.state.todos.count, 1)
-    XCTAssertEqual(sut.state.todos[0].title, "Task 2")
-    XCTAssertFalse(sut.state.todos[0].isCompleted)
+    #expect(sut.state.todos.count == 1)
+    #expect(sut.state.todos[0].title == "Task 2")
+    #expect(!sut.state.todos[0].isCompleted)
   }
 
   // MARK: - Action Handler Workflow Tests
 
-  func test_complexTodoWorkflow() async {
+  @Test func complexTodoWorkflow() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TodoState(),
@@ -221,14 +223,14 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     await sut.send(.clearCompleted).value
 
     // THEN: Only uncompleted task should remain
-    XCTAssertEqual(sut.state.todos.count, 1)
-    XCTAssertEqual(sut.state.todos[0].title, "Task 4")
-    XCTAssertFalse(sut.state.todos[0].isCompleted)
+    #expect(sut.state.todos.count == 1)
+    #expect(sut.state.todos[0].title == "Task 4")
+    #expect(!sut.state.todos[0].isCompleted)
   }
 
   // MARK: - ID Generation Tests
 
-  func test_idGenerationIsSequential() async {
+  @Test func idGenerationIsSequential() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TodoState(),
@@ -241,13 +243,13 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     await sut.send(.add("Task 3")).value
 
     // THEN: IDs should be sequential
-    XCTAssertEqual(sut.state.todos[0].id, 1)
-    XCTAssertEqual(sut.state.todos[1].id, 2)
-    XCTAssertEqual(sut.state.todos[2].id, 3)
-    XCTAssertEqual(sut.state.nextId, 4)
+    #expect(sut.state.todos[0].id == 1)
+    #expect(sut.state.todos[1].id == 2)
+    #expect(sut.state.todos[2].id == 3)
+    #expect(sut.state.nextId == 4)
   }
 
-  func test_idGenerationAfterDeletion() async {
+  @Test func idGenerationAfterDeletion() async {
     // GIVEN: Store with todos
     let sut = Store(
       initialState: TodoState(),
@@ -262,13 +264,13 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     await sut.send(.add("Task 3")).value
 
     // THEN: ID should continue from last nextId
-    XCTAssertEqual(sut.state.todos.count, 2)
-    XCTAssertEqual(sut.state.todos[1].id, 3)
+    #expect(sut.state.todos.count == 2)
+    #expect(sut.state.todos[1].id == 3)
   }
 
   // MARK: - State Consistency Tests
 
-  func test_stateRemainsConsistentAcrossActions() async {
+  @Test func stateRemainsConsistentAcrossActions() async {
     // GIVEN: Store
     let sut = Store(
       initialState: TodoState(),
@@ -278,27 +280,27 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     // WHEN: Execute multiple actions
     await sut.send(.add("Task 1")).value
     let countAfterAdd = sut.state.todos.count
-    XCTAssertEqual(countAfterAdd, 1)
+    #expect(countAfterAdd == 1)
 
     await sut.send(.complete(1)).value
     let countAfterComplete = sut.state.todos.count
-    XCTAssertEqual(countAfterComplete, 1)  // Count should remain same
+    #expect(countAfterComplete == 1)  // Count should remain same
 
     await sut.send(.add("Task 2")).value
     let countAfterSecondAdd = sut.state.todos.count
-    XCTAssertEqual(countAfterSecondAdd, 2)
+    #expect(countAfterSecondAdd == 2)
 
     await sut.send(.clearCompleted).value
     let finalCount = sut.state.todos.count
 
     // THEN: State should be consistent
-    XCTAssertEqual(finalCount, 1)
-    XCTAssertEqual(sut.state.todos[0].title, "Task 2")
+    #expect(finalCount == 1)
+    #expect(sut.state.todos[0].title == "Task 2")
   }
 
   // MARK: - Edge Cases
 
-  func test_deleteNonexistentTask() async {
+  @Test func deleteNonexistentTask() async {
     // GIVEN: Store with one task
     let sut = Store(
       initialState: TodoState(),
@@ -311,10 +313,10 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     await sut.send(.delete(999)).value
 
     // THEN: No tasks should be deleted
-    XCTAssertEqual(sut.state.todos.count, 1)
+    #expect(sut.state.todos.count == 1)
   }
 
-  func test_completeNonexistentTask() async {
+  @Test func completeNonexistentTask() async {
     // GIVEN: Store with one task
     let sut = Store(
       initialState: TodoState(),
@@ -327,10 +329,10 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     await sut.send(.complete(999)).value
 
     // THEN: No tasks should be affected
-    XCTAssertFalse(sut.state.todos[0].isCompleted)
+    #expect(!sut.state.todos[0].isCompleted)
   }
 
-  func test_toggleAllWithEmptyList() async {
+  @Test func toggleAllWithEmptyList() async {
     // GIVEN: Store with no tasks
     let sut = Store(
       initialState: TodoState(),
@@ -341,10 +343,10 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     await sut.send(.toggleAll).value
 
     // THEN: Should not crash
-    XCTAssertEqual(sut.state.todos.count, 0)
+    #expect(sut.state.todos.count == 0)
   }
 
-  func test_clearCompletedWithNoCompletedTasks() async {
+  @Test func clearCompletedWithNoCompletedTasks() async {
     // GIVEN: Store with uncompleted tasks
     let sut = Store(
       initialState: TodoState(),
@@ -358,6 +360,6 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
     await sut.send(.clearCompleted).value
 
     // THEN: No tasks should be removed
-    XCTAssertEqual(sut.state.todos.count, 2)
+    #expect(sut.state.todos.count == 2)
   }
 }

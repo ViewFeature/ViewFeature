@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 
 @testable import ViewFeature
 
@@ -7,7 +8,7 @@ import XCTest
 /// Tests how the system handles errors, recovers from failures,
 /// and maintains consistency across components.
 @MainActor
-final class ErrorHandlingIntegrationTests: XCTestCase {
+@Suite struct ErrorHandlingIntegrationTests {
   // MARK: - Test Fixtures
 
   enum NetworkAction: Sendable {
@@ -35,7 +36,7 @@ final class ErrorHandlingIntegrationTests: XCTestCase {
 
   // MARK: - Basic Error Handling Tests
 
-  func test_taskErrorsAreHandledGracefully() async {
+  @Test func taskErrorsAreHandledGracefully() async {
     // GIVEN: Store with error-throwing feature
     struct ErrorFeature: StoreFeature, Sendable {
       typealias Action = NetworkAction
@@ -76,11 +77,11 @@ final class ErrorHandlingIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(50))
 
     // THEN: Error should be captured in state
-    XCTAssertNotNil(sut.state.errors["data1"])
-    XCTAssertNotNil(sut.state.lastError)
+    #expect(sut.state.errors["data1"] != nil)
+    #expect(sut.state.lastError != nil)
   }
 
-  func test_multipleErrorsAreHandledIndependently() async {
+  @Test func multipleErrorsAreHandledIndependently() async {
     // GIVEN: Store with multiple failing tasks
     struct MultiErrorFeature: StoreFeature, Sendable {
       typealias Action = NetworkAction
@@ -121,14 +122,14 @@ final class ErrorHandlingIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(50))
 
     // THEN: Each error should be tracked separately
-    XCTAssertNotNil(sut.state.errors["data1"])
-    XCTAssertNotNil(sut.state.errors["data2"])
-    XCTAssertEqual(sut.state.errors.count, 2)
+    #expect(sut.state.errors["data1"] != nil)
+    #expect(sut.state.errors["data2"] != nil)
+    #expect(sut.state.errors.count == 2)
   }
 
   // MARK: - Error Recovery Tests
 
-  func test_systemRecoversAfterError() async {
+  @Test func systemRecoversAfterError() async {
     // GIVEN: Store with recovery mechanism
     struct RecoveryFeature: StoreFeature, Sendable {
       typealias Action = NetworkAction
@@ -185,16 +186,16 @@ final class ErrorHandlingIntegrationTests: XCTestCase {
     await sut.send(.fetchData("data1")).value
     try? await Task.sleep(for: .milliseconds(30))
 
-    XCTAssertNotNil(sut.state.lastError)
+    #expect(sut.state.lastError != nil)
 
     await sut.send(.recoverFromError).value
 
     // THEN: State should be recovered
-    XCTAssertNil(sut.state.lastError)
-    XCTAssertTrue(sut.state.errors.isEmpty)
+    #expect(sut.state.lastError == nil)
+    #expect(sut.state.errors.isEmpty)
   }
 
-  func test_retryMechanismAfterError() async {
+  @Test func retryMechanismAfterError() async {
     // GIVEN: Store with retry mechanism
     struct RetryFeature: StoreFeature, Sendable {
       typealias Action = NetworkAction
@@ -238,19 +239,19 @@ final class ErrorHandlingIntegrationTests: XCTestCase {
     await sut.send(.fetchData("data1")).value
     try? await Task.sleep(for: .milliseconds(30))
 
-    XCTAssertNotNil(sut.state.errors["data1"])
+    #expect(sut.state.errors["data1"] != nil)
 
     await sut.send(.retryFetch("data1")).value
     try? await Task.sleep(for: .milliseconds(30))
 
     // THEN: Retry should clear error
-    XCTAssertNil(sut.state.errors["data1"])
-    XCTAssertEqual(sut.state.retryCount, 1)
+    #expect(sut.state.errors["data1"] == nil)
+    #expect(sut.state.retryCount == 1)
   }
 
   // MARK: - Error State Consistency Tests
 
-  func test_stateRemainsConsistentAfterError() async {
+  @Test func stateRemainsConsistentAfterError() async {
     // GIVEN: Store with state preservation
     struct StatePreservingFeature: StoreFeature, Sendable {
       typealias Action = NetworkAction
@@ -290,14 +291,14 @@ final class ErrorHandlingIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(30))
 
     // THEN: Existing state should be preserved
-    XCTAssertEqual(sut.state.data["existing"], "value")
-    XCTAssertEqual(sut.state.data["data1"], "failed")
-    XCTAssertNotNil(sut.state.errors["data1"])
+    #expect(sut.state.data["existing"] == "value")
+    #expect(sut.state.data["data1"] == "failed")
+    #expect(sut.state.errors["data1"] != nil)
   }
 
   // MARK: - Task Cancellation Error Tests
 
-  func test_taskCancellationDoesNotCauseErrors() async {
+  @Test func taskCancellationDoesNotCauseErrors() async {
     // GIVEN: Store with cancellable task
     struct CancellableFeature: StoreFeature, Sendable {
       typealias Action = NetworkAction
@@ -341,12 +342,12 @@ final class ErrorHandlingIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(30))
 
     // THEN: Cancellation should not add errors
-    XCTAssertTrue(sut.state.errors.isEmpty)
+    #expect(sut.state.errors.isEmpty)
   }
 
   // MARK: - Complex Error Scenarios
 
-  func test_cascadingErrorHandling() async {
+  @Test func cascadingErrorHandling() async {
     // GIVEN: Store where errors can trigger other actions
     struct CascadingFeature: StoreFeature, Sendable {
       typealias Action = NetworkAction
@@ -390,17 +391,17 @@ final class ErrorHandlingIntegrationTests: XCTestCase {
     await sut.send(.fetchData("data1")).value
     try? await Task.sleep(for: .milliseconds(30))
 
-    XCTAssertTrue(sut.state.isRecovering)
+    #expect(sut.state.isRecovering)
 
     // Recover
     await sut.send(.recoverFromError).value
 
     // THEN: System should recover
-    XCTAssertFalse(sut.state.isRecovering)
-    XCTAssertTrue(sut.state.errors.isEmpty)
+    #expect(!sut.state.isRecovering)
+    #expect(sut.state.errors.isEmpty)
   }
 
-  func test_errorDuringErrorHandling() async {
+  @Test func errorDuringErrorHandling() async {
     // GIVEN: Store where error handler itself doesn't crash
     struct SafeErrorFeature: StoreFeature, Sendable {
       typealias Action = NetworkAction
@@ -440,13 +441,13 @@ final class ErrorHandlingIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(30))
 
     // THEN: Error should be handled safely
-    XCTAssertNotNil(sut.state.errors["data1"])
-    XCTAssertNotNil(sut.state.lastError)
+    #expect(sut.state.errors["data1"] != nil)
+    #expect(sut.state.lastError != nil)
   }
 
   // MARK: - Recovery Workflow Tests
 
-  func test_fullErrorRecoveryWorkflow() async {
+  @Test func fullErrorRecoveryWorkflow() async {
     // GIVEN: Store with complete recovery workflow
     struct FullRecoveryFeature: StoreFeature, Sendable {
       typealias Action = NetworkAction
@@ -522,25 +523,25 @@ final class ErrorHandlingIntegrationTests: XCTestCase {
     // Initial failure
     await sut.send(.fetchData("data1")).value
     try? await Task.sleep(for: .milliseconds(30))
-    XCTAssertNotNil(sut.state.errors["data1"])
+    #expect(sut.state.errors["data1"] != nil)
 
     // First retry - fails
     await sut.send(.retryFetch("data1")).value
     try? await Task.sleep(for: .milliseconds(30))
-    XCTAssertEqual(sut.state.retryCount, 1)
+    #expect(sut.state.retryCount == 1)
 
     // Second retry - fails
     await sut.send(.retryFetch("data1")).value
     try? await Task.sleep(for: .milliseconds(30))
-    XCTAssertEqual(sut.state.retryCount, 2)
+    #expect(sut.state.retryCount == 2)
 
     // Third retry - succeeds
     await sut.send(.retryFetch("data1")).value
     try? await Task.sleep(for: .milliseconds(30))
-    XCTAssertEqual(sut.state.retryCount, 3)
+    #expect(sut.state.retryCount == 3)
 
     // THEN: Should eventually succeed
     // Error might still be present from last failure, but retry count is correct
-    XCTAssertEqual(sut.state.retryCount, 3)
+    #expect(sut.state.retryCount == 3)
   }
 }

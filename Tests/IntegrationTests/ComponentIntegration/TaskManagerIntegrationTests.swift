@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 
 @testable import ViewFeature
 
@@ -7,7 +8,7 @@ import XCTest
 /// Tests how TaskManager coordinates task execution with Store actions
 /// and handles concurrent task management.
 @MainActor
-final class TaskManagerIntegrationTests: XCTestCase {
+@Suite struct TaskManagerIntegrationTests {
   // MARK: - Test Fixtures
 
   enum DataAction: Sendable {
@@ -68,7 +69,7 @@ final class TaskManagerIntegrationTests: XCTestCase {
 
   // MARK: - Basic Task Management Tests
 
-  func test_storeCanCancelRunningTask() async {
+  @Test func storeCanCancelRunningTask() async {
     // GIVEN: Store with running task
     let sut = Store(
       initialState: DataState(),
@@ -83,11 +84,11 @@ final class TaskManagerIntegrationTests: XCTestCase {
     await fetchTask.value
 
     // THEN: Task should be cancelled and cleaned up
-    XCTAssertFalse(sut.isTaskRunning(id: "fetch-data1"))
-    XCTAssertFalse(sut.state.isLoading["data1"] ?? true)
+    #expect(!sut.isTaskRunning(id: "fetch-data1"))
+    #expect(!(sut.state.isLoading["data1"] ?? true))
   }
 
-  func test_multipleConcurrentTasks() async {
+  @Test func multipleConcurrentTasks() async {
     // GIVEN: Store
     let sut = Store(
       initialState: DataState(),
@@ -102,20 +103,20 @@ final class TaskManagerIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(10))
 
     // THEN: All tasks should be tracked and running
-    XCTAssertTrue(sut.state.isLoading["data1"] ?? false)
-    XCTAssertTrue(sut.state.isLoading["data2"] ?? false)
-    XCTAssertTrue(sut.state.isLoading["data3"] ?? false)
+    #expect(sut.state.isLoading["data1"] ?? false)
+    #expect(sut.state.isLoading["data2"] ?? false)
+    #expect(sut.state.isLoading["data3"] ?? false)
 
     // Wait for all to complete
     try? await Task.sleep(for: .milliseconds(100))
 
     // Tasks should complete
-    XCTAssertGreaterThanOrEqual(sut.runningTaskCount, 0)
+    #expect(sut.runningTaskCount >= 0)
   }
 
   // MARK: - Task Cancellation Tests
 
-  func test_cancelAllTasksViaStore() async {
+  @Test func cancelAllTasksViaStore() async {
     // GIVEN: Store with multiple running tasks
     let sut = Store(
       initialState: DataState(),
@@ -135,10 +136,10 @@ final class TaskManagerIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(50))
 
     // THEN: All tasks should be cancelled
-    XCTAssertEqual(sut.runningTaskCount, 0)
+    #expect(sut.runningTaskCount == 0)
   }
 
-  func test_cancelSpecificTaskAmongMany() async {
+  @Test func cancelSpecificTaskAmongMany() async {
     // GIVEN: Store with multiple running tasks
     let sut = Store(
       initialState: DataState(),
@@ -157,12 +158,12 @@ final class TaskManagerIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(20))
 
     // THEN: Only that task should be cancelled
-    XCTAssertFalse(sut.isTaskRunning(id: "fetch-data2"))
+    #expect(!sut.isTaskRunning(id: "fetch-data2"))
   }
 
   // MARK: - Task Completion Tests
 
-  func test_taskCompletionUpdatesRunningCount() async {
+  @Test func taskCompletionUpdatesRunningCount() async {
     // GIVEN: Store with short task
     struct ShortTaskFeature: StoreFeature, Sendable {
       typealias Action = DataAction
@@ -191,12 +192,12 @@ final class TaskManagerIntegrationTests: XCTestCase {
     await sut.send(.fetch("data1")).value
 
     // THEN: Running count should be back to 0
-    XCTAssertEqual(sut.runningTaskCount, 0)
+    #expect(sut.runningTaskCount == 0)
   }
 
   // MARK: - Task Error Handling Integration
 
-  func test_taskErrorsAreHandled() async {
+  @Test func taskErrorsAreHandled() async {
     // GIVEN: Store with error-throwing task
     struct ErrorFeature: StoreFeature, Sendable {
       typealias Action = DataAction
@@ -234,13 +235,13 @@ final class TaskManagerIntegrationTests: XCTestCase {
     await sut.send(.fetch("data1")).value
 
     // THEN: Error should be handled
-    XCTAssertNotNil(sut.state.errors["data1"])
-    XCTAssertFalse(sut.state.isLoading["data1"] ?? true)
+    #expect(sut.state.errors["data1"] != nil)
+    #expect(!(sut.state.isLoading["data1"] ?? true))
   }
 
   // MARK: - Complex Task Workflows
 
-  func test_sequentialTaskExecution() async {
+  @Test func sequentialTaskExecution() async {
     // GIVEN: Store
     actor TaskTracker {
       var completedTasks: [String] = []
@@ -288,10 +289,10 @@ final class TaskManagerIntegrationTests: XCTestCase {
 
     // THEN: Tasks should complete in order
     let completed = await tracker.getCompleted()
-    XCTAssertEqual(completed, ["task1", "task2", "task3"])
+    #expect(completed == ["task1", "task2", "task3"])
   }
 
-  func test_taskReuseAfterCompletion() async {
+  @Test func taskReuseAfterCompletion() async {
     // GIVEN: Store
     let sut = Store(
       initialState: DataState(),
@@ -300,19 +301,19 @@ final class TaskManagerIntegrationTests: XCTestCase {
 
     // WHEN: Run task, wait for completion, run again
     await sut.send(.fetch("data1")).value
-    XCTAssertEqual(sut.runningTaskCount, 0)
+    #expect(sut.runningTaskCount == 0)
 
     _ = sut.send(.fetch("data1"))
     try? await Task.sleep(for: .milliseconds(10))
 
     // THEN: Task should be running again
-    XCTAssertTrue(sut.state.isLoading["data1"] ?? false)
-    XCTAssertTrue(sut.isTaskRunning(id: "fetch-data1"))
+    #expect(sut.state.isLoading["data1"] ?? false)
+    #expect(sut.isTaskRunning(id: "fetch-data1"))
   }
 
   // MARK: - Task Manager State Consistency
 
-  func test_taskManagerStateRemainsConsistent() async {
+  @Test func taskManagerStateRemainsConsistent() async {
     // GIVEN: Store
     let sut = Store(
       initialState: DataState(),
@@ -330,13 +331,13 @@ final class TaskManagerIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(10))
 
     // THEN: Task manager state should be consistent
-    XCTAssertFalse(sut.isTaskRunning(id: "fetch-data1"))
+    #expect(!sut.isTaskRunning(id: "fetch-data1"))
     // data2 might still be running or completed
   }
 
   // MARK: - Integration with Synchronous Actions
 
-  func test_mixedSyncAndAsyncActions() async {
+  @Test func mixedSyncAndAsyncActions() async {
     // GIVEN: Store
     let sut = Store(
       initialState: DataState(),
@@ -345,17 +346,17 @@ final class TaskManagerIntegrationTests: XCTestCase {
 
     // WHEN: Mix synchronous and asynchronous actions
     await sut.send(.process("data1")).value
-    XCTAssertEqual(sut.state.data["data1"], "processed")
+    #expect(sut.state.data["data1"] == "processed")
 
     _ = sut.send(.fetch("data2"))
     try? await Task.sleep(for: .milliseconds(10))
 
     await sut.send(.process("data3")).value
-    XCTAssertEqual(sut.state.data["data3"], "processed")
+    #expect(sut.state.data["data3"] == "processed")
 
     // THEN: Both sync and async actions should work
-    XCTAssertEqual(sut.state.data["data1"], "processed")
-    XCTAssertEqual(sut.state.data["data3"], "processed")
-    XCTAssertTrue(sut.state.isLoading["data2"] ?? false)
+    #expect(sut.state.data["data1"] == "processed")
+    #expect(sut.state.data["data3"] == "processed")
+    #expect(sut.state.isLoading["data2"] ?? false)
   }
 }

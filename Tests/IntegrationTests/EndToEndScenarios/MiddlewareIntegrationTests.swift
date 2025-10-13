@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 
 @testable import ViewFeature
 
@@ -7,7 +8,7 @@ import XCTest
 /// Tests the complete integration between Store, Middleware, and ActionHandler
 /// to ensure middleware properly intercepts and logs actions.
 @MainActor
-final class MiddlewareIntegrationTests: XCTestCase {
+@Suite struct MiddlewareIntegrationTests {
   // MARK: - Test Fixtures
 
   enum ShoppingAction: Sendable {
@@ -82,7 +83,7 @@ final class MiddlewareIntegrationTests: XCTestCase {
 
   // MARK: - Middleware Integration Tests
 
-  func test_middlewareReceivesAllActions() async {
+  @Test func middlewareReceivesAllActions() async {
     // GIVEN: Store with test middleware
     let tracker = TestMiddleware.ActionTracker()
     let testMiddleware = TestMiddleware(tracker: tracker)
@@ -105,10 +106,10 @@ final class MiddlewareIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(20))
 
     // THEN: State should be updated correctly
-    XCTAssertEqual(store.state.items, ["Banana"])
+    #expect(store.state.items == ["Banana"])
   }
 
-  func test_middlewareWithAsyncActions() async {
+  @Test func middlewareWithAsyncActions() async {
     // GIVEN: Store with middleware
     let tracker = TestMiddleware.ActionTracker()
     let testMiddleware = TestMiddleware(tracker: tracker)
@@ -127,10 +128,10 @@ final class MiddlewareIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(100))
 
     // THEN: Middleware should process async actions
-    XCTAssertTrue(store.state.isCheckingOut)
+    #expect(store.state.isCheckingOut)
   }
 
-  func test_multipleMiddlewareExecution() async {
+  @Test func multipleMiddlewareExecution() async {
     // GIVEN: Store with multiple middleware
     let tracker1 = TestMiddleware.ActionTracker()
     let middleware1 = TestMiddleware(tracker: tracker1)
@@ -153,12 +154,12 @@ final class MiddlewareIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(20))
 
     // THEN: All middleware should execute
-    XCTAssertEqual(store.state.items.count, 2)
+    #expect(store.state.items.count == 2)
   }
 
   // MARK: - LoggingMiddleware Integration
 
-  func test_loggingMiddlewareIntegration() async {
+  @Test func loggingMiddlewareIntegration() async {
     // GIVEN: Store with LoggingMiddleware
     let loggingMiddleware = LoggingMiddleware()
 
@@ -178,13 +179,13 @@ final class MiddlewareIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(100))
 
     // THEN: Actions should be logged (no crashes)
-    XCTAssertEqual(store.state.items, ["Apple", "Banana"])
-    XCTAssertTrue(store.state.isCheckingOut)
+    #expect(store.state.items == ["Apple", "Banana"])
+    #expect(store.state.isCheckingOut)
   }
 
   // MARK: - Complex Workflow with Middleware
 
-  func test_fullShoppingWorkflowWithMiddleware() async {
+  @Test func fullShoppingWorkflowWithMiddleware() async {
     // GIVEN: Store with logging middleware
     let loggingMiddleware = LoggingMiddleware()
     let tracker = TestMiddleware.ActionTracker()
@@ -205,25 +206,25 @@ final class MiddlewareIntegrationTests: XCTestCase {
     await store.send(.addItem("Banana")).value
     await store.send(.addItem("Orange")).value
 
-    XCTAssertEqual(store.state.items.count, 3)
+    #expect(store.state.items.count == 3)
 
     // Remove one item
     await store.send(.removeItem("Banana")).value
-    XCTAssertEqual(store.state.items.count, 2)
+    #expect(store.state.items.count == 2)
 
     // Checkout
     await store.send(.checkout).value
-    XCTAssertTrue(store.state.isCheckingOut)
+    #expect(store.state.isCheckingOut)
 
     try? await Task.sleep(for: .milliseconds(100))
 
     // THEN: Final state should be correct
-    XCTAssertEqual(store.state.items, ["Apple", "Orange"])
+    #expect(store.state.items == ["Apple", "Orange"])
   }
 
   // MARK: - Middleware Order Tests
 
-  func test_middlewareExecutionOrder() async {
+  @Test func middlewareExecutionOrder() async {
     // GIVEN: Store with ordered middleware
     actor OrderTracker {
       var order: [String] = []
@@ -273,12 +274,12 @@ final class MiddlewareIntegrationTests: XCTestCase {
 
     // THEN: Execution order should be preserved
     // Note: Middleware is not automatically applied to Store, so we just verify state
-    XCTAssertEqual(store.state.items, ["Item"])
+    #expect(store.state.items == ["Item"])
   }
 
   // MARK: - Middleware State Access
 
-  func test_middlewareCanReadState() async {
+  @Test func middlewareCanReadState() async {
     // GIVEN: Middleware that reads state
     actor StateReader {
       var stateSnapshots: [ShoppingState] = []
@@ -320,6 +321,6 @@ final class MiddlewareIntegrationTests: XCTestCase {
     try? await Task.sleep(for: .milliseconds(20))
 
     // THEN: State should be updated
-    XCTAssertEqual(store.state.items.count, 2)
+    #expect(store.state.items.count == 2)
   }
 }

@@ -1,5 +1,6 @@
+import Foundation
 import Logging
-import XCTest
+import Testing
 
 @testable import ViewFeature
 
@@ -7,7 +8,7 @@ import XCTest
 ///
 /// Tests every public method, property, and code path in LoggingMiddleware.swift
 @MainActor
-final class LoggingMiddlewareTests: XCTestCase {
+@Suite struct LoggingMiddlewareTests {
   // MARK: - Test Fixtures
 
   enum TestAction {
@@ -23,23 +24,23 @@ final class LoggingMiddlewareTests: XCTestCase {
 
   // MARK: - init(category:logLevel:)
 
-  func test_init_withDefaults() {
+  @Test func init_withDefaults() {
     // GIVEN & WHEN: Create middleware with defaults
     let sut = LoggingMiddleware()
 
     // THEN: Should have correct ID
-    XCTAssertEqual(sut.id, "ViewFeature.Logging")
+    #expect(sut.id == "ViewFeature.Logging")
   }
 
-  func test_init_withCustomCategory() {
+  @Test func init_withCustomCategory() {
     // GIVEN & WHEN: Create middleware with custom category
     let sut = LoggingMiddleware(category: "CustomCategory")
 
     // THEN: Should have correct ID
-    XCTAssertEqual(sut.id, "ViewFeature.Logging")
+    #expect(sut.id == "ViewFeature.Logging")
   }
 
-  func test_init_withCustomLogLevel() {
+  @Test func init_withCustomLogLevel() {
     // GIVEN & WHEN: Create middleware with custom log level
     let sut = LoggingMiddleware(
       category: "Test",
@@ -47,22 +48,22 @@ final class LoggingMiddlewareTests: XCTestCase {
     )
 
     // THEN: Should have correct ID
-    XCTAssertEqual(sut.id, "ViewFeature.Logging")
+    #expect(sut.id == "ViewFeature.Logging")
   }
 
   // MARK: - id
 
-  func test_id_returnsCorrectValue() {
+  @Test func id_returnsCorrectValue() {
     // GIVEN: A logging middleware
     let sut = LoggingMiddleware()
 
     // WHEN & THEN: ID should match expected value
-    XCTAssertEqual(sut.id, "ViewFeature.Logging")
+    #expect(sut.id == "ViewFeature.Logging")
   }
 
   // MARK: - beforeAction(_:state:)
 
-  func test_beforeAction_logsWhenDebugLevelSufficient() async throws {
+  @Test func beforeAction_logsWhenDebugLevelSufficient() async throws {
     // GIVEN: Middleware with debug level
     let sut = LoggingMiddleware(
       category: "Test",
@@ -76,7 +77,7 @@ final class LoggingMiddlewareTests: XCTestCase {
     try await sut.beforeAction(action, state: state)
   }
 
-  func test_beforeAction_skipsWhenLogLevelInsufficient() async throws {
+  @Test func beforeAction_skipsWhenLogLevelInsufficient() async throws {
     // GIVEN: Middleware with error level (higher than debug)
     let sut = LoggingMiddleware(
       category: "Test",
@@ -90,7 +91,7 @@ final class LoggingMiddlewareTests: XCTestCase {
     try await sut.beforeAction(action, state: state)
   }
 
-  func test_beforeAction_handlesComplexAction() async throws {
+  @Test func beforeAction_handlesComplexAction() async throws {
     // GIVEN: Middleware with debug level
     let sut = LoggingMiddleware(
       category: "Test",
@@ -106,7 +107,7 @@ final class LoggingMiddlewareTests: XCTestCase {
 
   // MARK: - afterAction(_:state:result:duration:)
 
-  func test_afterAction_logsWithDurationWhenInfoLevelSufficient() async throws {
+  @Test func afterAction_logsWithDurationWhenInfoLevelSufficient() async throws {
     // GIVEN: Middleware with info level
     let sut = LoggingMiddleware(
       category: "Test",
@@ -122,7 +123,7 @@ final class LoggingMiddlewareTests: XCTestCase {
     try await sut.afterAction(action, state: state, result: result, duration: duration)
   }
 
-  func test_afterAction_skipsWhenLogLevelInsufficient() async throws {
+  @Test func afterAction_skipsWhenLogLevelInsufficient() async throws {
     // GIVEN: Middleware with error level (higher than info)
     let sut = LoggingMiddleware(
       category: "Test",
@@ -138,7 +139,7 @@ final class LoggingMiddlewareTests: XCTestCase {
     try await sut.afterAction(action, state: state, result: result, duration: duration)
   }
 
-  func test_afterAction_formatsDurationInMilliseconds() async throws {
+  @Test func afterAction_formatsDurationInMilliseconds() async throws {
     // GIVEN: Middleware with info level
     let sut = LoggingMiddleware(
       category: "Test",
@@ -155,7 +156,7 @@ final class LoggingMiddlewareTests: XCTestCase {
     try await sut.afterAction(action, state: state, result: result, duration: 1.234)
   }
 
-  func test_afterAction_handlesDebugLevel() async throws {
+  @Test func afterAction_handlesDebugLevel() async throws {
     // GIVEN: Middleware with debug level (lower than info)
     let sut = LoggingMiddleware(
       category: "Test",
@@ -173,7 +174,7 @@ final class LoggingMiddlewareTests: XCTestCase {
 
   // MARK: - onError(_:action:state:)
 
-  func test_onError_logsError() async throws {
+  @Test func onError_logsError() async throws {
     // GIVEN: Middleware with any log level
     let sut = LoggingMiddleware(
       category: "Test",
@@ -189,7 +190,7 @@ final class LoggingMiddlewareTests: XCTestCase {
     try await sut.onError(error, action: action, state: state)
   }
 
-  func test_onError_alwaysLogsRegardlessOfLevel() async throws {
+  @Test func onError_alwaysLogsRegardlessOfLevel() async throws {
     // GIVEN: Middleware with critical level (highest)
     let sut = LoggingMiddleware(
       category: "Test",
@@ -205,7 +206,7 @@ final class LoggingMiddlewareTests: XCTestCase {
     try await sut.onError(error, action: action, state: state)
   }
 
-  func test_onError_handlesErrorWithLocalizedDescription() async throws {
+  @Test func onError_handlesErrorWithLocalizedDescription() async throws {
     // GIVEN: Middleware
     let sut = LoggingMiddleware(
       category: "Test",
@@ -226,7 +227,7 @@ final class LoggingMiddlewareTests: XCTestCase {
 
   // MARK: - Integration Tests
 
-  func test_allMiddlewareMethods_withSameInstance() async throws {
+  @Test func allMiddlewareMethods_withSameInstance() async throws {
     // GIVEN: Single middleware instance
     let sut = LoggingMiddleware(
       category: "Integration",
@@ -245,10 +246,10 @@ final class LoggingMiddlewareTests: XCTestCase {
     try await sut.onError(error, action: action, state: state)
 
     // Should not crash
-    XCTAssertTrue(true)
+    #expect(true)
   }
 
-  func test_logLevelFiltering_worksCorrectly() async throws {
+  @Test func logLevelFiltering_worksCorrectly() async throws {
     // GIVEN: Middleware with trace level (lowest)
     let traceLevelMiddleware = LoggingMiddleware(
       category: "TraceTest",
