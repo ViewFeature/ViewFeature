@@ -26,7 +26,7 @@ Add ViewFeature to your `Package.swift`:
 
 ```swift
 dependencies: [
-  .package(url: "https://github.com/ViewFeature/ViewFeature.git", from: "0.1.0")
+    .package(url: "https://github.com/ViewFeature/ViewFeature.git", from: "0.1.0")
 ]
 ```
 
@@ -39,61 +39,61 @@ import ViewFeature
 
 // 1. Define your feature with nested State and Action
 struct CounterFeature: StoreFeature {
-  @Observable
-  final class State {
-  var count = 0
+    @Observable
+    final class State {
+    var count = 0
 
-  init(count: Int = 0) {
-  self.count = count
-  }
-  }
+    init(count: Int = 0) {
+    self.count = count
+    }
+    }
 
-  enum Action: Sendable {
-  case increment
-  case decrement
-  case asyncIncrement
-  }
+    enum Action: Sendable {
+    case increment
+    case decrement
+    case asyncIncrement
+    }
 
-  func handle() -> ActionHandler<Action, State> {
-  ActionHandler { action, state in
-  switch action {
-  case .increment:
-  state.count += 1
-  return .none
+    func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+    switch action {
+    case .increment:
+    state.count += 1
+    return .none
 
-  case .decrement:
-  state.count -= 1
-  return .none
+    case .decrement:
+    state.count -= 1
+    return .none
 
-  case .asyncIncrement:
-  return .run(id: "increment") {
-  try await Task.sleep(for: .seconds(1))
-  await store.send(.increment)
-  }
-  }
-  }
-  }
+    case .asyncIncrement:
+    return .run(id: "increment") {
+    try await Task.sleep(for: .seconds(1))
+    await store.send(.increment)
+    }
+    }
+    }
+    }
 }
 
 // 2. Use in SwiftUI
 struct CounterView: View {
-  @State private var store = Store(
-  initialState: CounterFeature.State(),
-  feature: CounterFeature()
-  )
+    @State private var store = Store(
+    initialState: CounterFeature.State(),
+    feature: CounterFeature()
+    )
 
-  var body: some View {
-  VStack {
-  Text("\(store.state.count)")
-  .font(.largeTitle)
+    var body: some View {
+    VStack {
+    Text("\(store.state.count)")
+    .font(.largeTitle)
 
-  HStack {
-  Button("−") { store.send(.decrement) }
-  Button("+") { store.send(.increment) }
-  Button("Async +") { store.send(.asyncIncrement) }
-  }
-  }
-  }
+    HStack {
+    Button("−") { store.send(.decrement) }
+    Button("+") { store.send(.increment) }
+    Button("Async +") { store.send(.asyncIncrement) }
+    }
+    }
+    }
 }
 ```
 
@@ -106,17 +106,17 @@ ViewFeature follows a unidirectional data flow architecture inspired by Redux an
 │    View     │──────────────▶│    Store     │
 │  (SwiftUI)  │               │              │
 └─────────────┘               └──────────────┘
-  ▲                             │
-  │                             ▼
-  │                      ┌──────────────┐
-  │        State         │ActionHandler │
-  └──────────────────────│   (Feature)  │
-  └──────────────┘
-  │
-  ┌──────▼──────┐
-  │ StoreTask   │
-  │(Side Effects)│
-  └─────────────┘
+    ▲                             │
+    │                             ▼
+    │                      ┌──────────────┐
+    │        State         │ActionHandler │
+    └──────────────────────│   (Feature)  │
+    └──────────────┘
+    │
+    ┌──────▼──────┐
+    │ StoreTask   │
+    │(Side Effects)│
+    └─────────────┘
 ```
 
 ### Core Components
@@ -152,43 +152,43 @@ Manages concurrent task execution:
 
 ```swift
 struct DataFeature: StoreFeature {
-  @Observable
-  final class State {
-  var isLoading = false
-  var data: [Item] = []
-  }
+    @Observable
+    final class State {
+    var isLoading = false
+    var data: [Item] = []
+    }
 
-  enum Action: Sendable {
-  case loadData
-  case cancelLoad
-  case dataLoaded([Item])
-  }
+    enum Action: Sendable {
+    case loadData
+    case cancelLoad
+    case dataLoaded([Item])
+    }
 
-  func handle() -> ActionHandler<Action, State> {
-  ActionHandler { action, state in
-  switch action {
-  case .loadData:
-  state.isLoading = true
-  return .run(id: "load-data") {
-  let data = try await apiClient.fetch()
-  await store.send(.dataLoaded(data))
-  }
-  .catch { error, state in
-  state.isLoading = false
-  state.errorMessage = error.localizedDescription
-  }
+    func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+    switch action {
+    case .loadData:
+    state.isLoading = true
+    return .run(id: "load-data") {
+    let data = try await apiClient.fetch()
+    await store.send(.dataLoaded(data))
+    }
+    .catch { error, state in
+    state.isLoading = false
+    state.errorMessage = error.localizedDescription
+    }
 
-  case .cancelLoad:
-  state.isLoading = false
-  return .cancel(id: "load-data")
+    case .cancelLoad:
+    state.isLoading = false
+    return .cancel(id: "load-data")
 
-  case .dataLoaded(let items):
-  state.data = items
-  state.isLoading = false
-  return .none
-  }
-  }
-  }
+    case .dataLoaded(let items):
+    state.data = items
+    state.isLoading = false
+    return .none
+    }
+    }
+    }
 }
 ```
 
@@ -196,32 +196,32 @@ struct DataFeature: StoreFeature {
 
 ```swift
 struct NetworkFeature: StoreFeature {
-  @Observable
-  final class State {
-  var isLoading = false
-  var errorMessage: String?
-  }
+    @Observable
+    final class State {
+    var isLoading = false
+    var errorMessage: String?
+    }
 
-  enum Action: Sendable {
-  case fetch
-  }
+    enum Action: Sendable {
+    case fetch
+    }
 
-  func handle() -> ActionHandler<Action, State> {
-  ActionHandler { action, state in
-  switch action {
-  case .fetch:
-  state.isLoading = true
-  state.errorMessage = nil
-  return .run(id: "fetch") {
-  try await networkCall()
-  }
-  .catch { error, state in
-  state.errorMessage = error.localizedDescription
-  state.isLoading = false
-  }
-  }
-  }
-  }
+    func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+    switch action {
+    case .fetch:
+    state.isLoading = true
+    state.errorMessage = nil
+    return .run(id: "fetch") {
+    try await networkCall()
+    }
+    .catch { error, state in
+    state.errorMessage = error.localizedDescription
+    state.isLoading = false
+    }
+    }
+    }
+    }
 }
 ```
 
@@ -233,25 +233,25 @@ ViewFeature supports middleware for cross-cutting concerns like logging, analyti
 
 ```swift
 struct MyFeature: StoreFeature {
-  @Observable
-  final class State {
-  var count = 0
-  }
+    @Observable
+    final class State {
+    var count = 0
+    }
 
-  enum Action: Sendable {
-  case increment
-  }
+    enum Action: Sendable {
+    case increment
+    }
 
-  func handle() -> ActionHandler<Action, State> {
-  ActionHandler { action, state in
-  switch action {
-  case .increment:
-  state.count += 1
-  return .none
-  }
-  }
-  .use(LoggingMiddleware(category: "MyFeature"))
-  }
+    func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+    switch action {
+    case .increment:
+    state.count += 1
+    return .none
+    }
+    }
+    .use(LoggingMiddleware(category: "MyFeature"))
+    }
 }
 ```
 
@@ -261,47 +261,47 @@ Create custom middleware by conforming to `ActionMiddleware`:
 
 ```swift
 struct AnalyticsMiddleware: ActionMiddleware {
-  func beforeAction<Action, State>(action: Action, state: State) async throws {
-  // Track action start
-  Analytics.track("action_started", properties: ["action": "\(action)"])
-  }
+    func beforeAction<Action, State>(action: Action, state: State) async throws {
+    // Track action start
+    Analytics.track("action_started", properties: ["action": "\(action)"])
+    }
 
-  func afterAction<Action, State>(
-  action: Action,
-  state: State,
-  result: ActionTask<Action, State>,
-  duration: TimeInterval
-  ) async throws {
-  // Track action completion
-  Analytics.track("action_completed", properties: [
-  "action": "\(action)",
-  "duration": duration
-  ])
-  }
+    func afterAction<Action, State>(
+    action: Action,
+    state: State,
+    result: ActionTask<Action, State>,
+    duration: TimeInterval
+    ) async throws {
+    // Track action completion
+    Analytics.track("action_completed", properties: [
+    "action": "\(action)",
+    "duration": duration
+    ])
+    }
 
-  func onError<Action, State>(
-  error: Error,
-  action: Action,
-  state: State
-  ) async {
-  // Track errors
-  Analytics.track("action_error", properties: [
-  "action": "\(action)",
-  "error": "\(error)"
-  ])
-  }
+    func onError<Action, State>(
+    error: Error,
+    action: Action,
+    state: State
+    ) async {
+    // Track errors
+    Analytics.track("action_error", properties: [
+    "action": "\(action)",
+    "error": "\(error)"
+    ])
+    }
 }
 
 struct MyFeature: StoreFeature {
-  // ...
+    // ...
 
-  func handle() -> ActionHandler<Action, State> {
-  ActionHandler { action, state in
-  // Action logic
-  }
-  .use(AnalyticsMiddleware())
-  .use(LoggingMiddleware(category: "MyFeature"))
-  }
+    func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+    // Action logic
+    }
+    .use(AnalyticsMiddleware())
+    .use(LoggingMiddleware(category: "MyFeature"))
+    }
 }
 ```
 
@@ -319,91 +319,91 @@ import XCTest
 @testable import ViewFeature
 
 struct CounterFeature: StoreFeature {
-  @Observable
-  final class State: Equatable {
-  var count = 0
+    @Observable
+    final class State: Equatable {
+    var count = 0
 
-  init(count: Int = 0) {
-  self.count = count
-  }
+    init(count: Int = 0) {
+    self.count = count
+    }
 
-  static func == (lhs: State, rhs: State) -> Bool {
-  lhs.count == rhs.count
-  }
-  }
+    static func == (lhs: State, rhs: State) -> Bool {
+    lhs.count == rhs.count
+    }
+    }
 
-  enum Action: Sendable {
-  case increment
-  }
+    enum Action: Sendable {
+    case increment
+    }
 
-  func handle() -> ActionHandler<Action, State> {
-  ActionHandler { action, state in
-  switch action {
-  case .increment:
-  state.count += 1
-  return .none
-  }
-  }
-  }
+    func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+    switch action {
+    case .increment:
+    state.count += 1
+    return .none
+    }
+    }
+    }
 }
 
 @MainActor
 final class CounterTests: XCTestCase {
-  func testIncrement() async {
-  let store = TestStore(
-  initialState: CounterFeature.State(count: 0),
-  feature: CounterFeature()
-  )
+    func testIncrement() async {
+    let store = TestStore(
+    initialState: CounterFeature.State(count: 0),
+    feature: CounterFeature()
+    )
 
-  // Full state comparison - validates entire state equality
-  await store.send(.increment) { state in
-  state.count = 1
-  }
-  }
+    // Full state comparison - validates entire state equality
+    await store.send(.increment) { state in
+    state.count = 1
+    }
+    }
 }
 ```
 
 #### Pattern 2: Custom Assertions (No Equatable Required)
 ```swift
 struct AppFeature: StoreFeature {
-  @Observable
-  final class State {  // No Equatable conformance!
-  var user: User?
-  var isLoading = false
-  var metadata: [String: Any] = [:]
-  }
+    @Observable
+    final class State {  // No Equatable conformance!
+    var user: User?
+    var isLoading = false
+    var metadata: [String: Any] = [:]
+    }
 
-  enum Action: Sendable {
-  case loadUser
-  }
+    enum Action: Sendable {
+    case loadUser
+    }
 
-  func handle() -> ActionHandler<Action, State> {
-  ActionHandler { action, state in
-  switch action {
-  case .loadUser:
-  state.isLoading = true
-  state.user = User(name: "Alice")
-  return .none
-  }
-  }
-  }
+    func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+    switch action {
+    case .loadUser:
+    state.isLoading = true
+    state.user = User(name: "Alice")
+    return .none
+    }
+    }
+    }
 }
 
 @MainActor
 final class FlexibleTests: XCTestCase {
-  func testComplexState() async {
-  let store = TestStore(
-  initialState: AppFeature.State(),  // Non-Equatable state OK!
-  feature: AppFeature()
-  )
+    func testComplexState() async {
+    let store = TestStore(
+    initialState: AppFeature.State(),  // Non-Equatable state OK!
+    feature: AppFeature()
+    )
 
-  // Custom assertions - test only what matters
-  await store.send(.loadUser, assert: { state in
-  XCTAssertEqual(state.user?.name, "Alice")
-  XCTAssertTrue(state.isLoading)
-  XCTAssertFalse(state.metadata.isEmpty)
-  })
-  }
+    // Custom assertions - test only what matters
+    await store.send(.loadUser, assert: { state in
+    XCTAssertEqual(state.user?.name, "Alice")
+    XCTAssertTrue(state.isLoading)
+    XCTAssertFalse(state.metadata.isEmpty)
+    })
+    }
 }
 ```
 
@@ -411,16 +411,16 @@ final class FlexibleTests: XCTestCase {
 ```swift
 @MainActor
 final class KeyPathTests: XCTestCase {
-  func testSingleProperty() async {
-  let store = TestStore(
-  initialState: CounterFeature.State(),
-  feature: CounterFeature()
-  )
+    func testSingleProperty() async {
+    let store = TestStore(
+    initialState: CounterFeature.State(),
+    feature: CounterFeature()
+    )
 
-  // KeyPath-based - test single property
-  await store.send(.increment, expecting: \.count, toBe: 1)
-  await store.send(.increment, expecting: \.count, toBe: 2)
-  }
+    // KeyPath-based - test single property
+    await store.send(.increment, expecting: \.count, toBe: 1)
+    await store.send(.increment, expecting: \.count, toBe: 2)
+    }
 }
 ```
 
@@ -429,39 +429,17 @@ final class KeyPathTests: XCTestCase {
 ```swift
 @MainActor
 final class IntegrationTests: XCTestCase {
-  func testRealStore() async {
-  let store = Store(
-  initialState: CounterFeature.State(),
-  feature: CounterFeature()
-  )
+    func testRealStore() async {
+    let store = Store(
+    initialState: CounterFeature.State(),
+    feature: CounterFeature()
+    )
 
-  await store.send(.increment).value
-  XCTAssertEqual(store.state.count, 1)
-  }
+    await store.send(.increment).value
+    XCTAssertEqual(store.state.count, 1)
+    }
 }
 ```
-
-## 📊 Project Stats
-
-- **267 Tests**: Comprehensive unit and integration tests
-- **100% Pass Rate**: All tests passing
-- **High Coverage**: Extensive code coverage across all components
-- **Performance**: 45,000+ actions/second throughput
-- **SOLID Principles**: Architecture following industry best practices
-
-### Test Breakdown
-
-- **Unit Tests**: 205 tests covering individual components
-  - Store, ActionHandler, ActionProcessor
-  - TaskManager, MiddlewareManager
-  - ActionTask, StoreTask
-  - TestStore utilities (3 assertion patterns)
-
-- **Integration Tests**: 62 tests validating system integration
-  - End-to-end workflows
-  - Component integration
-  - Error recovery scenarios
-  - Performance benchmarks
 
 ## 🎯 Design Principles
 
