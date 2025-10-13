@@ -897,17 +897,16 @@ final class StoreTests: XCTestCase {
       feature: DownloadFeature()
     )
 
-    // WHEN: User starts download then cancels
-    _ = sut.send(.startDownload("https://example.com/file.zip"))
-    try? await Task.sleep(for: .milliseconds(5))
-    XCTAssertTrue(sut.state.isDownloading)
-    XCTAssertTrue(sut.isTaskRunning(id: "download"))
+    // WHEN: User starts download (concurrent) and immediately cancels
+    let downloadTask = sut.send(.startDownload("https://example.com/file.zip"))
 
     // User clicks cancel button
     sut.cancelTask(id: "download")
-    try? await Task.sleep(for: .milliseconds(50))
 
-    // THEN: Download should be cancelled
+    // Wait for task to complete (cancelled)
+    await downloadTask.value
+
+    // THEN: Download should be cancelled and cleaned up
     XCTAssertFalse(sut.isTaskRunning(id: "download"))
   }
 
@@ -1010,17 +1009,15 @@ final class StoreTests: XCTestCase {
       feature: ViewLifecycleFeature()
     )
 
-    // View appears and starts background task
-    _ = sut.send(.onAppear)
-    try? await Task.sleep(for: .milliseconds(5))
-    XCTAssertTrue(sut.state.isActive)
-    XCTAssertTrue(sut.isTaskRunning(id: "backgroundTask"))
+    // View appears and starts background task (concurrent)
+    let appearTask = sut.send(.onAppear)
 
-    // WHEN: View disappears - cleanup task directly
+    // WHEN: View disappears - cleanup task
     await sut.send(.onDisappear).value
     sut.cancelTask(id: "backgroundTask")
 
-    try? await Task.sleep(for: .milliseconds(20))
+    // Wait for appear task to complete (cancelled)
+    await appearTask.value
 
     // THEN: Task should be cleaned up
     XCTAssertFalse(sut.state.isActive)

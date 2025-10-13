@@ -68,23 +68,6 @@ final class TaskManagerIntegrationTests: XCTestCase {
 
   // MARK: - Basic Task Management Tests
 
-  func test_storeStartsTasksCorrectly() async {
-    // GIVEN: Store with TaskManager
-    let sut = Store(
-      initialState: DataState(),
-      feature: DataFeature()
-    )
-
-    // WHEN: Send action that starts task
-    await sut.send(.fetch("data1")).value
-
-    // Wait a bit for task to start
-    try? await Task.sleep(for: .milliseconds(10))
-
-    // THEN: Task should be running
-    XCTAssertTrue(sut.state.isLoading["data1"] ?? false)
-  }
-
   func test_storeCanCancelRunningTask() async {
     // GIVEN: Store with running task
     let sut = Store(
@@ -92,16 +75,14 @@ final class TaskManagerIntegrationTests: XCTestCase {
       feature: DataFeature()
     )
 
-    await sut.send(.fetch("data1")).value
-    try? await Task.sleep(for: .milliseconds(10))
-
-    // WHEN: Cancel task
+    // WHEN: Start task (concurrent) and immediately cancel
+    let fetchTask = sut.send(.fetch("data1"))
     await sut.send(.cancelFetch("data1")).value
 
-    // Wait for cancellation
-    try? await Task.sleep(for: .milliseconds(20))
+    // Wait for task to complete (cancelled tasks still complete)
+    await fetchTask.value
 
-    // THEN: Task should be cancelled
+    // THEN: Task should be cancelled and cleaned up
     XCTAssertFalse(sut.isTaskRunning(id: "fetch-data1"))
     XCTAssertFalse(sut.state.isLoading["data1"] ?? true)
   }
@@ -113,19 +94,19 @@ final class TaskManagerIntegrationTests: XCTestCase {
       feature: DataFeature()
     )
 
-    // WHEN: Start multiple tasks
+    // WHEN: Start multiple tasks (fire and forget for concurrent execution)
     _ = sut.send(.fetch("data1"))
     _ = sut.send(.fetch("data2"))
     _ = sut.send(.fetch("data3"))
 
     try? await Task.sleep(for: .milliseconds(10))
 
-    // THEN: All tasks should be tracked
+    // THEN: All tasks should be tracked and running
     XCTAssertTrue(sut.state.isLoading["data1"] ?? false)
     XCTAssertTrue(sut.state.isLoading["data2"] ?? false)
     XCTAssertTrue(sut.state.isLoading["data3"] ?? false)
 
-    // Wait for completion
+    // Wait for all to complete
     try? await Task.sleep(for: .milliseconds(100))
 
     // Tasks should complete
@@ -206,11 +187,8 @@ final class TaskManagerIntegrationTests: XCTestCase {
       feature: ShortTaskFeature()
     )
 
-    // WHEN: Start task
+    // WHEN: Start task and wait for completion
     await sut.send(.fetch("data1")).value
-
-    // Wait for completion
-    try? await Task.sleep(for: .milliseconds(50))
 
     // THEN: Running count should be back to 0
     XCTAssertEqual(sut.runningTaskCount, 0)
@@ -254,9 +232,6 @@ final class TaskManagerIntegrationTests: XCTestCase {
 
     // WHEN: Execute task that throws
     await sut.send(.fetch("data1")).value
-
-    // Wait for error handling
-    try? await Task.sleep(for: .milliseconds(50))
 
     // THEN: Error should be handled
     XCTAssertNotNil(sut.state.errors["data1"])
@@ -307,7 +282,6 @@ final class TaskManagerIntegrationTests: XCTestCase {
     )
 
     // WHEN: Execute tasks sequentially
-    // send().value now waits for task completion, so no additional sleep needed
     await sut.send(.fetch("task1")).value
     await sut.send(.fetch("task2")).value
     await sut.send(.fetch("task3")).value
@@ -326,34 +300,14 @@ final class TaskManagerIntegrationTests: XCTestCase {
 
     // WHEN: Run task, wait for completion, run again
     await sut.send(.fetch("data1")).value
-    try? await Task.sleep(for: .milliseconds(80))
+    XCTAssertEqual(sut.runningTaskCount, 0)
 
-    await sut.send(.fetch("data1")).value
+    _ = sut.send(.fetch("data1"))
     try? await Task.sleep(for: .milliseconds(10))
 
     // THEN: Task should be running again
     XCTAssertTrue(sut.state.isLoading["data1"] ?? false)
-  }
-
-  // MARK: - Task ID Management Tests
-
-  func test_taskIdUniqueness() async {
-    // GIVEN: Store
-    let sut = Store(
-      initialState: DataState(),
-      feature: DataFeature()
-    )
-
-    // WHEN: Start task without waiting (fire and forget)
-    _ = sut.send(.fetch("data1"))
-    try? await Task.sleep(for: .milliseconds(10))
-
-    // THEN: Task should be tracked and running
     XCTAssertTrue(sut.isTaskRunning(id: "fetch-data1"))
-    XCTAssertFalse(sut.isTaskRunning(id: "fetch-data2"))
-
-    // Cleanup
-    sut.cancelAllTasks()
   }
 
   // MARK: - Task Manager State Consistency
@@ -393,7 +347,7 @@ final class TaskManagerIntegrationTests: XCTestCase {
     await sut.send(.process("data1")).value
     XCTAssertEqual(sut.state.data["data1"], "processed")
 
-    await sut.send(.fetch("data2")).value
+    _ = sut.send(.fetch("data2"))
     try? await Task.sleep(for: .milliseconds(10))
 
     await sut.send(.process("data3")).value

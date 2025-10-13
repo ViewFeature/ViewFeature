@@ -119,6 +119,38 @@ public final class TaskManager {
     return runningTasks[stringId] != nil
   }
 
+  /// Waits for a specific task to complete.
+  ///
+  /// This method allows you to wait for a background task to finish without using
+  /// time-based delays. If the task doesn't exist, this method returns immediately.
+  ///
+  /// - Parameter id: The unique identifier for the task to wait for
+  ///
+  /// ## Example
+  /// ```swift
+  /// // Start a background task
+  /// await store.send(.startDownload).value
+  ///
+  /// // Wait for the task to complete
+  /// await store.waitForTask(id: "download")
+  ///
+  /// // Now the task is guaranteed to be complete
+  /// XCTAssertFalse(store.isTaskRunning(id: "download"))
+  /// ```
+  ///
+  /// ## Testing Use Case
+  /// This is particularly useful in tests to ensure deterministic behavior:
+  /// ```swift
+  /// await store.send(.fetch("data")).value
+  /// await store.waitForTask(id: "fetch-data")
+  /// // No need for Task.sleep() - task is guaranteed complete
+  /// XCTAssertEqual(store.state.data, expectedData)
+  /// ```
+  public func waitForTask<ID: TaskID>(id: ID) async {
+    let stringId = String(describing: id)
+    await runningTasks[stringId]?.value
+  }
+
   /// Cancels a specific running task by its identifier.
   ///
   /// If the task is found, it will be cancelled and removed from tracking.
