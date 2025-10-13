@@ -1,4 +1,4 @@
-import XCTest
+import Testing
 
 @testable import ViewFeature
 
@@ -7,18 +7,21 @@ import XCTest
 /// Tests the PrintAssertionProvider implementation to ensure proper assertion handling
 /// in non-XCTest environments (like DemoApp).
 @MainActor
-final class AssertionProviderTests: XCTestCase {
+@Suite("AssertionProvider Tests")
+struct AssertionProviderTests {
   // MARK: - PrintAssertionProvider Tests
 
-  func test_printAssertionProvider_canBeInitialized() {
+  @Test("PrintAssertionProvider can be initialized")
+  func printAssertionProviderCanBeInitialized() {
     // GIVEN & WHEN: Create a PrintAssertionProvider
     let sut = PrintAssertionProvider()
 
     // THEN: Should be successfully initialized
-    XCTAssertNotNil(sut)
+    #expect(sut != nil)
   }
 
-  func test_assertEqual_withEqualValues_doesNotPrint() {
+  @Test("assertEqual with equal values does not print")
+  func assertEqualWithEqualValuesDoesNotPrint() {
     // GIVEN: A PrintAssertionProvider and equal values
     let sut = PrintAssertionProvider()
     let actual = 42
@@ -30,10 +33,10 @@ final class AssertionProviderTests: XCTestCase {
 
     // Note: In real usage, this would not print anything
     // We can't easily test console output in unit tests
-    XCTAssertTrue(true, "assertEqual completed without crashing")
   }
 
-  func test_assertEqual_withUnequalValues_printsFailure() {
+  @Test("assertEqual with unequal values prints failure")
+  func assertEqualWithUnequalValuesPrintsFailure() {
     // GIVEN: A PrintAssertionProvider and unequal values
     let sut = PrintAssertionProvider()
     let actual = 42
@@ -44,10 +47,10 @@ final class AssertionProviderTests: XCTestCase {
     sut.assertEqual(actual, expected, "Values should be equal", file: #file, line: #line)
 
     // Note: This would print an assertion failure in real usage
-    XCTAssertTrue(true, "assertEqual completed without crashing")
   }
 
-  func test_assertEqual_withStrings() {
+  @Test("assertEqual with strings")
+  func assertEqualWithStrings() {
     // GIVEN: A PrintAssertionProvider and string values
     let sut = PrintAssertionProvider()
 
@@ -56,11 +59,10 @@ final class AssertionProviderTests: XCTestCase {
 
     // WHEN & THEN: Test with unequal strings
     sut.assertEqual("hello", "world", "Strings should match", file: #file, line: #line)
-
-    XCTAssertTrue(true, "String comparisons completed")
   }
 
-  func test_assertEqual_withComplexTypes() {
+  @Test("assertEqual with complex types")
+  func assertEqualWithComplexTypes() {
     // GIVEN: A PrintAssertionProvider and custom structs
     struct TestStruct: Equatable {
       let id: Int
@@ -77,11 +79,10 @@ final class AssertionProviderTests: XCTestCase {
 
     // WHEN & THEN: Test with unequal structs
     sut.assertEqual(value1, value3, "Structs should be equal", file: #file, line: #line)
-
-    XCTAssertTrue(true, "Complex type comparisons completed")
   }
 
-  func test_assertEqual_withOptionals() {
+  @Test("assertEqual with optionals")
+  func assertEqualWithOptionals() {
     // GIVEN: A PrintAssertionProvider and optional values
     let sut = PrintAssertionProvider()
 
@@ -95,11 +96,10 @@ final class AssertionProviderTests: XCTestCase {
     sut.assertEqual(
       Optional<Int>.none, Optional<Int>.none, "Nils should match", file: #file, line: #line)
     sut.assertEqual(Optional(42), Optional<Int>.none, "Should not match", file: #file, line: #line)
-
-    XCTAssertTrue(true, "Optional comparisons completed")
   }
 
-  func test_assertEqual_withArrays() {
+  @Test("assertEqual with arrays")
+  func assertEqualWithArrays() {
     // GIVEN: A PrintAssertionProvider and arrays
     let sut = PrintAssertionProvider()
 
@@ -111,11 +111,10 @@ final class AssertionProviderTests: XCTestCase {
 
     // WHEN & THEN: Test with empty arrays
     sut.assertEqual([Int](), [Int](), "Empty arrays should match", file: #file, line: #line)
-
-    XCTAssertTrue(true, "Array comparisons completed")
   }
 
-  func test_assertEqual_withDictionaries() {
+  @Test("assertEqual with dictionaries")
+  func assertEqualWithDictionaries() {
     // GIVEN: A PrintAssertionProvider and dictionaries
     let sut = PrintAssertionProvider()
 
@@ -126,13 +125,12 @@ final class AssertionProviderTests: XCTestCase {
     // WHEN & THEN: Test with unequal dictionaries
     sut.assertEqual(
       ["key": "value"], ["key": "other"], "Dicts should match", file: #file, line: #line)
-
-    XCTAssertTrue(true, "Dictionary comparisons completed")
   }
 
   // MARK: - fail(_:file:line:)
 
-  func test_fail_printsFailureMessage() {
+  @Test("fail prints failure message")
+  func failPrintsFailureMessage() {
     // GIVEN: A PrintAssertionProvider
     let sut = PrintAssertionProvider()
 
@@ -142,21 +140,20 @@ final class AssertionProviderTests: XCTestCase {
     sut.fail(message, file: #file, line: #line)
 
     // Note: This would print a failure message in real usage
-    XCTAssertTrue(true, "fail() completed without crashing")
   }
 
-  func test_fail_withEmptyMessage() {
+  @Test("fail with empty message")
+  func failWithEmptyMessage() {
     // GIVEN: A PrintAssertionProvider
     let sut = PrintAssertionProvider()
 
     // WHEN: Call fail with empty message
     // THEN: Should not crash
     sut.fail("", file: #file, line: #line)
-
-    XCTAssertTrue(true, "fail() with empty message completed")
   }
 
-  func test_fail_withLongMessage() {
+  @Test("fail with long message")
+  func failWithLongMessage() {
     // GIVEN: A PrintAssertionProvider
     let sut = PrintAssertionProvider()
 
@@ -164,11 +161,10 @@ final class AssertionProviderTests: XCTestCase {
     let longMessage = String(repeating: "This is a very long failure message. ", count: 100)
     // THEN: Should not crash
     sut.fail(longMessage, file: #file, line: #line)
-
-    XCTAssertTrue(true, "fail() with long message completed")
   }
 
-  func test_fail_withSpecialCharacters() {
+  @Test("fail with special characters")
+  func failWithSpecialCharacters() {
     // GIVEN: A PrintAssertionProvider
     let sut = PrintAssertionProvider()
 
@@ -176,11 +172,10 @@ final class AssertionProviderTests: XCTestCase {
     let message = "失敗: エラーが発生しました 🚨💥 \n\t Special chars: @#$%^&*()"
     // THEN: Should not crash
     sut.fail(message, file: #file, line: #line)
-
-    XCTAssertTrue(true, "fail() with special characters completed")
   }
 
-  func test_fail_withMultilineMessage() {
+  @Test("fail with multiline message")
+  func failWithMultilineMessage() {
     // GIVEN: A PrintAssertionProvider
     let sut = PrintAssertionProvider()
 
@@ -193,13 +188,12 @@ final class AssertionProviderTests: XCTestCase {
       """
     // THEN: Should not crash
     sut.fail(message, file: #file, line: #line)
-
-    XCTAssertTrue(true, "fail() with multiline message completed")
   }
 
   // MARK: - Integration Tests
 
-  func test_printAssertionProvider_multipleOperations() {
+  @Test("PrintAssertionProvider multiple operations")
+  func printAssertionProviderMultipleOperations() {
     // GIVEN: A PrintAssertionProvider
     let sut = PrintAssertionProvider()
 
@@ -210,10 +204,10 @@ final class AssertionProviderTests: XCTestCase {
     sut.assertEqual("test", "test", "Third assertion", file: #file, line: #line)
 
     // All operations should complete without crashing
-    XCTAssertTrue(true, "Multiple operations completed")
   }
 
-  func test_printAssertionProvider_canBeUsedAcrossMultipleTests() {
+  @Test("PrintAssertionProvider can be used across multiple tests")
+  func printAssertionProviderCanBeUsedAcrossMultipleTests() {
     // GIVEN: A PrintAssertionProvider used multiple times
     let sut = PrintAssertionProvider()
 
@@ -223,20 +217,21 @@ final class AssertionProviderTests: XCTestCase {
     }
 
     // THEN: Should handle repeated use without issues
-    XCTAssertTrue(true, "Multiple uses completed")
   }
 
   // MARK: - XCTestAssertionProvider Tests
 
-  func test_xcTestAssertionProvider_canBeInitialized() {
+  @Test("XCTestAssertionProvider can be initialized")
+  func xcTestAssertionProviderCanBeInitialized() {
     // GIVEN & WHEN: Create an XCTestAssertionProvider
     let sut = XCTestAssertionProvider()
 
     // THEN: Should be successfully initialized
-    XCTAssertNotNil(sut)
+    #expect(sut != nil)
   }
 
-  func test_xcTestAssertionProvider_assertEqual_withEqualValues() {
+  @Test("XCTestAssertionProvider assertEqual with equal values")
+  func xcTestAssertionProviderAssertEqualWithEqualValues() {
     // GIVEN: An XCTestAssertionProvider and equal values
     let sut = XCTestAssertionProvider()
 
@@ -245,7 +240,8 @@ final class AssertionProviderTests: XCTestCase {
     sut.assertEqual("test", "test", "Strings should match", file: #file, line: #line)
   }
 
-  func test_xcTestAssertionProvider_assertEqual_withComplexTypes() {
+  @Test("XCTestAssertionProvider assertEqual with complex types")
+  func xcTestAssertionProviderAssertEqualWithComplexTypes() {
     // GIVEN: An XCTestAssertionProvider
     struct TestData: Equatable {
       let id: Int
@@ -262,7 +258,8 @@ final class AssertionProviderTests: XCTestCase {
 
   // MARK: - Protocol Conformance Tests
 
-  func test_assertionProvider_protocolConformance() {
+  @Test("AssertionProvider protocol conformance")
+  func assertionProviderProtocolConformance() {
     // GIVEN: Both assertion provider implementations
     let printProvider: any AssertionProvider = PrintAssertionProvider()
     let xcTestProvider: any AssertionProvider = XCTestAssertionProvider()
@@ -272,7 +269,5 @@ final class AssertionProviderTests: XCTestCase {
 
     printProvider.assertEqual(1, 1, "Print provider", file: #file, line: #line)
     xcTestProvider.assertEqual(2, 2, "XCTest provider", file: #file, line: #line)
-
-    XCTAssertTrue(true, "Both providers work through protocol")
   }
 }
