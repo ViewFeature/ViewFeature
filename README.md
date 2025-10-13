@@ -307,7 +307,7 @@ struct MyFeature: StoreFeature {
 
 ## 🧪 Testing
 
-ViewFeature provides comprehensive testing utilities with flexible assertion patterns:
+ViewFeature provides comprehensive testing utilities using Swift Testing framework with flexible assertion patterns:
 
 ### TestStore - Three Testing Patterns
 
@@ -315,7 +315,7 @@ TestStore supports both Equatable and non-Equatable states with three assertion 
 
 #### Pattern 1: Full State Comparison (Equatable Required)
 ```swift
-import XCTest
+import Testing
 @testable import ViewFeature
 
 struct CounterFeature: StoreFeature {
@@ -327,39 +327,39 @@ struct CounterFeature: StoreFeature {
       self.count = count
     }
 
-  static func == (lhs: State, rhs: State) -> Bool {
-    lhs.count == rhs.count
+    static func == (lhs: State, rhs: State) -> Bool {
+      lhs.count == rhs.count
+    }
+  }
+
+  enum Action: Sendable {
+    case increment
+  }
+
+  func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+      switch action {
+      case .increment:
+        state.count += 1
+        return .none
+      }
+    }
   }
 }
 
-enum Action: Sendable {
-  case increment
-}
-
-func handle() -> ActionHandler<Action, State> {
-  ActionHandler { action, state in
-    switch action {
-      case .increment:
-      state.count += 1
-      return .none
-    }
-}
-}
-}
-
 @MainActor
-final class CounterTests: XCTestCase {
-  func testIncrement() async {
+@Suite struct CounterTests {
+  @Test func increment() async {
     let store = TestStore(
-    initialState: CounterFeature.State(count: 0),
-    feature: CounterFeature()
+      initialState: CounterFeature.State(count: 0),
+      feature: CounterFeature()
     )
 
-// Full state comparison - validates entire state equality
+    // Full state comparison - validates entire state equality
     await store.send(.increment) { state in
       state.count = 1
     }
-}
+  }
 }
 ```
 
@@ -373,51 +373,51 @@ struct AppFeature: StoreFeature {
     var metadata: [String: Any] = [:]
   }
 
-enum Action: Sendable {
-  case loadUser
-}
+  enum Action: Sendable {
+    case loadUser
+  }
 
-func handle() -> ActionHandler<Action, State> {
-  ActionHandler { action, state in
-    switch action {
+  func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+      switch action {
       case .loadUser:
-      state.isLoading = true
-      state.user = User(name: "Alice")
-      return .none
+        state.isLoading = true
+        state.user = User(name: "Alice")
+        return .none
+      }
     }
-}
-}
+  }
 }
 
 @MainActor
-final class FlexibleTests: XCTestCase {
-  func testComplexState() async {
+@Suite struct FlexibleTests {
+  @Test func complexState() async {
     let store = TestStore(
-    initialState: AppFeature.State(),  // Non-Equatable state OK!
-    feature: AppFeature()
+      initialState: AppFeature.State(),  // Non-Equatable state OK!
+      feature: AppFeature()
     )
 
-// Custom assertions - test only what matters
+    // Custom assertions - test only what matters
     await store.send(.loadUser, assert: { state in
-      XCTAssertEqual(state.user?.name, "Alice")
-      XCTAssertTrue(state.isLoading)
-      XCTAssertFalse(state.metadata.isEmpty)
+      #expect(state.user?.name == "Alice")
+      #expect(state.isLoading)
+      #expect(!state.metadata.isEmpty)
     })
-}
+  }
 }
 ```
 
 #### Pattern 3: KeyPath Assertions (Most Concise)
 ```swift
 @MainActor
-final class KeyPathTests: XCTestCase {
-  func testSingleProperty() async {
+@Suite struct KeyPathTests {
+  @Test func singleProperty() async {
     let store = TestStore(
-    initialState: CounterFeature.State(),
-    feature: CounterFeature()
+      initialState: CounterFeature.State(),
+      feature: CounterFeature()
     )
 
-// KeyPath-based - test single property
+    // KeyPath-based - test single property
     await store.send(.increment, expecting: \.count, toBe: 1)
     await store.send(.increment, expecting: \.count, toBe: 2)
   }
@@ -428,15 +428,32 @@ final class KeyPathTests: XCTestCase {
 
 ```swift
 @MainActor
-final class IntegrationTests: XCTestCase {
-  func testRealStore() async {
+@Suite struct IntegrationTests {
+  @Test func realStore() async {
     let store = Store(
-    initialState: CounterFeature.State(),
-    feature: CounterFeature()
+      initialState: CounterFeature.State(),
+      feature: CounterFeature()
     )
 
+    // Wait for action to complete
     await store.send(.increment).value
-    XCTAssertEqual(store.state.count, 1)
+
+    // Verify state
+    #expect(store.state.count == 1)
+  }
+
+  @Test func asyncTaskCompletion() async {
+    let store = Store(
+      initialState: DataFeature.State(),
+      feature: DataFeature()
+    )
+
+    // Store.send() waits for background tasks to complete
+    await store.send(.loadData).value
+
+    // Task is guaranteed to be complete - no Task.sleep needed!
+    #expect(!store.state.isLoading)
+    #expect(store.runningTaskCount == 0)
   }
 }
 ```
