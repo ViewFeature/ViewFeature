@@ -158,7 +158,7 @@ jobs:
             iOS)
               xcodebuild build \
                 -scheme ViewFeature \
-                -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
+                -destination 'platform=iOS Simulator,name=iPhone 16 Pro' \
                 -skipPackagePluginValidation
               ;;
             macOS)
@@ -170,7 +170,7 @@ jobs:
             watchOS)
               xcodebuild build \
                 -scheme ViewFeature \
-                -destination 'platform=watchOS Simulator,name=Apple Watch Series 9 (45mm)' \
+                -destination 'platform=watchOS Simulator,name=Apple Watch Series 10 (46mm)' \
                 -skipPackagePluginValidation
               ;;
             tvOS)
