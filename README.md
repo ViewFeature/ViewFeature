@@ -26,7 +26,7 @@ Add ViewFeature to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/ViewFeature/ViewFeature.git", from: "0.1.0")
+.package(url: "https://github.com/ViewFeature/ViewFeature.git", from: "0.1.0")
 ]
 ```
 
@@ -41,11 +41,11 @@ import ViewFeature
 struct CounterFeature: StoreFeature {
   @Observable
   final class State {
-  var count = 0
+    var count = 0
 
-  init(count: Int = 0) {
-  self.count = count
-  }
+    init(count: Int = 0) {
+      self.count = count
+    }
 }
 
 enum Action: Sendable {
@@ -54,44 +54,44 @@ enum Action: Sendable {
   case asyncIncrement
 }
 
-  func handle() -> ActionHandler<Action, State> {
-    ActionHandler { action, state in
-      switch action {
-    case .increment:
-    state.count += 1
+func handle() -> ActionHandler<Action, State> {
+  ActionHandler { action, state in
+    switch action {
+      case .increment:
+      state.count += 1
       return .none
 
-    case .decrement:
-    state.count -= 1
+      case .decrement:
+      state.count -= 1
       return .none
 
-    case .asyncIncrement:
+      case .asyncIncrement:
       return .run(id: "increment") {
-    try await Task.sleep(for: .seconds(1))
-    await store.send(.increment)
-    }
+        try await Task.sleep(for: .seconds(1))
+        await store.send(.increment)
+      }
   }
-  }
+}
 }
 }
 
 // 2. Use in SwiftUI
 struct CounterView: View {
-@State private var store = Store(
+  @State private var store = Store(
   initialState: CounterFeature.State(),
   feature: CounterFeature()
-)
+  )
 
   var body: some View {
     VStack {
-  Text("\(store.state.count)")
+      Text("\(store.state.count)")
       .font(.largeTitle)
 
       HStack {
-    Button("−") { store.send(.decrement) }
-    Button("+") { store.send(.increment) }
-    Button("Async +") { store.send(.asyncIncrement) }
-  }
+        Button("−") { store.send(.decrement) }
+        Button("+") { store.send(.increment) }
+        Button("Async +") { store.send(.asyncIncrement) }
+      }
   }
 }
 }
@@ -106,17 +106,17 @@ ViewFeature follows a unidirectional data flow architecture inspired by Redux an
 │    View     │──────────────▶│    Store     │
 │  (SwiftUI)  │               │              │
 └─────────────┘               └──────────────┘
-    ▲                             │
-    │                             ▼
-    │                      ┌──────────────┐
-    │        State         │ActionHandler │
-    └──────────────────────│   (Feature)  │
-    └──────────────┘
-    │
-    ┌──────▼──────┐
-    │ StoreTask   │
-    │(Side Effects)│
-    └─────────────┘
+▲                             │
+│                             ▼
+│                      ┌──────────────┐
+│        State         │ActionHandler │
+└──────────────────────│   (Feature)  │
+└──────────────┘
+│
+┌──────▼──────┐
+│ StoreTask   │
+│(Side Effects)│
+└─────────────┘
 ```
 
 ### Core Components
@@ -154,41 +154,41 @@ Manages concurrent task execution:
 struct DataFeature: StoreFeature {
   @Observable
   final class State {
-  var isLoading = false
-  var data: [Item] = []
+    var isLoading = false
+    var data: [Item] = []
   }
 
 enum Action: Sendable {
   case loadData
   case cancelLoad
   case dataLoaded([Item])
-  }
+}
 
-  func handle() -> ActionHandler<Action, State> {
-    ActionHandler { action, state in
+func handle() -> ActionHandler<Action, State> {
+  ActionHandler { action, state in
     switch action {
-  case .loadData:
-  state.isLoading = true
-    return .run(id: "load-data") {
-  let data = try await apiClient.fetch()
-  await store.send(.dataLoaded(data))
-  }
+      case .loadData:
+      state.isLoading = true
+      return .run(id: "load-data") {
+        let data = try await apiClient.fetch()
+        await store.send(.dataLoaded(data))
+      }
     .catch { error, state in
-  state.isLoading = false
-  state.errorMessage = error.localizedDescription
-  }
+      state.isLoading = false
+      state.errorMessage = error.localizedDescription
+    }
 
   case .cancelLoad:
   state.isLoading = false
-    return .cancel(id: "load-data")
+  return .cancel(id: "load-data")
 
   case .dataLoaded(let items):
   state.data = items
   state.isLoading = false
-    return .none
-  }
-  }
-  }
+  return .none
+}
+}
+}
 }
 ```
 
@@ -198,30 +198,30 @@ enum Action: Sendable {
 struct NetworkFeature: StoreFeature {
   @Observable
   final class State {
-  var isLoading = false
-  var errorMessage: String?
+    var isLoading = false
+    var errorMessage: String?
   }
 
 enum Action: Sendable {
   case fetch
-  }
+}
 
-  func handle() -> ActionHandler<Action, State> {
-    ActionHandler { action, state in
+func handle() -> ActionHandler<Action, State> {
+  ActionHandler { action, state in
     switch action {
-  case .fetch:
-  state.isLoading = true
-  state.errorMessage = nil
-    return .run(id: "fetch") {
-  try await networkCall()
-  }
+      case .fetch:
+      state.isLoading = true
+      state.errorMessage = nil
+      return .run(id: "fetch") {
+        try await networkCall()
+      }
     .catch { error, state in
-  state.errorMessage = error.localizedDescription
-  state.isLoading = false
-  }
-  }
-  }
-  }
+      state.errorMessage = error.localizedDescription
+      state.isLoading = false
+    }
+}
+}
+}
 }
 ```
 
@@ -235,23 +235,23 @@ ViewFeature supports middleware for cross-cutting concerns like logging, analyti
 struct MyFeature: StoreFeature {
   @Observable
   final class State {
-  var count = 0
+    var count = 0
   }
 
 enum Action: Sendable {
   case increment
-  }
+}
 
-  func handle() -> ActionHandler<Action, State> {
-    ActionHandler { action, state in
+func handle() -> ActionHandler<Action, State> {
+  ActionHandler { action, state in
     switch action {
-  case .increment:
-  state.count += 1
-    return .none
-  }
-  }
-    .use(LoggingMiddleware(category: "MyFeature"))
-  }
+      case .increment:
+      state.count += 1
+      return .none
+    }
+}
+.use(LoggingMiddleware(category: "MyFeature"))
+}
 }
 ```
 
@@ -263,33 +263,33 @@ Create custom middleware by conforming to `ActionMiddleware`:
 struct AnalyticsMiddleware: ActionMiddleware {
   func beforeAction<Action, State>(action: Action, state: State) async throws {
 // Track action start
-  Analytics.track("action_started", properties: ["action": "\(action)"])
+    Analytics.track("action_started", properties: ["action": "\(action)"])
   }
 
-  func afterAction<Action, State>(
-  action: Action,
-  state: State,
-  result: ActionTask<Action, State>,
-  duration: TimeInterval
-  ) async throws {
+func afterAction<Action, State>(
+action: Action,
+state: State,
+result: ActionTask<Action, State>,
+duration: TimeInterval
+) async throws {
 // Track action completion
   Analytics.track("action_completed", properties: [
   "action": "\(action)",
   "duration": duration
   ])
-  }
+}
 
-  func onError<Action, State>(
-  error: Error,
-  action: Action,
-  state: State
-  ) async {
+func onError<Action, State>(
+error: Error,
+action: Action,
+state: State
+) async {
 // Track errors
   Analytics.track("action_error", properties: [
   "action": "\(action)",
   "error": "\(error)"
   ])
-  }
+}
 }
 
 struct MyFeature: StoreFeature {
@@ -298,10 +298,10 @@ struct MyFeature: StoreFeature {
   func handle() -> ActionHandler<Action, State> {
     ActionHandler { action, state in
 // Action logic
-  }
-    .use(AnalyticsMiddleware())
-    .use(LoggingMiddleware(category: "MyFeature"))
-  }
+    }
+  .use(AnalyticsMiddleware())
+  .use(LoggingMiddleware(category: "MyFeature"))
+}
 }
 ```
 
@@ -321,45 +321,45 @@ import XCTest
 struct CounterFeature: StoreFeature {
   @Observable
   final class State: Equatable {
-  var count = 0
+    var count = 0
 
-  init(count: Int = 0) {
-  self.count = count
-  }
+    init(count: Int = 0) {
+      self.count = count
+    }
 
   static func == (lhs: State, rhs: State) -> Bool {
-  lhs.count == rhs.count
-  }
-  }
-
-enum Action: Sendable {
-  case increment
-  }
-
-  func handle() -> ActionHandler<Action, State> {
-    ActionHandler { action, state in
-    switch action {
-  case .increment:
-  state.count += 1
-    return .none
-  }
-  }
+    lhs.count == rhs.count
   }
 }
 
-  @MainActor
-  final class CounterTests: XCTestCase {
+enum Action: Sendable {
+  case increment
+}
+
+func handle() -> ActionHandler<Action, State> {
+  ActionHandler { action, state in
+    switch action {
+      case .increment:
+      state.count += 1
+      return .none
+    }
+}
+}
+}
+
+@MainActor
+final class CounterTests: XCTestCase {
   func testIncrement() async {
-  let store = TestStore(
-  initialState: CounterFeature.State(count: 0),
-  feature: CounterFeature()
-  )
+    let store = TestStore(
+    initialState: CounterFeature.State(count: 0),
+    feature: CounterFeature()
+    )
 
 // Full state comparison - validates entire state equality
-  await store.send(.increment) { state in
-  state.count = 1
-  }
-  }
+    await store.send(.increment) { state in
+      state.count = 1
+    }
+}
 }
 ```
 
@@ -368,58 +368,58 @@ enum Action: Sendable {
 struct AppFeature: StoreFeature {
   @Observable
   final class State {  // No Equatable conformance!
-  var user: User?
-  var isLoading = false
-  var metadata: [String: Any] = [:]
+    var user: User?
+    var isLoading = false
+    var metadata: [String: Any] = [:]
   }
 
 enum Action: Sendable {
   case loadUser
-  }
-
-  func handle() -> ActionHandler<Action, State> {
-    ActionHandler { action, state in
-    switch action {
-  case .loadUser:
-  state.isLoading = true
-  state.user = User(name: "Alice")
-    return .none
-  }
-  }
-  }
 }
 
-  @MainActor
-  final class FlexibleTests: XCTestCase {
+func handle() -> ActionHandler<Action, State> {
+  ActionHandler { action, state in
+    switch action {
+      case .loadUser:
+      state.isLoading = true
+      state.user = User(name: "Alice")
+      return .none
+    }
+}
+}
+}
+
+@MainActor
+final class FlexibleTests: XCTestCase {
   func testComplexState() async {
-  let store = TestStore(
-  initialState: AppFeature.State(),  // Non-Equatable state OK!
-  feature: AppFeature()
-  )
+    let store = TestStore(
+    initialState: AppFeature.State(),  // Non-Equatable state OK!
+    feature: AppFeature()
+    )
 
 // Custom assertions - test only what matters
-  await store.send(.loadUser, assert: { state in
-  XCTAssertEqual(state.user?.name, "Alice")
-  XCTAssertTrue(state.isLoading)
-  XCTAssertFalse(state.metadata.isEmpty)
-  })
-  }
+    await store.send(.loadUser, assert: { state in
+      XCTAssertEqual(state.user?.name, "Alice")
+      XCTAssertTrue(state.isLoading)
+      XCTAssertFalse(state.metadata.isEmpty)
+    })
+}
 }
 ```
 
 #### Pattern 3: KeyPath Assertions (Most Concise)
 ```swift
-  @MainActor
-  final class KeyPathTests: XCTestCase {
+@MainActor
+final class KeyPathTests: XCTestCase {
   func testSingleProperty() async {
-  let store = TestStore(
-  initialState: CounterFeature.State(),
-  feature: CounterFeature()
-  )
+    let store = TestStore(
+    initialState: CounterFeature.State(),
+    feature: CounterFeature()
+    )
 
 // KeyPath-based - test single property
-  await store.send(.increment, expecting: \.count, toBe: 1)
-  await store.send(.increment, expecting: \.count, toBe: 2)
+    await store.send(.increment, expecting: \.count, toBe: 1)
+    await store.send(.increment, expecting: \.count, toBe: 2)
   }
 }
 ```
@@ -427,16 +427,16 @@ enum Action: Sendable {
 ### Testing with Store (Production Environment)
 
 ```swift
-  @MainActor
-  final class IntegrationTests: XCTestCase {
+@MainActor
+final class IntegrationTests: XCTestCase {
   func testRealStore() async {
-  let store = Store(
-  initialState: CounterFeature.State(),
-  feature: CounterFeature()
-  )
+    let store = Store(
+    initialState: CounterFeature.State(),
+    feature: CounterFeature()
+    )
 
-  await store.send(.increment).value
-  XCTAssertEqual(store.state.count, 1)
+    await store.send(.increment).value
+    XCTAssertEqual(store.state.count, 1)
   }
 }
 ```
