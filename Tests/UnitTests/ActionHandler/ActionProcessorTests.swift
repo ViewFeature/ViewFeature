@@ -38,7 +38,7 @@ import Testing
 
         #expect(state.count == 1)
         if case .none = task.storeTask {
-            #expect(true)
+            #expect(Bool(true))
         } else {
             Issue.record("Expected noTask")
         }
@@ -91,7 +91,7 @@ import Testing
         #expect(executionCount == 1)
         #expect(state.count == 1)
         if case .none = task.storeTask {
-            #expect(true)
+            #expect(Bool(true))
         } else {
             Issue.record("Expected noTask")
         }
@@ -158,7 +158,7 @@ import Testing
         // swiftlint:disable:next empty_count
         #expect(state.count == 0)  // Action not executed due to middleware error
         if case .none = task.storeTask {
-            #expect(true)
+            #expect(Bool(true))
         } else {
             Issue.record("Expected noTask on error")
         }
@@ -464,7 +464,7 @@ import Testing
 
         // THEN: noTask should remain unchanged
         if case .none = task.storeTask {
-            #expect(true)
+            #expect(Bool(true))
         } else {
             Issue.record("Expected noTask")
         }
@@ -491,7 +491,7 @@ import Testing
         // THEN: Should work with all features
         #expect(state.count == 1)
         if case .run = task.storeTask {
-            #expect(true)
+            #expect(Bool(true))
         } else {
             Issue.record("Expected run task")
         }
@@ -558,7 +558,7 @@ import Testing
         #expect(state.errorMessage != nil)
         #expect(state.errorMessage?.contains("Pipeline error") ?? false)
         if case .none = task.storeTask {
-            #expect(true)
+            #expect(Bool(true))
         }
     }
 

@@ -222,7 +222,7 @@ import Testing
         try await sut.executeBeforeAction(action: TestAction.increment, state: TestState())
 
         // THEN: Should not throw
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test func executeBeforeAction_withNoMiddlewares() async throws {
@@ -271,7 +271,7 @@ import Testing
         )
 
         // THEN: Should not throw
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test func executeAfterAction_withNoMiddlewares() async throws {
@@ -303,7 +303,7 @@ import Testing
         )
 
         // THEN: Should execute without error
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test func executeAfterAction_withMultipleMiddlewares() async throws {
@@ -369,7 +369,7 @@ import Testing
         )
 
         // THEN: Should not throw
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test func executeErrorHandling_withNoMiddlewares() async {
@@ -385,7 +385,7 @@ import Testing
         )
 
         // THEN: Should not crash
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test func executeErrorHandling_withMultipleMiddlewares() async {
@@ -404,7 +404,7 @@ import Testing
         )
 
         // THEN: Should execute both
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test func executeErrorHandling_withLocalizedError() async {
@@ -425,7 +425,7 @@ import Testing
         )
 
         // THEN: Should handle localized error
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test func executeErrorHandling_doesNotThrow() async {
@@ -442,7 +442,7 @@ import Testing
         )
 
         // THEN: Should complete without throwing
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test func executeErrorHandling_resilientToMiddlewareFailures() async {
@@ -481,7 +481,7 @@ import Testing
 
         // THEN: Should not crash and should continue with remaining middleware
         // The resilience mechanism logs the failure but doesn't throw
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test func executeErrorHandling_logsMiddlewareFailures() async {
@@ -526,7 +526,7 @@ import Testing
 
         // THEN: Should execute all middleware despite failures
         // Both failures are logged, last one succeeds
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test func executeErrorHandling_continuesToNextMiddlewareAfterFailure() async {
@@ -598,7 +598,7 @@ import Testing
         )
 
         // THEN: All phases should execute successfully
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test func mixedMiddlewares_executeCorrectly() async throws {
@@ -625,7 +625,7 @@ import Testing
         )
 
         // THEN: All should execute successfully
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test func middlewareOrder_maintainedThroughExecution() async throws {

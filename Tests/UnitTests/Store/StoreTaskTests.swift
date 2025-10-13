@@ -42,14 +42,14 @@ import Testing
         // THEN: Both should be noTask
         switch task1 {
         case .none:
-            #expect(true)
+            #expect(Bool(true))
         default:
             Issue.record("task1 should be noTask")
         }
 
         switch task2 {
         case .none:
-            #expect(true)
+            #expect(Bool(true))
         default:
             Issue.record("task2 should be noTask")
         }
@@ -377,17 +377,17 @@ import Testing
 
         // THEN: All should be valid cases
         switch noTask {
-        case .none: #expect(true)
+        case .none: #expect(Bool(true))
         default: Issue.record("noTask failed")
         }
 
         switch runTask {
-        case .run: #expect(true)
+        case .run: #expect(Bool(true))
         default: Issue.record("runTask failed")
         }
 
         switch cancelTask {
-        case .cancel: #expect(true)
+        case .cancel: #expect(Bool(true))
         default: Issue.record("cancelTask failed")
         }
     }
@@ -436,12 +436,12 @@ import Testing
 
         // THEN: Both should be valid but different types
         switch task1 {
-        case .none: #expect(true)
+        case .none: #expect(Bool(true))
         default: Issue.record()
         }
 
         switch task2 {
-        case .none: #expect(true)
+        case .none: #expect(Bool(true))
         default: Issue.record()
         }
     }
@@ -457,12 +457,12 @@ import Testing
 
         // THEN: Both should be valid but different types
         switch task1 {
-        case .none: #expect(true)
+        case .none: #expect(Bool(true))
         default: Issue.record()
         }
 
         switch task2 {
-        case .none: #expect(true)
+        case .none: #expect(Bool(true))
         default: Issue.record()
         }
     }

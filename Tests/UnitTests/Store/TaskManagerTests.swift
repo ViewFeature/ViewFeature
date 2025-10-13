@@ -132,7 +132,7 @@ import Testing
         try? await Task.sleep(nanoseconds: 20_000_000)  // 20ms
 
         // THEN: Should not crash
-        #expect(true)
+        #expect(Bool(true))
     }
 
     @Test func executeTask_cancelsExistingTaskWithSameId() async {

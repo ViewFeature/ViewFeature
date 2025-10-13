@@ -17,8 +17,8 @@ struct AssertionProviderTests {
         // GIVEN & WHEN: Create a PrintAssertionProvider
         let sut = PrintAssertionProvider()
 
-        // THEN: Should be successfully initialized
-        #expect(sut != nil)
+        // THEN: Should be successfully initialized (struct always exists)
+        _ = sut  // Verify it can be used
     }
 
     @Test("assertEqual with equal values does not print")
@@ -131,8 +131,8 @@ struct AssertionProviderTests {
         // GIVEN & WHEN: Create an XCTestAssertionProvider
         let sut = XCTestAssertionProvider()
 
-        // THEN: Should be successfully initialized
-        #expect(sut != nil)
+        // THEN: Should be successfully initialized (struct always exists)
+        _ = sut  // Verify it can be used
     }
 
     @Test("XCTestAssertionProvider assertEqual with equal values")
