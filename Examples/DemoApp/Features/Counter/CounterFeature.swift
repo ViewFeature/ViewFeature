@@ -46,9 +46,13 @@ struct CounterFeature: StoreFeature {
 
       case .delayedIncrement:
         state.isLoading = true
+        state.count += 1
         return .run(id: "delayed-increment") {
           try await Task.sleep(for: .seconds(3))
-          await store.send(.finishLoading)
+          // Task completes - View layer handles follow-up actions if needed
+        }
+        .catch { _, state in
+          state.isLoading = false
         }
 
       case .cancelDelayedIncrement:

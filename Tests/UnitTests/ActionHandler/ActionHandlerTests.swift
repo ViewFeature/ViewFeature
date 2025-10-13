@@ -166,7 +166,7 @@ final class ActionHandlerTests: XCTestCase {
     .onError { error, state in
       state.errorMessage = "Error"
     }
-    .withDebug()
+    .use(LoggingMiddleware())
 
     // WHEN: Handle action
     var state = TestState()
@@ -194,48 +194,48 @@ final class ActionHandlerTests: XCTestCase {
     XCTAssertEqual(state.count, 1)
   }
 
-  // MARK: - withDebug(category:)
+  // MARK: - use(_:)
 
-  func test_withDebug_addsLoggingMiddleware() async {
-    // GIVEN: Handler with debug logging
+  func test_use_addsMiddleware() async {
+    // GIVEN: Handler with middleware
     let sut = ActionHandler<TestAction, TestState> { action, state in
       state.count += 1
       return .none
     }
-    .withDebug(category: "TestFeature")
+    .use(LoggingMiddleware(category: "TestFeature"))
 
     // WHEN: Handle action
     var state = TestState()
     _ = await sut.handle(action: .increment, state: &state)
 
-    // THEN: Should execute with logging
+    // THEN: Should execute with middleware
     XCTAssertEqual(state.count, 1)
   }
 
-  func test_withDebug_defaultCategory() async {
-    // GIVEN: Handler with default debug category
+  func test_use_defaultCategory() async {
+    // GIVEN: Handler with default middleware
     let sut = ActionHandler<TestAction, TestState> { action, state in
       state.count += 1
       return .none
     }
-    .withDebug()
+    .use(LoggingMiddleware())
 
     // WHEN: Handle action
     var state = TestState()
     _ = await sut.handle(action: .increment, state: &state)
 
-    // THEN: Should execute with default logging
+    // THEN: Should execute with default middleware
     XCTAssertEqual(state.count, 1)
   }
 
-  func test_withDebug_supportsChaining() async {
-    // GIVEN: Handler with multiple withDebug calls
+  func test_use_supportsChaining() async {
+    // GIVEN: Handler with multiple middleware
     let sut = ActionHandler<TestAction, TestState> { action, state in
       state.count += 1
       return .none
     }
-    .withDebug(category: "Cat1")
-    .withDebug(category: "Cat2")
+    .use(LoggingMiddleware(category: "Cat1"))
+    .use(LoggingMiddleware(category: "Cat2"))
     .onError { error, state in
       state.errorMessage = "Error"
     }
@@ -244,7 +244,7 @@ final class ActionHandlerTests: XCTestCase {
     var state = TestState()
     _ = await sut.handle(action: .increment, state: &state)
 
-    // THEN: Should work with multiple debug loggers
+    // THEN: Should work with multiple middleware
     XCTAssertEqual(state.count, 1)
   }
 
@@ -337,7 +337,7 @@ final class ActionHandlerTests: XCTestCase {
       state.count += 1
       return .run(id: "task") {}
     }
-    .withDebug()
+    .use(LoggingMiddleware())
     .onError { error, state in
       state.errorMessage = "Error"
     }
@@ -373,7 +373,7 @@ final class ActionHandlerTests: XCTestCase {
         return .run(id: "async") {}
       }
     }
-    .withDebug(category: "Integration")
+    .use(LoggingMiddleware(category: "Integration"))
     .onError { error, state in
       state.errorMessage = "Unexpected error"
     }
@@ -400,7 +400,7 @@ final class ActionHandlerTests: XCTestCase {
     }
 
     // WHEN: Create variants
-    let withDebug = base.withDebug()
+    let withMiddleware = base.use(LoggingMiddleware())
     let withError = base.onError { _, state in state.errorMessage = "E" }
     let withTransform = base.transform { $0 }
 
@@ -410,7 +410,7 @@ final class ActionHandlerTests: XCTestCase {
     XCTAssertEqual(state1.count, 1)
 
     var state2 = TestState()
-    _ = await withDebug.handle(action: .increment, state: &state2)
+    _ = await withMiddleware.handle(action: .increment, state: &state2)
     XCTAssertEqual(state2.count, 1)
 
     var state3 = TestState()
@@ -436,7 +436,7 @@ final class ActionHandlerTests: XCTestCase {
       }
       return .none
     }
-    .withDebug(category: "Complex")
+    .use(LoggingMiddleware(category: "Complex"))
     .onError { error, state in
       state.errorMessage = error.localizedDescription
       state.isLoading = false

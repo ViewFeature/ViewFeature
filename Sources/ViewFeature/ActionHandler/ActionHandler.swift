@@ -73,7 +73,7 @@ import Foundation
 ///     .onError { error, state in
 ///       state.errorMessage = error.localizedDescription
 ///     }
-///     .withDebug(category: "MyFeature")
+///     .use(LoggingMiddleware(category: "MyFeature"))
 ///   }
 /// }
 /// ```
@@ -87,7 +87,7 @@ import Foundation
 ///
 /// ### Method Chaining
 /// - ``onError(_:)``
-/// - ``withDebug(category:)``
+/// - ``use(_:)``
 /// - ``transform(_:)``
 public final class ActionHandler<Action, State> {
   private let processor: ActionProcessor<Action, State>
@@ -164,26 +164,6 @@ extension ActionHandler {
     ActionHandler(processor: processor.onError(errorHandler))
   }
 
-  /// Adds debug logging to the action processing pipeline.
-  ///
-  /// Logs action start, completion (with duration), and any errors that occur.
-  /// This is useful during development to track action flow.
-  ///
-  /// - Parameter category: The logging category (default: "ViewFeature.ActionHandler")
-  /// - Returns: A new ActionHandler with debug logging
-  ///
-  /// ## Example
-  /// ```swift
-  /// handler.withDebug(category: "UserFeature")
-  /// ```
-  ///
-  /// - Note: Consider removing debug logging in production builds for performance
-  public func withDebug(
-    category: String = "ViewFeature.ActionHandler"
-  ) -> ActionHandler<Action, State> {
-    return use(LoggingMiddleware(category: category))
-  }
-
   /// Transforms the task returned by action processing.
   ///
   /// Allows you to modify or wrap the ``ActionTask`` returned by your action handler.
@@ -215,7 +195,35 @@ extension ActionHandler {
     ActionHandler(processor: processor.transform(taskTransform))
   }
 
-  private func use(_ middleware: some BaseActionMiddleware) -> ActionHandler<Action, State> {
+  /// Adds custom middleware to the action processing pipeline.
+  ///
+  /// Allows you to add any middleware conforming to ``BaseActionMiddleware``
+  /// or its specific protocols (``BeforeActionMiddleware``, ``AfterActionMiddleware``,
+  /// ``ErrorActionMiddleware``).
+  ///
+  /// - Parameter middleware: The middleware to add
+  /// - Returns: A new ActionHandler with the middleware added
+  ///
+  /// ## Example
+  /// ```swift
+  /// struct CustomMiddleware: ActionMiddleware {
+  ///   func beforeAction<Action, State>(action: Action, state: State) async throws {
+  ///     print("Before: \(action)")
+  ///   }
+  ///
+  ///   func afterAction<Action, State>(
+  ///     action: Action,
+  ///     state: State,
+  ///     result: ActionTask<Action, State>,
+  ///     duration: TimeInterval
+  ///   ) async throws {
+  ///     print("After: \(action) took \(duration)s")
+  ///   }
+  /// }
+  ///
+  /// handler.use(CustomMiddleware())
+  /// ```
+  public func use(_ middleware: some BaseActionMiddleware) -> ActionHandler<Action, State> {
     ActionHandler(processor: processor.use(middleware))
   }
 }

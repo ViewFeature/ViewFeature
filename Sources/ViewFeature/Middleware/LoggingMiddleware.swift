@@ -20,21 +20,8 @@ import Logging
 /// 1. **Development Tool**: Provides visibility into action flow during development
 /// 2. **Reference Implementation**: Shows how to implement all three middleware protocols
 ///
-/// ## Basic Usage
+/// ## Usage
 /// Add logging to your feature's action handler:
-/// ```swift
-/// struct UserFeature: StoreFeature {
-///   func handle() -> ActionHandler<Action, State> {
-///     ActionHandler { action, state in
-///       // Your action handling logic
-///     }
-///     .withDebug(category: "UserFeature")  // Uses LoggingMiddleware internally
-///   }
-/// }
-/// ```
-///
-/// ## Direct Usage
-/// For more control over logging configuration:
 /// ```swift
 /// let handler = ActionHandler { action, state in
 ///   // Action handling logic

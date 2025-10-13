@@ -88,9 +88,18 @@ struct UserFeature: StoreFeature {
 
       case .loadUsers:
         state.isLoading = true
+        // Simulate loading users
+        state.users = [
+          User(name: "Alice", email: "alice@example.com", role: .admin),
+          User(name: "Bob", email: "bob@example.com", role: .member),
+          User(name: "Charlie", email: "charlie@example.com", role: .guest),
+        ]
         return .run(id: "load-users") {
           try await Task.sleep(for: .seconds(1.5))
-          await store.send(.finishLoading)
+          // Task completes - View layer handles follow-up actions if needed
+        }
+        .catch { _, state in
+          state.isLoading = false
         }
 
       case .finishLoading:
