@@ -168,7 +168,7 @@ public final class ActionProcessor<Action, State> {
   ///
   /// - Note: This method is called by ``ActionHandler/handle(action:state:)``
   public func process(action: Action, state: inout State) async -> ActionTask<Action, State> {
-    let startTime = CFAbsoluteTimeGetCurrent()
+    let startTime = Date()
 
     do {
       let result = try await executeWithMiddleware(action: action, state: &state, startTime: startTime)
@@ -182,11 +182,11 @@ public final class ActionProcessor<Action, State> {
   private func executeWithMiddleware(
     action: Action,
     state: inout State,
-    startTime: CFAbsoluteTime
+    startTime: Date
   ) async throws -> ActionTask<Action, State> {
     try await middlewareManager.executeBeforeAction(action: action, state: state)
     let result = await baseExecution(action, &state)
-    let duration = CFAbsoluteTimeGetCurrent() - startTime
+    let duration = Date().timeIntervalSince(startTime)
     try await middlewareManager.executeAfterAction(action: action, state: state, result: result, duration: duration)
     return result
   }
