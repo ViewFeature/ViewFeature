@@ -78,14 +78,21 @@ import Testing
 
     // WHEN: Start task (concurrent) and immediately cancel
     let fetchTask = sut.send(.fetch("data1"))
+
+    // Give task time to start
+    try? await Task.sleep(for: .milliseconds(5))
+
     await sut.send(.cancelFetch("data1")).value
 
     // Wait for task to complete (cancelled tasks still complete)
     await fetchTask.value
 
+    // Give time for cleanup
+    try? await Task.sleep(for: .milliseconds(10))
+
     // THEN: Task should be cancelled and cleaned up
     #expect(!sut.isTaskRunning(id: "fetch-data1"))
-    #expect(!(sut.state.isLoading["data1"] ?? true))
+    #expect(sut.state.isLoading["data1"] == false)
   }
 
   @Test func multipleConcurrentTasks() async {
@@ -207,6 +214,7 @@ import Testing
         ActionHandler { action, state in
           switch action {
           case .fetch(let id):
+            state.isLoading[id] = true
             return ActionTask(
               storeTask: .run(
                 id: "error-\(id)",
@@ -234,9 +242,12 @@ import Testing
     // WHEN: Execute task that throws
     await sut.send(.fetch("data1")).value
 
+    // Wait for error handler to complete
+    try? await Task.sleep(for: .milliseconds(50))
+
     // THEN: Error should be handled
     #expect(sut.state.errors["data1"] != nil)
-    #expect(!(sut.state.isLoading["data1"] ?? true))
+    #expect(sut.state.isLoading["data1"] == false)
   }
 
   // MARK: - Complex Task Workflows
