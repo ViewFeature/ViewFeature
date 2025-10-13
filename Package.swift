@@ -19,7 +19,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/apple/swift-log.git", from: "1.6.4"),
         .package(url: "https://github.com/swiftlang/swift-docc-plugin", from: "1.4.5"),
-        .package(url: "https://github.com/apple/swift-testing.git", from: "0.12.0"),
+        .package(url: "https://github.com/swiftlang/swift-testing.git", branch: "swift-6.2-RELEASE"),
     ],
     targets: [
         .target(

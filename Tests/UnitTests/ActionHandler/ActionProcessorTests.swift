@@ -67,7 +67,8 @@ import Testing
         _ = await sut.process(action: .asyncOperation, state: &state)
 
         // THEN: Should handle all actions
-        #expect(state.isEmpty)  // +1 -1 = 0
+        // swiftlint:disable:next empty_count
+        #expect(state.count == 0)  // +1 -1 = 0
         #expect(state.isLoading)
     }
 
@@ -154,7 +155,8 @@ import Testing
         let task = await sut.process(action: .throwError, state: &state)
 
         // THEN: Should return noTask on error and not execute action
-        #expect(state.isEmpty)  // Action not executed due to middleware error
+        // swiftlint:disable:next empty_count
+        #expect(state.count == 0)  // Action not executed due to middleware error
         if case .none = task.storeTask {
             #expect(true)
         } else {
@@ -551,7 +553,8 @@ import Testing
         let task = await sut.process(action: TestAction.throwError, state: &state)
 
         // THEN: Should handle error correctly
-        #expect(state.isEmpty)
+        // swiftlint:disable:next empty_count
+        #expect(state.count == 0)
         #expect(state.errorMessage != nil)
         #expect(state.errorMessage?.contains("Pipeline error") ?? false)
         if case .none = task.storeTask {
@@ -609,7 +612,8 @@ import Testing
         #expect(!state.isLoading)
 
         _ = await decrementProcessor.process(action: TestAction.decrement, state: &state)
-        #expect(state.isEmpty)
+        // swiftlint:disable:next empty_count
+        #expect(state.count == 0)
         #expect(state.errorMessage == nil)
     }
 

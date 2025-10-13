@@ -68,7 +68,8 @@ import Testing
         let sut = Store(initialState: initialState, feature: feature)
 
         // THEN: Should initialize correctly
-        #expect(sut.state.isEmpty)
+        // swiftlint:disable:next empty_count
+        #expect(sut.state.count == 0)
         #expect(sut.runningTaskCount == 0)
     }
 
@@ -384,7 +385,8 @@ import Testing
 
         // THEN: Error should be logged (no crash)
         // We can't directly verify logging, but we verify no crash
-        #expect(sut.state.isEmpty)
+        // swiftlint:disable:next empty_count
+        #expect(sut.state.count == 0)
     }
 
     @Test func createErrorHandler_withNonNilHandler() async {

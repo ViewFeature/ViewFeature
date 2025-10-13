@@ -58,7 +58,8 @@ import Testing
         _ = await sut.handle(action: .decrement, state: &state)
 
         // THEN: Should process all actions
-        #expect(state.isEmpty)  // +1 -1 = 0
+        // swiftlint:disable:next empty_count
+        #expect(state.count == 0)  // +1 -1 = 0
     }
 
     // MARK: - handle(action:state:)

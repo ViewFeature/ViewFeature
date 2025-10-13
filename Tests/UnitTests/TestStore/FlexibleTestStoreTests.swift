@@ -155,7 +155,8 @@ import Testing
             feature: TestFeature()
         )
 
-        #expect(store.state.isEmpty)
+        // swiftlint:disable:next empty_count
+        #expect(store.state.count == 0)
 
         await store.send(TestAction.increment)
         #expect(store.state.count == 1)
@@ -458,7 +459,8 @@ import Testing
         await store.send(ErrorHandlerAction.throwError)
 
         // THEN: Store should handle error without crashing
-        #expect(store.state.isEmpty)
+        // swiftlint:disable:next empty_count
+        #expect(store.state.count == 0)
     }
 
     @Test func testSend_withTaskErrorAndHandler_executesErrorHandler() async {
