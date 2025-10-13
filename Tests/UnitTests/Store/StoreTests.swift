@@ -207,14 +207,12 @@ import Testing
             feature: TestFeature()
         )
 
-        // WHEN: Send async action
+        // WHEN: Send async action and wait for completion
         await sut.send(.asyncOp).value
 
-        // THEN: Should update state and run task
+        // THEN: State should be updated and task should have completed
         #expect(sut.state.isLoading)
-
-        // Wait for task to complete
-        try? await Task.sleep(for: .milliseconds(50))
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func send_handlesCancelTask() async {
@@ -224,16 +222,18 @@ import Testing
             feature: TestFeature()
         )
 
-        // Start a task
-        _ = sut.send(.asyncOp)
+        // Start a task (fire-and-forget)
+        let asyncTask = sut.send(.asyncOp)
         try? await Task.sleep(for: .milliseconds(5))
 
         // WHEN: Send cancel action
         await sut.send(.cancelOp("async")).value
 
         // THEN: Task should be cancelled
-        try? await Task.sleep(for: .milliseconds(20))
         #expect(!sut.isTaskRunning(id: "async"))
+
+        // Cleanup - wait for task to complete
+        await asyncTask.value
     }
 
     @Test func send_processesMultipleActionsSequentially() async {
@@ -261,10 +261,10 @@ import Testing
         )
 
         // WHEN: Send action without awaiting (@discardableResult)
-        sut.send(.increment)
+        let task = sut.send(.increment)
 
-        // Wait a bit for processing
-        try? await Task.sleep(for: .milliseconds(10))
+        // Wait for action to process
+        await task.value
 
         // THEN: Action should still process
         #expect(sut.state.count == 1)
@@ -290,14 +290,17 @@ import Testing
             feature: TestFeature()
         )
 
-        // WHEN: Send async action
-        _ = sut.send(.asyncOp)
+        // WHEN: Send async action (fire-and-forget)
+        let task = sut.send(.asyncOp)
 
-        // Wait for task to start
+        // Give task time to register
         try? await Task.sleep(for: .milliseconds(5))
 
         // THEN: Should have running task
-        #expect(sut.runningTaskCount >= 0)
+        #expect(sut.runningTaskCount == 1)
+
+        // Cleanup
+        await task.value
     }
 
     @Test func isTaskRunning_returnsFalseForNonexistent() async {
@@ -321,16 +324,18 @@ import Testing
             feature: TestFeature()
         )
 
-        // Start async task
-        _ = sut.send(.asyncOp)
+        // Start async task (fire-and-forget)
+        let task = sut.send(.asyncOp)
         try? await Task.sleep(for: .milliseconds(5))
 
         // WHEN: Check if task is running
         let isRunning = sut.isTaskRunning(id: "async")
 
-        // THEN: Should return true (or false if completed)
-        // This is timing-dependent, so we just verify it doesn't crash
-        _ = isRunning
+        // THEN: Should return true
+        #expect(isRunning)
+
+        // Cleanup
+        await task.value
     }
 
     @Test func cancelAllTasks_cancelsRunningTasks() async {
@@ -340,18 +345,18 @@ import Testing
             feature: TestFeature()
         )
 
-        // Start multiple tasks
-        _ = sut.send(.asyncOp)
+        // Start multiple tasks (fire-and-forget)
+        let task = sut.send(.asyncOp)
         try? await Task.sleep(for: .milliseconds(5))
 
         // WHEN: Cancel all tasks
         sut.cancelAllTasks()
 
-        // Wait for cancellation
-        try? await Task.sleep(for: .milliseconds(20))
-
         // THEN: All tasks should be cancelled
         #expect(sut.runningTaskCount == 0)
+
+        // Wait for task to complete
+        await task.value
     }
 
     @Test func cancelAllTasks_canBeCalledWhenNoTasks() async {
@@ -377,16 +382,14 @@ import Testing
             feature: TestFeature()
         )
 
-        // WHEN: Send action that throws
+        // WHEN: Send action that throws and wait for completion
         await sut.send(.throwingOp).value
-
-        // Wait for error handling
-        try? await Task.sleep(for: .milliseconds(20))
 
         // THEN: Error should be logged (no crash)
         // We can't directly verify logging, but we verify no crash
         // swiftlint:disable:next empty_count
         #expect(sut.state.count == 0)
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func createErrorHandler_withNonNilHandler() async {
@@ -424,15 +427,13 @@ import Testing
             feature: ErrorHandlingFeature()
         )
 
-        // WHEN: Send action that triggers error handler
+        // WHEN: Send action that triggers error handler and wait for completion
         await sut.send(.throwingOp).value
-
-        // Wait for error handling to complete
-        try? await Task.sleep(for: .milliseconds(50))
 
         // THEN: Error handler should have been called
         #expect(sut.state.errorMessage?.contains("Error caught") ?? false)
         #expect(!sut.state.isLoading)
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func createErrorHandler_withNilHandler() async {
@@ -466,14 +467,12 @@ import Testing
             feature: NoErrorHandlerFeature()
         )
 
-        // WHEN: Send action that throws (no error handler)
+        // WHEN: Send action that throws (no error handler) and wait for completion
         await sut.send(.throwingOp).value
-
-        // Wait for task completion
-        try? await Task.sleep(for: .milliseconds(50))
 
         // THEN: Should not crash, error is silently handled
         #expect(sut.state.errorMessage == nil)
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func createErrorHandler_updatesState() async {
@@ -510,15 +509,13 @@ import Testing
             feature: StateModifyingFeature()
         )
 
-        // WHEN: Trigger error handler
+        // WHEN: Trigger error handler and wait for completion
         await sut.send(.throwingOp).value
-
-        // Wait for error handling
-        try? await Task.sleep(for: .milliseconds(50))
 
         // THEN: State should be modified by error handler
         #expect(sut.state.count == 999)
         #expect(sut.state.errorMessage == "Modified")
+        #expect(sut.runningTaskCount == 0)
     }
 
     // MARK: - Integration Tests
@@ -561,11 +558,9 @@ import Testing
         await sut.send(.increment).value
         #expect(sut.state.count == 2)
 
-        // Wait for async task
-        try? await Task.sleep(for: .milliseconds(50))
-
-        // THEN: All actions processed
+        // THEN: All actions processed, all tasks completed
         #expect(sut.state.count == 2)
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func concurrentActions_processCorrectly() async {
@@ -623,14 +618,16 @@ import Testing
         )
 
         // WHEN: Start task and cancel it
-        _ = sut.send(.asyncOp)
+        let asyncTask = sut.send(.asyncOp)
         try? await Task.sleep(for: .milliseconds(5))
 
         await sut.send(.cancelOp("async")).value
-        try? await Task.sleep(for: .milliseconds(20))
 
         // THEN: Task should be cancelled
         #expect(!sut.isTaskRunning(id: "async"))
+
+        // Wait for task to complete
+        await asyncTask.value
     }
 
     @Test func multipleTasksCancellation() async {
@@ -641,14 +638,16 @@ import Testing
         )
 
         // WHEN: Start multiple tasks and cancel all
-        _ = sut.send(.asyncOp)
+        let asyncTask = sut.send(.asyncOp)
         try? await Task.sleep(for: .milliseconds(5))
 
         sut.cancelAllTasks()
-        try? await Task.sleep(for: .milliseconds(20))
 
         // THEN: All tasks cancelled
         #expect(sut.runningTaskCount == 0)
+
+        // Wait for task to complete
+        await asyncTask.value
     }
 
     // MARK: - cancelTask(id:) Tests
@@ -661,7 +660,7 @@ import Testing
         )
 
         // Start a task
-        _ = sut.send(.asyncOp)
+        let asyncTask = sut.send(.asyncOp)
         try? await Task.sleep(for: .milliseconds(5))
 
         // Verify task is running
@@ -670,11 +669,11 @@ import Testing
         // WHEN: Cancel the task by ID
         sut.cancelTask(id: "async")
 
-        // Wait for cancellation
-        try? await Task.sleep(for: .milliseconds(20))
-
         // THEN: Task should be stopped
         #expect(!sut.isTaskRunning(id: "async"))
+
+        // Wait for task to complete
+        await asyncTask.value
     }
 
     @Test func cancelTask_withMultipleTasks_cancelsOnlySpecifiedTask() async {
@@ -710,10 +709,12 @@ import Testing
             feature: MultiTaskFeature()
         )
 
-        // Start multiple tasks
-        _ = sut.send(.increment)
-        _ = sut.send(.decrement)
-        _ = sut.send(.asyncOp)
+        // Start multiple tasks concurrently (fire-and-forget)
+        let task1 = sut.send(.increment)
+        let task2 = sut.send(.decrement)
+        let task3 = sut.send(.asyncOp)
+
+        // Give tasks time to register in TaskManager
         try? await Task.sleep(for: .milliseconds(5))
 
         // Verify all tasks are running
@@ -723,15 +724,21 @@ import Testing
 
         // WHEN: Cancel only task2
         sut.cancelTask(id: "task2")
-        try? await Task.sleep(for: .milliseconds(20))
 
-        // THEN: Only task2 should be cancelled
+        // THEN: Only task2 should be cancelled, others still running
         #expect(sut.isTaskRunning(id: "task1"))
         #expect(!sut.isTaskRunning(id: "task2"))
         #expect(sut.isTaskRunning(id: "task3"))
 
-        // Cleanup
+        // Cleanup - cancel remaining tasks
         sut.cancelAllTasks()
+
+        // Wait for all tasks to complete/cancel
+        await task1.value
+        await task2.value
+        await task3.value
+
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func cancelTask_withNonexistentID_doesNotCrash() async {
@@ -774,15 +781,15 @@ import Testing
             feature: QuickTaskFeature()
         )
 
-        // Start and let complete
+        // Start and wait for completion
         await sut.send(.asyncOp).value
-        try? await Task.sleep(for: .milliseconds(20))
 
         // WHEN: Try to cancel already completed task
         sut.cancelTask(id: "quick")
 
         // THEN: Should not crash
         #expect(!sut.isTaskRunning(id: "quick"))
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func cancelTask_behavesLikeActionCancel() async {
@@ -824,19 +831,21 @@ import Testing
         )
 
         // Start tasks in both stores
-        _ = store1.send(.increment)
-        _ = store2.send(.decrement)
+        let task1 = store1.send(.increment)
+        let task2 = store2.send(.decrement)
         try? await Task.sleep(for: .milliseconds(5))
 
         // WHEN: Cancel task1 via Action, task2 via direct method
         await store1.send(.cancelOp("download1")).value
         store2.cancelTask(id: "download2")
 
-        try? await Task.sleep(for: .milliseconds(20))
-
         // THEN: Both methods should have the same effect
         #expect(!store1.isTaskRunning(id: "download1"))
         #expect(!store2.isTaskRunning(id: "download2"))
+
+        // Cleanup
+        await task1.value
+        await task2.value
     }
 
     @Test func cancelTask_viewLayerScenario_downloadCancellation() async {
@@ -955,9 +964,9 @@ import Testing
         )
 
         // Start tasks with different ID types
-        _ = sut.send(.startWithString)
-        _ = sut.send(.startWithInt)
-        _ = sut.send(.startWithEnum)
+        let task1 = sut.send(.startWithString)
+        let task2 = sut.send(.startWithInt)
+        let task3 = sut.send(.startWithEnum)
         try? await Task.sleep(for: .milliseconds(5))
 
         // WHEN: Cancel with different ID types (as strings)
@@ -965,12 +974,15 @@ import Testing
         sut.cancelTask(id: "42")
         sut.cancelTask(id: "upload")
 
-        try? await Task.sleep(for: .milliseconds(20))
-
         // THEN: All tasks should be cancelled
         #expect(!sut.isTaskRunning(id: "stringID"))
         #expect(!sut.isTaskRunning(id: "42"))
         #expect(!sut.isTaskRunning(id: "upload"))
+
+        // Cleanup
+        await task1.value
+        await task2.value
+        await task3.value
     }
 
     @Test func cancelTask_duringViewLifecycle_onDisappear() async {

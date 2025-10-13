@@ -214,28 +214,4 @@ public final class Store<Feature: StoreFeature> {
     public func isTaskRunning<ID: TaskID>(id: ID) -> Bool {
         taskManager.isTaskRunning(id: id)
     }
-
-    /// Waits for a specific task to complete.
-    ///
-    /// This method provides deterministic waiting for background task completion,
-    /// eliminating the need for time-based delays in tests.
-    ///
-    /// - Parameter id: The task identifier (see ``TaskID`` for supported types)
-    ///
-    /// ## Example
-    /// ```swift
-    /// // In tests - deterministic waiting
-    /// await store.send(.startDownload).value
-    /// await store.waitForTask(id: "download")
-    /// XCTAssertEqual(store.state.downloadComplete, true)
-    ///
-    /// // Sequential task execution
-    /// await store.send(.task1).value
-    /// await store.waitForTask(id: "task1")
-    /// await store.send(.task2).value
-    /// await store.waitForTask(id: "task2")
-    /// ```
-    public func waitForTask<ID: TaskID>(id: ID) async {
-        await taskManager.waitForTask(id: id)
-    }
 }
