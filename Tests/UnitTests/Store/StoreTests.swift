@@ -898,7 +898,8 @@ final class StoreTests: XCTestCase {
     )
 
     // WHEN: User starts download then cancels
-    await sut.send(.startDownload("https://example.com/file.zip")).value
+    _ = sut.send(.startDownload("https://example.com/file.zip"))
+    try? await Task.sleep(for: .milliseconds(5))
     XCTAssertTrue(sut.state.isDownloading)
     XCTAssertTrue(sut.isTaskRunning(id: "download"))
 
@@ -1010,7 +1011,8 @@ final class StoreTests: XCTestCase {
     )
 
     // View appears and starts background task
-    await sut.send(.onAppear).value
+    _ = sut.send(.onAppear)
+    try? await Task.sleep(for: .milliseconds(5))
     XCTAssertTrue(sut.state.isActive)
     XCTAssertTrue(sut.isTaskRunning(id: "backgroundTask"))
 
