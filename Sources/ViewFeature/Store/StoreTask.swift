@@ -23,4 +23,3 @@ public enum StoreTask<Action, State> {
   /// Cancel a running task
   case cancel(id: String)
 }
-

@@ -1,12 +1,12 @@
-@testable import ViewFeature
 import XCTest
+
+@testable import ViewFeature
 
 /// Comprehensive unit tests for StoreTask with 100% code coverage.
 ///
 /// Tests every enum case and associated values in StoreTask.swift
 @MainActor
 final class StoreTaskTests: XCTestCase {
-
   // MARK: - Test Fixtures
 
   enum TestAction {

@@ -92,7 +92,7 @@ struct UserFeature: StoreFeature {
         state.users = [
           User(name: "Alice", email: "alice@example.com", role: .admin),
           User(name: "Bob", email: "bob@example.com", role: .member),
-          User(name: "Charlie", email: "charlie@example.com", role: .guest),
+          User(name: "Charlie", email: "charlie@example.com", role: .guest)
         ]
         return .run(id: "load-users") {
           try await Task.sleep(for: .seconds(1.5))

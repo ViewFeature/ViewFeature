@@ -1,12 +1,12 @@
-@testable import ViewFeature
 import XCTest
+
+@testable import ViewFeature
 
 /// Comprehensive unit tests for Store with 100% code coverage.
 ///
 /// Tests every public method and property in Store.swift
 @MainActor
 final class StoreTests: XCTestCase {
-
   // MARK: - Test Fixtures
 
   enum TestAction: Sendable {
@@ -150,7 +150,7 @@ final class StoreTests: XCTestCase {
     await sut.send(.decrement).value
 
     // THEN: State should reflect all updates
-    XCTAssertEqual(sut.state.count, 1) // 0 + 1 + 1 - 1 = 1
+    XCTAssertEqual(sut.state.count, 1)  // 0 + 1 + 1 - 1 = 1
   }
 
   // MARK: - send(_:)
@@ -249,7 +249,7 @@ final class StoreTests: XCTestCase {
     await sut.send(.decrement).value
 
     // THEN: All actions should process
-    XCTAssertEqual(sut.state.count, 2) // +1 +1 +1 -1 = 2
+    XCTAssertEqual(sut.state.count, 2)  // +1 +1 +1 -1 = 2
   }
 
   func test_send_canBeDiscarded() async {
@@ -399,16 +399,17 @@ final class StoreTests: XCTestCase {
           case .throwingOp:
             state.isLoading = true
             // Return StoreTask with onError handler
-            return ActionTask(storeTask: .run(
-              id: "errorTest",
-              operation: {
-                throw NSError(domain: "TestError", code: 999)
-              },
-              onError: { error, state in
-                state.errorMessage = "Error caught: \(error.localizedDescription)"
-                state.isLoading = false
-              }
-            ))
+            return ActionTask(
+              storeTask: .run(
+                id: "errorTest",
+                operation: {
+                  throw NSError(domain: "TestError", code: 999)
+                },
+                onError: { error, state in
+                  state.errorMessage = "Error caught: \(error.localizedDescription)"
+                  state.isLoading = false
+                }
+              ))
           default:
             return .none
           }
@@ -439,17 +440,18 @@ final class StoreTests: XCTestCase {
       typealias State = TestState
 
       func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
+        ActionHandler { action, _ in
           switch action {
           case .throwingOp:
             // Return StoreTask with nil onError (default behavior)
-            return ActionTask(storeTask: .run(
-              id: "noHandler",
-              operation: {
-                throw NSError(domain: "TestError", code: 123)
-              },
-              onError: nil
-            ))
+            return ActionTask(
+              storeTask: .run(
+                id: "noHandler",
+                operation: {
+                  throw NSError(domain: "TestError", code: 123)
+                },
+                onError: nil
+              ))
           default:
             return .none
           }
@@ -483,16 +485,17 @@ final class StoreTests: XCTestCase {
           switch action {
           case .throwingOp:
             state.count = 10
-            return ActionTask(storeTask: .run(
-              id: "stateModify",
-              operation: {
-                throw NSError(domain: "Test", code: 1)
-              },
-              onError: { error, state in
-                state.count = 999
-                state.errorMessage = "Modified"
-              }
-            ))
+            return ActionTask(
+              storeTask: .run(
+                id: "stateModify",
+                operation: {
+                  throw NSError(domain: "Test", code: 1)
+                },
+                onError: { _, state in
+                  state.count = 999
+                  state.errorMessage = "Modified"
+                }
+              ))
           default:
             return .none
           }
@@ -679,7 +682,7 @@ final class StoreTests: XCTestCase {
       typealias State = TestState
 
       func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
+        ActionHandler { action, _ in
           switch action {
           case .increment:
             return .run(id: "task1") {
@@ -751,7 +754,7 @@ final class StoreTests: XCTestCase {
       typealias State = TestState
 
       func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
+        ActionHandler { action, _ in
           switch action {
           case .asyncOp:
             return .run(id: "quick") {
@@ -846,21 +849,22 @@ final class StoreTests: XCTestCase {
           case .startDownload:
             state.isDownloading = true
             state.downloadProgress = 0.0
-            return ActionTask(storeTask: .run(
-              id: "download",
-              operation: {
-                // Simulate download with progress
-                for _ in 1...10 {
-                  try await Task.sleep(for: .milliseconds(10))
-                  if Task.isCancelled { break }
-                  // In real scenario, would update progress
+            return ActionTask(
+              storeTask: .run(
+                id: "download",
+                operation: {
+                  // Simulate download with progress
+                  for _ in 1...10 {
+                    try await Task.sleep(for: .milliseconds(10))
+                    if Task.isCancelled { break }
+                    // In real scenario, would update progress
+                  }
+                },
+                onError: { error, state in
+                  state.isDownloading = false
+                  state.errorMessage = "Download failed: \(error.localizedDescription)"
                 }
-              },
-              onError: { error, state in
-                state.isDownloading = false
-                state.errorMessage = "Download failed: \(error.localizedDescription)"
-              }
-            ))
+              ))
 
           case .downloadCompleted:
             state.isDownloading = false
@@ -913,7 +917,7 @@ final class StoreTests: XCTestCase {
       typealias State = TestState
 
       func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
+        ActionHandler { action, _ in
           switch action {
           case .startWithString:
             return .run(id: "stringID") {
@@ -1020,5 +1024,4 @@ final class StoreTests: XCTestCase {
     XCTAssertFalse(sut.state.isActive)
     XCTAssertFalse(sut.isTaskRunning(id: "backgroundTask"))
   }
-
 }

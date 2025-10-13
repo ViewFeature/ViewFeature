@@ -100,12 +100,11 @@ public struct ActionTask<Action, State> {
 /// UUID-based IDs eliminate global state and enable safe parallel test execution
 private enum TaskIdGenerator {
   static func generate() -> String {
-    return "auto-task-\(UUID().uuidString)"
+    "auto-task-\(UUID().uuidString)"
   }
 }
 
 extension ActionTask {
-
   // MARK: - Factory Methods
 
   /// Returns a task that performs no asynchronous work.

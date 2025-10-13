@@ -160,7 +160,9 @@ extension ActionHandler {
   ///   state.isLoading = false
   /// }
   /// ```
-  public func onError(_ errorHandler: @escaping (Error, inout State) -> Void) -> ActionHandler<Action, State> {
+  public func onError(_ errorHandler: @escaping (Error, inout State) -> Void) -> ActionHandler<
+    Action, State
+  > {
     ActionHandler(processor: processor.onError(errorHandler))
   }
 
@@ -191,7 +193,9 @@ extension ActionHandler {
   ///   }
   /// }
   /// ```
-  public func transform(_ taskTransform: @escaping (ActionTask<Action, State>) -> ActionTask<Action, State>) -> ActionHandler<Action, State> {
+  public func transform(
+    _ taskTransform: @escaping (ActionTask<Action, State>) -> ActionTask<Action, State>
+  ) -> ActionHandler<Action, State> {
     ActionHandler(processor: processor.transform(taskTransform))
   }
 

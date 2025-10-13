@@ -1,6 +1,6 @@
 import Foundation
-import XCTest
 import ViewFeature
+import XCTest
 
 /// XCTest-based assertion provider for use in test targets
 public struct XCTestAssertionProvider: AssertionProvider {

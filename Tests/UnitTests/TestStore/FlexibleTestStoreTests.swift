@@ -1,10 +1,10 @@
 import XCTest
+
 @testable import ViewFeature
 
 /// Tests for TestStore's flexible assertion patterns (assert and KeyPath-based)
 @MainActor
 final class TestStoreFlexibleAssertionsTests: XCTestCase {
-
   // MARK: - Test State without Equatable
 
   // Non-Equatable state with complex properties
@@ -57,20 +57,26 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
       feature: TestFeature()
     )
 
-    await store.send(TestAction.increment, assert: { state in
-      XCTAssertEqual(state.count, 1)
-    })
+    await store.send(
+      TestAction.increment,
+      assert: { state in
+        XCTAssertEqual(state.count, 1)
+      })
 
-    await store.send(TestAction.setName("Alice"), assert: { state in
-      XCTAssertEqual(state.name, "Alice")
-      XCTAssertEqual(state.count, 1)
-    })
+    await store.send(
+      TestAction.setName("Alice"),
+      assert: { state in
+        XCTAssertEqual(state.name, "Alice")
+        XCTAssertEqual(state.count, 1)
+      })
 
-    await store.send(TestAction.activate, assert: { state in
-      XCTAssertTrue(state.isActive)
-      XCTAssertEqual(state.name, "Alice")
-      XCTAssertEqual(state.count, 1)
-    })
+    await store.send(
+      TestAction.activate,
+      assert: { state in
+        XCTAssertTrue(state.isActive)
+        XCTAssertEqual(state.name, "Alice")
+        XCTAssertEqual(state.count, 1)
+      })
   }
 
   func testSend_withCustomAssert_canTestComplexProperties() async {
@@ -79,16 +85,20 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
       feature: TestFeature()
     )
 
-    await store.send(TestAction.addTag("swift"), assert: { state in
-      // Can access complex properties
-      XCTAssertTrue(state.tags.contains("swift"))
-    })
+    await store.send(
+      TestAction.addTag("swift"),
+      assert: { state in
+        // Can access complex properties
+        XCTAssertTrue(state.tags.contains("swift"))
+      })
 
-    await store.send(TestAction.addTag("testing"), assert: { state in
-      XCTAssertTrue(state.tags.contains("swift"))
-      XCTAssertTrue(state.tags.contains("testing"))
-      XCTAssertEqual(state.tags.count, 2)
-    })
+    await store.send(
+      TestAction.addTag("testing"),
+      assert: { state in
+        XCTAssertTrue(state.tags.contains("swift"))
+        XCTAssertTrue(state.tags.contains("testing"))
+        XCTAssertEqual(state.tags.count, 2)
+      })
   }
 
   // MARK: - Pattern 2: KeyPath Assertions Tests
@@ -185,11 +195,13 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     await store.send(TestAction.increment, \.count, 1)
 
     // Use custom assert for complex validations
-    await store.send(TestAction.setName("Frank"), assert: { state in
-      XCTAssertEqual(state.name, "Frank")
-      XCTAssertEqual(state.count, 1)
-      XCTAssertFalse(state.isActive)
-    })
+    await store.send(
+      TestAction.setName("Frank"),
+      assert: { state in
+        XCTAssertEqual(state.name, "Frank")
+        XCTAssertEqual(state.count, 1)
+        XCTAssertFalse(state.isActive)
+      })
 
     // Mix both patterns as needed
     await store.send(TestAction.activate, \.isActive, true)
@@ -241,10 +253,12 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     await store.send(SimpleAction.increment, \.count, 1)
 
     // Pattern 2: Custom assertion (flexible)
-    await store.send(SimpleAction.setName("Grace"), assert: { state in
-      XCTAssertEqual(state.name, "Grace")
-      XCTAssertEqual(state.count, 1)
-    })
+    await store.send(
+      SimpleAction.setName("Grace"),
+      assert: { state in
+        XCTAssertEqual(state.name, "Grace")
+        XCTAssertEqual(state.count, 1)
+      })
 
     // Pattern 3: Full state comparison (most strict, Equatable only)
     await store.send(SimpleAction.increment) { state in
@@ -266,7 +280,9 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
     final class FailureTrackingProvider: AssertionProvider {
       var failures: [String] = []
 
-      func assertEqual<T: Equatable>(_ actual: T, _ expected: T, _ message: String, file: StaticString, line: UInt) {
+      func assertEqual<T: Equatable>(
+        _ actual: T, _ expected: T, _ message: String, file: StaticString, line: UInt
+      ) {
         if actual != expected {
           failures.append(message)
         }
@@ -294,7 +310,9 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
 
     // THEN: Failure should have been detected and recorded
     XCTAssertFalse(assertionProvider.failures.isEmpty, "Should have recorded assertion failure")
-    XCTAssertTrue(assertionProvider.failures[0].contains("State mismatch"), "Should contain state mismatch message")
+    XCTAssertTrue(
+      assertionProvider.failures[0].contains("State mismatch"),
+      "Should contain state mismatch message")
 
     // This test exercises the validateStateExpectation failure path (lines 343-360)
   }
@@ -404,20 +422,24 @@ final class TestStoreFlexibleAssertionsTests: XCTestCase {
 
         case .throwError:
           return .run(id: "error-task") {
-            throw NSError(domain: "TestError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Test error"])
+            throw NSError(
+              domain: "TestError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Test error"])
           }
 
         case .throwWithHandler:
-          return ActionTask(storeTask: .run(
-            id: "error-with-handler",
-            operation: {
-              throw NSError(domain: "TestError", code: 2, userInfo: [NSLocalizedDescriptionKey: "Handled error"])
-            },
-            onError: { error, state in
-              state.errorMessage = error.localizedDescription
-              state.lastError = "Error caught"
-            }
-          ))
+          return ActionTask(
+            storeTask: .run(
+              id: "error-with-handler",
+              operation: {
+                throw NSError(
+                  domain: "TestError", code: 2,
+                  userInfo: [NSLocalizedDescriptionKey: "Handled error"])
+              },
+              onError: { error, state in
+                state.errorMessage = error.localizedDescription
+                state.lastError = "Error caught"
+              }
+            ))
         }
       }
     }

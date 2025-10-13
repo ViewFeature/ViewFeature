@@ -1,12 +1,12 @@
-@testable import ViewFeature
 import XCTest
+
+@testable import ViewFeature
 
 /// Comprehensive unit tests for ActionHandler with 100% code coverage.
 ///
 /// Tests every public method in ActionHandler.swift
 @MainActor
 final class ActionHandlerTests: XCTestCase {
-
   // MARK: - Test Fixtures
 
   enum TestAction: Sendable {
@@ -25,7 +25,7 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_init_createsHandler() async {
     // GIVEN & WHEN: Create handler
-    let sut = ActionHandler<TestAction, TestState> { action, state in
+    let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -57,14 +57,14 @@ final class ActionHandlerTests: XCTestCase {
     _ = await sut.handle(action: .decrement, state: &state)
 
     // THEN: Should process all actions
-    XCTAssertEqual(state.count, 0) // +1 -1 = 0
+    XCTAssertEqual(state.count, 0)  // +1 -1 = 0
   }
 
   // MARK: - handle(action:state:)
 
   func test_handle_executesAction() async {
     // GIVEN: Handler
-    let sut = ActionHandler<TestAction, TestState> { action, state in
+    let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 5
       return .none
     }
@@ -84,7 +84,7 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_handle_returnsRunTask() async {
     // GIVEN: Handler returning run task
-    let sut = ActionHandler<TestAction, TestState> { action, state in
+    let sut = ActionHandler<TestAction, TestState> { _, state in
       state.isLoading = true
       return .run(id: "test") {}
     }
@@ -104,8 +104,8 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_handle_returnsCancelTask() async {
     // GIVEN: Handler returning cancel task
-    let sut = ActionHandler<TestAction, TestState> { action, state in
-      return .cancel(id: "cancel-me")
+    let sut = ActionHandler<TestAction, TestState> { _, _ in
+      .cancel(id: "cancel-me")
     }
 
     // WHEN: Handle action
@@ -122,7 +122,7 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_handle_multipleTimes() async {
     // GIVEN: Handler
-    let sut = ActionHandler<TestAction, TestState> { action, state in
+    let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -141,13 +141,13 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_onError_returnsNewHandler() async {
     // GIVEN: Base handler
-    let baseHandler = ActionHandler<TestAction, TestState> { action, state in
+    let baseHandler = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
 
     // WHEN: Add error handler
-    let sut = baseHandler.onError { error, state in
+    let sut = baseHandler.onError { _, state in
       state.errorMessage = "Error handled"
     }
 
@@ -159,11 +159,11 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_onError_supportsChaining() async {
     // GIVEN: Handler with multiple chained methods
-    let sut = ActionHandler<TestAction, TestState> { action, state in
+    let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
-    .onError { error, state in
+    .onError { _, state in
       state.errorMessage = "Error"
     }
     .use(LoggingMiddleware())
@@ -178,7 +178,7 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_onError_canBeCalled() async {
     // GIVEN: Handler
-    let sut = ActionHandler<TestAction, TestState> { action, state in
+    let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -198,7 +198,7 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_use_addsMiddleware() async {
     // GIVEN: Handler with middleware
-    let sut = ActionHandler<TestAction, TestState> { action, state in
+    let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -214,7 +214,7 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_use_defaultCategory() async {
     // GIVEN: Handler with default middleware
-    let sut = ActionHandler<TestAction, TestState> { action, state in
+    let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -230,13 +230,13 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_use_supportsChaining() async {
     // GIVEN: Handler with multiple middleware
-    let sut = ActionHandler<TestAction, TestState> { action, state in
+    let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
     .use(LoggingMiddleware(category: "Cat1"))
     .use(LoggingMiddleware(category: "Cat2"))
-    .onError { error, state in
+    .onError { _, state in
       state.errorMessage = "Error"
     }
 
@@ -252,7 +252,7 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_transform_modifiesTask() async {
     // GIVEN: Handler with transform
-    let sut = ActionHandler<TestAction, TestState> { action, state in
+    let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
       return .run(id: "original") {}
     }
@@ -280,8 +280,8 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_transform_canConvertTasks() async {
     // GIVEN: Handler that converts tasks
-    let sut = ActionHandler<TestAction, TestState> { action, state in
-      return .run(id: "convert") {}
+    let sut = ActionHandler<TestAction, TestState> { _, _ in
+      .run(id: "convert") {}
     }
     .transform { task in
       switch task.storeTask {
@@ -306,7 +306,7 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_transform_leavesNoTaskUnchanged() async {
     // GIVEN: Handler with transform
-    let sut = ActionHandler<TestAction, TestState> { action, state in
+    let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -333,16 +333,16 @@ final class ActionHandlerTests: XCTestCase {
 
   func test_transform_supportsChaining() async {
     // GIVEN: Handler with all features
-    let sut = ActionHandler<TestAction, TestState> { action, state in
+    let sut = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
       return .run(id: "task") {}
     }
     .use(LoggingMiddleware())
-    .onError { error, state in
+    .onError { _, state in
       state.errorMessage = "Error"
     }
     .transform { task in
-      return task
+      task
     }
 
     // WHEN: Handle action
@@ -374,11 +374,11 @@ final class ActionHandlerTests: XCTestCase {
       }
     }
     .use(LoggingMiddleware(category: "Integration"))
-    .onError { error, state in
+    .onError { _, state in
       state.errorMessage = "Unexpected error"
     }
     .transform { task in
-      task // Identity
+      task  // Identity
     }
 
     // WHEN: Handle multiple actions
@@ -388,13 +388,13 @@ final class ActionHandlerTests: XCTestCase {
     _ = await sut.handle(action: .decrement, state: &state)
 
     // THEN: Should process all actions
-    XCTAssertEqual(state.count, 1) // +1 +1 -1 = 1
+    XCTAssertEqual(state.count, 1)  // +1 +1 -1 = 1
     XCTAssertNil(state.errorMessage)
   }
 
   func test_immutabilityOfChaining() async {
     // GIVEN: Base handler
-    let base = ActionHandler<TestAction, TestState> { action, state in
+    let base = ActionHandler<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -454,6 +454,6 @@ final class ActionHandlerTests: XCTestCase {
     }
 
     _ = await sut.handle(action: .decrement, state: &state)
-    XCTAssertEqual(state.count, 105) // 110 - 5 = 105
+    XCTAssertEqual(state.count, 105)  // 110 - 5 = 105
   }
 }

@@ -1,13 +1,13 @@
-@testable import ViewFeature
 import Logging
 import XCTest
+
+@testable import ViewFeature
 
 /// Comprehensive unit tests for MiddlewareManager with 100% code coverage.
 ///
 /// Tests every public method, property, and code path in MiddlewareManager.swift
 @MainActor
 final class MiddlewareManagerTests: XCTestCase {
-
   // MARK: - Test Fixtures
 
   enum TestAction: Sendable {
@@ -455,9 +455,11 @@ final class MiddlewareManagerTests: XCTestCase {
         state: State
       ) async throws {
         // Simulate a middleware that fails during error handling
-        throw NSError(domain: "MiddlewareError", code: 999, userInfo: [
-          NSLocalizedDescriptionKey: "Middleware failed during error handling"
-        ])
+        throw NSError(
+          domain: "MiddlewareError", code: 999,
+          userInfo: [
+            NSLocalizedDescriptionKey: "Middleware failed during error handling"
+          ])
       }
     }
 

@@ -80,7 +80,6 @@ import Logging
 /// ### Properties
 /// - ``id``
 public struct LoggingMiddleware: ActionMiddleware {
-
   // MARK: - Constants
 
   private static let millisecondsPerSecond: Double = 1000.0
@@ -149,7 +148,8 @@ public struct LoggingMiddleware: ActionMiddleware {
   ) async throws {
     guard shouldLog(.debug) else { return }
 
-    logger.debug("""
+    logger.debug(
+      """
       🎬 Action Started
       Action: \(String(describing: action))
       """)
@@ -180,7 +180,8 @@ public struct LoggingMiddleware: ActionMiddleware {
   ) async throws {
     guard shouldLog(.info) else { return }
 
-    logger.info("""
+    logger.info(
+      """
       ✅ Action Completed
       Action: \(String(describing: action))
       Duration: \(String(format: Self.durationFormatPrecision, duration * Self.millisecondsPerSecond))ms
@@ -208,7 +209,8 @@ public struct LoggingMiddleware: ActionMiddleware {
     action: Action,
     state: State
   ) async throws {
-    logger.error("""
+    logger.error(
+      """
       ❌ Action Failed
       Action: \(String(describing: action))
       Error: \(error.localizedDescription)

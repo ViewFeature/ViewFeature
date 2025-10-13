@@ -8,7 +8,8 @@ import Foundation
 ///   - action: The action to process
 ///   - state: The mutable state reference
 /// - Returns: An ``ActionTask`` for any asynchronous side effects
-public typealias ActionExecution<Action, State> = @MainActor (Action, inout State) async -> ActionTask<Action, State>
+public typealias ActionExecution<Action, State> = @MainActor (Action, inout State) async ->
+  ActionTask<Action, State>
 
 /// Type alias for error handling closure.
 ///
@@ -171,7 +172,8 @@ public final class ActionProcessor<Action, State> {
     let startTime = Date()
 
     do {
-      let result = try await executeWithMiddleware(action: action, state: &state, startTime: startTime)
+      let result = try await executeWithMiddleware(
+        action: action, state: &state, startTime: startTime)
       return result
     } catch {
       await handleError(error: error, action: action, state: &state)
@@ -187,7 +189,8 @@ public final class ActionProcessor<Action, State> {
     try await middlewareManager.executeBeforeAction(action: action, state: state)
     let result = await baseExecution(action, &state)
     let duration = Date().timeIntervalSince(startTime)
-    try await middlewareManager.executeAfterAction(action: action, state: state, result: result, duration: duration)
+    try await middlewareManager.executeAfterAction(
+      action: action, state: state, result: result, duration: duration)
     return result
   }
 
@@ -284,7 +287,9 @@ public final class ActionProcessor<Action, State> {
   ///   }
   /// }
   /// ```
-  public func onError(_ handler: @escaping (Error, inout State) -> Void) -> ActionProcessor<Action, State> {
+  public func onError(_ handler: @escaping (Error, inout State) -> Void) -> ActionProcessor<
+    Action, State
+  > {
     ActionProcessor(
       execution: baseExecution,
       errorHandler: handler,
@@ -354,11 +359,14 @@ public final class ActionProcessor<Action, State> {
   /// ```
   ///
   /// - Note: The transformation is applied after action logic but before task execution
-  public func transform(_ transform: @escaping (ActionTask<Action, State>) -> ActionTask<Action, State>) -> ActionProcessor<Action, State> {
-    let transformedExecution: @MainActor (Action, inout State) async -> ActionTask<Action, State> = { action, state in
-      let result = await self.baseExecution(action, &state)
-      return transform(result)
-    }
+  public func transform(
+    _ transform: @escaping (ActionTask<Action, State>) -> ActionTask<Action, State>
+  ) -> ActionProcessor<Action, State> {
+    let transformedExecution: @MainActor (Action, inout State) async -> ActionTask<Action, State> =
+      { action, state in
+        let result = await self.baseExecution(action, &state)
+        return transform(result)
+      }
 
     return ActionProcessor(
       execution: transformedExecution,

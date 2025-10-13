@@ -1,5 +1,6 @@
-@testable import ViewFeature
 import XCTest
+
+@testable import ViewFeature
 
 /// Integration tests for TaskManager with Store and ActionHandler.
 ///
@@ -7,7 +8,6 @@ import XCTest
 /// and handles concurrent task management.
 @MainActor
 final class TaskManagerIntegrationTests: XCTestCase {
-
   // MARK: - Test Fixtures
 
   enum DataAction: Sendable {
@@ -56,7 +56,7 @@ final class TaskManagerIntegrationTests: XCTestCase {
 
         case .cancelAll:
           state.isLoading.removeAll()
-          return .none // cancelAllTasks() should be called separately
+          return .none  // cancelAllTasks() should be called separately
 
         case .process(let id):
           state.data[id] = "processed"
@@ -188,7 +188,7 @@ final class TaskManagerIntegrationTests: XCTestCase {
       typealias State = DataState
 
       func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
+        ActionHandler { action, _ in
           switch action {
           case .fetch(let id):
             return .run(id: "short-\(id)") {
@@ -228,17 +228,18 @@ final class TaskManagerIntegrationTests: XCTestCase {
         ActionHandler { action, state in
           switch action {
           case .fetch(let id):
-            return ActionTask(storeTask: .run(
-              id: "error-\(id)",
-              operation: {
-                try await Task.sleep(for: .milliseconds(10))
-                throw NSError(domain: "TestError", code: 1)
-              },
-              onError: { error, state in
-                state.errors[id] = error.localizedDescription
-                state.isLoading[id] = false
-              }
-            ))
+            return ActionTask(
+              storeTask: .run(
+                id: "error-\(id)",
+                operation: {
+                  try await Task.sleep(for: .milliseconds(10))
+                  throw NSError(domain: "TestError", code: 1)
+                },
+                onError: { error, state in
+                  state.errors[id] = error.localizedDescription
+                  state.isLoading[id] = false
+                }
+              ))
           default:
             return .none
           }
@@ -285,7 +286,7 @@ final class TaskManagerIntegrationTests: XCTestCase {
       typealias State = DataState
 
       func handle() -> ActionHandler<Action, State> {
-        ActionHandler { [tracker] action, state in
+        ActionHandler { [tracker] action, _ in
           switch action {
           case .fetch(let id):
             return .run(id: "track-\(id)") {

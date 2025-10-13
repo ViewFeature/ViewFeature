@@ -225,7 +225,9 @@ public final class MiddlewareManager<Action, State> {
   /// ## Duration Format
   /// Duration is provided in seconds as `TimeInterval`. Middleware typically
   /// converts to milliseconds for display: `duration * 1000`
-  public func executeAfterAction(action: Action, state: State, result: ActionTask<Action, State>, duration: TimeInterval) async throws {
+  public func executeAfterAction(
+    action: Action, state: State, result: ActionTask<Action, State>, duration: TimeInterval
+  ) async throws {
     let afterMiddlewares = middlewares.compactMap { $0 as? any AfterActionMiddleware }
 
     for middleware in afterMiddlewares {
@@ -276,7 +278,9 @@ public final class MiddlewareManager<Action, State> {
       do {
         try await middleware.onError(error, action: action, state: state)
       } catch {
-        logger.error("🚨 Middleware '\(middleware.id)' failed during error handling: \(error.localizedDescription)")
+        logger.error(
+          "🚨 Middleware '\(middleware.id)' failed during error handling: \(error.localizedDescription)"
+        )
       }
     }
   }

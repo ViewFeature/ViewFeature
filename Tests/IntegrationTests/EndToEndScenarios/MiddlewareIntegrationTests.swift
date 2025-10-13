@@ -1,5 +1,6 @@
-@testable import ViewFeature
 import XCTest
+
+@testable import ViewFeature
 
 /// Integration tests for Store with Middleware.
 ///
@@ -7,7 +8,6 @@ import XCTest
 /// to ensure middleware properly intercepts and logs actions.
 @MainActor
 final class MiddlewareIntegrationTests: XCTestCase {
-
   // MARK: - Test Fixtures
 
   enum ShoppingAction: Sendable {

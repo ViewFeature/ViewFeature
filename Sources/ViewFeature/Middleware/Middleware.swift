@@ -101,7 +101,9 @@ public protocol AfterActionMiddleware: BaseActionMiddleware {
   ///   - result: The task returned by the action handler
   ///   - duration: Time taken to process the action (in seconds)
   /// - Throws: Any error (will be passed to error handling middleware)
-  func afterAction<Action, State>(_ action: Action, state: State, result: ActionTask<Action, State>, duration: TimeInterval) async throws
+  func afterAction<Action, State>(
+    _ action: Action, state: State, result: ActionTask<Action, State>, duration: TimeInterval)
+    async throws
 }
 
 /// Middleware that handles errors during action processing.
@@ -181,7 +183,8 @@ public protocol ErrorHandlingMiddleware: BaseActionMiddleware {
 /// - ``BeforeActionMiddleware``
 /// - ``AfterActionMiddleware``
 /// - ``ErrorHandlingMiddleware``
-public protocol ActionMiddleware: BeforeActionMiddleware, AfterActionMiddleware, ErrorHandlingMiddleware {
+public protocol ActionMiddleware: BeforeActionMiddleware, AfterActionMiddleware,
+  ErrorHandlingMiddleware {
 }
 
 // MARK: - Default Implementations
@@ -204,7 +207,9 @@ extension BeforeActionMiddleware {
 ///   you should override this method to provide meaningful functionality. The default implementation
 ///   exists only to support protocol composition in ``ActionMiddleware``.
 extension AfterActionMiddleware {
-  public func afterAction<Action, State>(_ action: Action, state: State, result: ActionTask<Action, State>, duration: TimeInterval) async throws {
+  public func afterAction<Action, State>(
+    _ action: Action, state: State, result: ActionTask<Action, State>, duration: TimeInterval
+  ) async throws {
     // Default no-op implementation
     // Override this method to add after-action logic
   }

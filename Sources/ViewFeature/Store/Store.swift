@@ -1,6 +1,6 @@
 import Foundation
-import Observation
 import Logging
+import Observation
 
 /// The main store for managing application state and dispatching actions.
 ///

@@ -161,4 +161,3 @@ public protocol StoreFeature: Sendable {
   /// - Returns: An ActionHandler configured for this feature's action handling
   func handle() -> ActionHandler<Action, State>
 }
-

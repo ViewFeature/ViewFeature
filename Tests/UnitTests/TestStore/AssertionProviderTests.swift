@@ -1,5 +1,6 @@
-@testable import ViewFeature
 import XCTest
+
+@testable import ViewFeature
 
 /// Comprehensive unit tests for AssertionProvider with 100% code coverage.
 ///
@@ -7,7 +8,6 @@ import XCTest
 /// in non-XCTest environments (like DemoApp).
 @MainActor
 final class AssertionProviderTests: XCTestCase {
-
   // MARK: - PrintAssertionProvider Tests
 
   func test_printAssertionProvider_canBeInitialized() {
@@ -92,7 +92,8 @@ final class AssertionProviderTests: XCTestCase {
     sut.assertEqual(Optional(42), Optional(100), "Optionals should match", file: #file, line: #line)
 
     // WHEN & THEN: Test with nil
-    sut.assertEqual(Optional<Int>.none, Optional<Int>.none, "Nils should match", file: #file, line: #line)
+    sut.assertEqual(
+      Optional<Int>.none, Optional<Int>.none, "Nils should match", file: #file, line: #line)
     sut.assertEqual(Optional(42), Optional<Int>.none, "Should not match", file: #file, line: #line)
 
     XCTAssertTrue(true, "Optional comparisons completed")
@@ -119,10 +120,12 @@ final class AssertionProviderTests: XCTestCase {
     let sut = PrintAssertionProvider()
 
     // WHEN & THEN: Test with equal dictionaries
-    sut.assertEqual(["key": "value"], ["key": "value"], "Dicts should match", file: #file, line: #line)
+    sut.assertEqual(
+      ["key": "value"], ["key": "value"], "Dicts should match", file: #file, line: #line)
 
     // WHEN & THEN: Test with unequal dictionaries
-    sut.assertEqual(["key": "value"], ["key": "other"], "Dicts should match", file: #file, line: #line)
+    sut.assertEqual(
+      ["key": "value"], ["key": "other"], "Dicts should match", file: #file, line: #line)
 
     XCTAssertTrue(true, "Dictionary comparisons completed")
   }
@@ -183,11 +186,11 @@ final class AssertionProviderTests: XCTestCase {
 
     // WHEN: Call fail with multiline message
     let message = """
-    Test failed with multiple lines:
-    - Line 1: First issue
-    - Line 2: Second issue
-    - Line 3: Third issue
-    """
+      Test failed with multiple lines:
+      - Line 1: First issue
+      - Line 2: Second issue
+      - Line 3: Third issue
+      """
     // THEN: Should not crash
     sut.fail(message, file: #file, line: #line)
 

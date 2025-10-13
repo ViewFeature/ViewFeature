@@ -22,7 +22,6 @@ public protocol AssertionProvider {
   )
 }
 
-
 /// Print-based assertion provider for use in app targets
 ///
 /// This provider prints assertion failures instead of using XCTest,

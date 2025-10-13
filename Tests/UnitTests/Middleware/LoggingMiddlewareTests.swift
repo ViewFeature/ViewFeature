@@ -1,13 +1,13 @@
-@testable import ViewFeature
 import Logging
 import XCTest
+
+@testable import ViewFeature
 
 /// Comprehensive unit tests for LoggingMiddleware with 100% code coverage.
 ///
 /// Tests every public method, property, and code path in LoggingMiddleware.swift
 @MainActor
 final class LoggingMiddlewareTests: XCTestCase {
-
   // MARK: - Test Fixtures
 
   enum TestAction {
@@ -179,7 +179,8 @@ final class LoggingMiddlewareTests: XCTestCase {
       category: "Test",
       logLevel: .info
     )
-    let error = NSError(domain: "TestError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Test error message"])
+    let error = NSError(
+      domain: "TestError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Test error message"])
     let action = TestAction.increment
     let state = TestState()
 
@@ -194,7 +195,8 @@ final class LoggingMiddlewareTests: XCTestCase {
       category: "Test",
       logLevel: .critical
     )
-    let error = NSError(domain: "TestError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Critical error"])
+    let error = NSError(
+      domain: "TestError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Critical error"])
     let action = TestAction.increment
     let state = TestState()
 
@@ -261,6 +263,7 @@ final class LoggingMiddlewareTests: XCTestCase {
     // THEN: Should log everything
     try await traceLevelMiddleware.beforeAction(action, state: state)
     try await traceLevelMiddleware.afterAction(action, state: state, result: result, duration: 0.1)
-    try await traceLevelMiddleware.onError(NSError(domain: "Test", code: 1), action: action, state: state)
+    try await traceLevelMiddleware.onError(
+      NSError(domain: "Test", code: 1), action: action, state: state)
   }
 }

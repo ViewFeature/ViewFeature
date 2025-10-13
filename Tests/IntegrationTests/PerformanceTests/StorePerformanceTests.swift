@@ -1,12 +1,12 @@
-@testable import ViewFeature
 import XCTest
+
+@testable import ViewFeature
 
 /// Performance tests for Store and related components.
 ///
 /// Tests throughput, latency, and resource usage under load.
 @MainActor
 final class StorePerformanceTests: XCTestCase {
-
   // MARK: - Test Fixtures
 
   enum PerformanceAction: Sendable {
@@ -76,7 +76,8 @@ final class StorePerformanceTests: XCTestCase {
 
     // THEN: Should process efficiently
     XCTAssertEqual(sut.state.counter, actionCount)
-    XCTAssertLessThan(duration, 5.0, "Processing \(actionCount) actions took too long: \(duration)s")
+    XCTAssertLessThan(
+      duration, 5.0, "Processing \(actionCount) actions took too long: \(duration)s")
 
     let throughput = Double(actionCount) / duration
     print("Throughput: \(Int(throughput)) actions/second")
@@ -333,10 +334,11 @@ final class StorePerformanceTests: XCTestCase {
     var stores: [Store<PerformanceFeature>] = []
 
     for _ in 0..<storeCount {
-      stores.append(Store(
-        initialState: PerformanceState(),
-        feature: PerformanceFeature()
-      ))
+      stores.append(
+        Store(
+          initialState: PerformanceState(),
+          feature: PerformanceFeature()
+        ))
     }
 
     // WHEN: Process actions across all stores

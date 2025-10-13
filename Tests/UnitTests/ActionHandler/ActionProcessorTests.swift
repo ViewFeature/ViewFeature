@@ -1,12 +1,12 @@
-@testable import ViewFeature
 import XCTest
+
+@testable import ViewFeature
 
 /// Comprehensive unit tests for ActionProcessor with 100% code coverage.
 ///
 /// Tests every public method, property, and code path in ActionProcessor.swift
 @MainActor
 final class ActionProcessorTests: XCTestCase {
-
   // MARK: - Test Fixtures
 
   enum TestAction: Sendable {
@@ -26,7 +26,7 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_init_createsProcessorWithExecution() async {
     // GIVEN & WHEN: Create processor with execution
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -66,7 +66,7 @@ final class ActionProcessorTests: XCTestCase {
     _ = await sut.process(action: .asyncOperation, state: &state)
 
     // THEN: Should handle all actions
-    XCTAssertEqual(state.count, 0) // +1 -1 = 0
+    XCTAssertEqual(state.count, 0)  // +1 -1 = 0
     XCTAssertTrue(state.isLoading)
   }
 
@@ -75,7 +75,7 @@ final class ActionProcessorTests: XCTestCase {
   func test_process_executesActionSuccessfully() async {
     // GIVEN: Processor
     var executionCount = 0
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       executionCount += 1
       state.count += 1
       return .none
@@ -97,7 +97,7 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_process_returnsRunTask() async {
     // GIVEN: Processor that returns run task
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.isLoading = true
       return .run(id: "test-task") {}
     }
@@ -117,8 +117,8 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_process_returnsCancelTask() async {
     // GIVEN: Processor that returns cancel task
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
-      return .cancel(id: "cancel-me")
+    let sut = ActionProcessor<TestAction, TestState> { _, _ in
+      .cancel(id: "cancel-me")
     }
 
     // WHEN: Process action
@@ -142,7 +142,7 @@ final class ActionProcessorTests: XCTestCase {
       }
     }
 
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -153,7 +153,7 @@ final class ActionProcessorTests: XCTestCase {
     let task = await sut.process(action: .throwError, state: &state)
 
     // THEN: Should return noTask on error and not execute action
-    XCTAssertEqual(state.count, 0) // Action not executed due to middleware error
+    XCTAssertEqual(state.count, 0)  // Action not executed due to middleware error
     if case .none = task.storeTask {
       XCTAssertTrue(true)
     } else {
@@ -163,7 +163,7 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_process_executesMiddleware() async throws {
     // GIVEN: Processor with logging middleware
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -187,7 +187,7 @@ final class ActionProcessorTests: XCTestCase {
     }
 
     var errorWasCalled = false
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -208,7 +208,7 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_process_multipleTimesWithSameProcessor() async {
     // GIVEN: Processor
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -227,7 +227,7 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_use_addsMiddleware() async {
     // GIVEN: Processor
-    let base = ActionProcessor<TestAction, TestState> { action, state in
+    let base = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -243,7 +243,7 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_use_supportsMethodChaining() async {
     // GIVEN: Processor with multiple middleware
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -261,7 +261,7 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_use_preservesOriginalProcessor() async {
     // GIVEN: Base processor
-    let base = ActionProcessor<TestAction, TestState> { action, state in
+    let base = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -291,8 +291,8 @@ final class ActionProcessorTests: XCTestCase {
     }
 
     var capturedError: Error?
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
-      return .none
+    let sut = ActionProcessor<TestAction, TestState> { _, _ in
+      .none
     }
     .use(ThrowingMiddleware())
     .onError { error, state in
@@ -319,11 +319,11 @@ final class ActionProcessorTests: XCTestCase {
       }
     }
 
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
-      return .none
+    let sut = ActionProcessor<TestAction, TestState> { _, _ in
+      .none
     }
     .use(ThrowingMiddleware())
-    .onError { error, state in
+    .onError { _, state in
       state.count = 999
       state.isLoading = false
       state.errorMessage = "Error occurred"
@@ -348,12 +348,12 @@ final class ActionProcessorTests: XCTestCase {
       }
     }
 
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
-      return .none
+    let sut = ActionProcessor<TestAction, TestState> { _, _ in
+      .none
     }
     .use(LoggingMiddleware())
     .use(ThrowingMiddleware())
-    .onError { error, state in
+    .onError { _, state in
       state.errorMessage = "Handled"
     }
 
@@ -367,11 +367,11 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_onError_doesNotAffectSuccessfulExecution() async {
     // GIVEN: Processor with error handler
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
-    .onError { error, state in
+    .onError { _, state in
       state.errorMessage = "Should not be called"
     }
 
@@ -388,7 +388,7 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_transform_modifiesTask() async {
     // GIVEN: Processor with transform
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .run(id: "original") {}
     }
@@ -416,8 +416,8 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_transform_canConvertTaskTypes() async {
     // GIVEN: Processor that converts run to cancel
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
-      return .run(id: "will-cancel") {}
+    let sut = ActionProcessor<TestAction, TestState> { _, _ in
+      .run(id: "will-cancel") {}
     }
     .transform { task in
       switch task.storeTask {
@@ -442,7 +442,7 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_transform_leavesNoTaskUnchanged() async {
     // GIVEN: Processor with transform
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -469,16 +469,16 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_transform_supportsChaining() async {
     // GIVEN: Processor with middleware, error handler, and transform
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .run(id: "task") {}
     }
     .use(LoggingMiddleware())
-    .onError { error, state in
+    .onError { _, state in
       state.errorMessage = "Error"
     }
     .transform { task in
-      return task // Identity transform
+      task  // Identity transform
     }
 
     // WHEN: Process action
@@ -499,12 +499,12 @@ final class ActionProcessorTests: XCTestCase {
   func test_fullPipeline_successfulExecution() async {
     // GIVEN: Processor with all features
     var middlewareExecuted = false
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 10
       return .run(id: "main-task") {}
     }
     .use(LoggingMiddleware(logLevel: .debug))
-    .onError { error, state in
+    .onError { _, state in
       state.errorMessage = "Unexpected error"
     }
     .transform { task in
@@ -534,7 +534,7 @@ final class ActionProcessorTests: XCTestCase {
       }
     }
 
-    let sut = ActionProcessor<TestAction, TestState> { action, state in
+    let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }
@@ -542,7 +542,7 @@ final class ActionProcessorTests: XCTestCase {
     .use(ThrowingMiddleware())
     .onError { error, state in
       state.errorMessage = "Pipeline error: \(error.localizedDescription)"
-      state.count = 0 // Reset on error
+      state.count = 0  // Reset on error
     }
 
     // WHEN: Process action (middleware throws)
@@ -560,19 +560,19 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_complexStateModification() async {
     // GIVEN: Processors for different actions
-    let incrementProcessor = ActionProcessor<TestAction, TestState> { action, state in
+    let incrementProcessor = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       state.isLoading = false
       return .none
     }
 
-    let decrementProcessor = ActionProcessor<TestAction, TestState> { action, state in
+    let decrementProcessor = ActionProcessor<TestAction, TestState> { _, state in
       state.count -= 1
       state.errorMessage = nil
       return .none
     }
 
-    let asyncProcessor = ActionProcessor<TestAction, TestState> { action, state in
+    let asyncProcessor = ActionProcessor<TestAction, TestState> { _, state in
       state.isLoading = true
       return .run(id: "async") {}
     }
@@ -584,8 +584,8 @@ final class ActionProcessorTests: XCTestCase {
       }
     }
 
-    let errorProcessor = ActionProcessor<TestAction, TestState> { action, state in
-      return .none
+    let errorProcessor = ActionProcessor<TestAction, TestState> { _, _ in
+      .none
     }
     .use(ThrowingMiddleware())
     .onError { error, state in
@@ -614,7 +614,7 @@ final class ActionProcessorTests: XCTestCase {
 
   func test_immutabilityOfMethodChaining() async {
     // GIVEN: Base processor
-    let base = ActionProcessor<TestAction, TestState> { action, state in
+    let base = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
       return .none
     }

@@ -1,12 +1,12 @@
-@testable import ViewFeature
 import XCTest
+
+@testable import ViewFeature
 
 /// Comprehensive unit tests for ActionTask with 100% code coverage.
 ///
 /// Tests every public method and property in ActionTask.swift
 @MainActor
 final class ActionTaskTests: XCTestCase {
-
   // MARK: - Test Fixtures
 
   enum TestAction {
@@ -316,7 +316,7 @@ final class ActionTaskTests: XCTestCase {
     let sut: ActionTask<TestAction, TestState> = .run(id: "test") {}
 
     // WHEN: Attach error handler with catch
-    let result = sut.catch { error, state in
+    let result = sut.catch { _, state in
       state.count = 99  // Modify state in error handler
     }
 
@@ -352,7 +352,8 @@ final class ActionTaskTests: XCTestCase {
     let sut: ActionTask<TestAction, TestState> = .run(id: "test") {}
 
     // WHEN: Chain catch multiple times (last one wins)
-    let result = sut
+    let result =
+      sut
       .catch { _, state in state.count = 1 }
       .catch { _, state in state.count = 2 }
 
@@ -360,8 +361,8 @@ final class ActionTaskTests: XCTestCase {
     switch result.storeTask {
     case .run(_, _, let onError):
       XCTAssertNotNil(onError, "Should have error handler")
-      // Note: Can't easily test which handler is attached in unit test
-      // This is tested in integration tests
+    // Note: Can't easily test which handler is attached in unit test
+    // This is tested in integration tests
     default:
       XCTFail("Expected run task")
     }

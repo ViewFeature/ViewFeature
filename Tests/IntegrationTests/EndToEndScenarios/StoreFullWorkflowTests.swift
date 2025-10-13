@@ -1,5 +1,6 @@
-@testable import ViewFeature
 import XCTest
+
+@testable import ViewFeature
 
 /// End-to-end tests for complete Store workflows.
 ///
@@ -7,7 +8,6 @@ import XCTest
 /// work together to handle complex application flows.
 @MainActor
 final class StoreFullWorkflowTests: XCTestCase {
-
   // MARK: - Test Fixtures
 
   enum UserAction: Sendable {
@@ -250,7 +250,7 @@ final class StoreFullWorkflowTests: XCTestCase {
     // WHEN: Execute workflow and check consistency at each step
     await sut.send(.loadUser("user123")).value
     XCTAssertTrue(sut.state.isLoading)
-    XCTAssertNil(sut.state.userName) // Should be nil before update
+    XCTAssertNil(sut.state.userName)  // Should be nil before update
 
     await sut.send(.updateProfile(name: "Test User", email: "test@example.com")).value
     XCTAssertFalse(sut.state.isLoading)

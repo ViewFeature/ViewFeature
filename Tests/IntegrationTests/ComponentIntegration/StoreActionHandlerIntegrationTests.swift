@@ -1,5 +1,6 @@
-@testable import ViewFeature
 import XCTest
+
+@testable import ViewFeature
 
 /// Integration tests for Store and ActionHandler interaction.
 ///
@@ -7,7 +8,6 @@ import XCTest
 /// and manage state transitions.
 @MainActor
 final class StoreActionHandlerIntegrationTests: XCTestCase {
-
   // MARK: - Test Fixtures
 
   enum TodoAction: Sendable {
@@ -282,7 +282,7 @@ final class StoreActionHandlerIntegrationTests: XCTestCase {
 
     await sut.send(.complete(1)).value
     let countAfterComplete = sut.state.todos.count
-    XCTAssertEqual(countAfterComplete, 1) // Count should remain same
+    XCTAssertEqual(countAfterComplete, 1)  // Count should remain same
 
     await sut.send(.add("Task 2")).value
     let countAfterSecondAdd = sut.state.todos.count
