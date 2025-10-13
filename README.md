@@ -106,17 +106,17 @@ ViewFeature follows a unidirectional data flow architecture inspired by Redux an
 │    View     │──────────────▶│    Store     │
 │  (SwiftUI)  │               │              │
 └─────────────┘               └──────────────┘
-▲                             │
-│                             ▼
-│                      ┌──────────────┐
-│        State         │ActionHandler │
-└──────────────────────│   (Feature)  │
-└──────────────┘
-│
-┌──────▼──────┐
-│ StoreTask   │
-│(Side Effects)│
-└─────────────┘
+       ▲                             │
+       │                             ▼
+       │                      ┌──────────────┐
+       │        State         │ActionHandler │
+       └──────────────────────│   (Feature)  │
+                              └──────────────┘
+                                     │
+                              ┌──────▼──────┐
+                              │ StoreTask   │
+                              │(Side Effects)│
+                              └─────────────┘
 ```
 
 ### Core Components
