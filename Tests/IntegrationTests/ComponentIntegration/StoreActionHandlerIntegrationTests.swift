@@ -164,7 +164,7 @@ import Testing
     await sut.send(.toggleAll).value
 
     // THEN: All should be completed (not all were completed before)
-    let allCompleted = sut.state.todos.allSatisfy(\.isCompleted)
+    let allCompleted = sut.state.todos.allSatisfy { $0.isCompleted }
     #expect(allCompleted)
 
     // WHEN: Toggle all again
