@@ -843,14 +843,14 @@ final class StoreTests: XCTestCase {
       func handle() -> ActionHandler<Action, State> {
         ActionHandler { action, state in
           switch action {
-          case .startDownload(let url):
+          case .startDownload:
             state.isDownloading = true
             state.downloadProgress = 0.0
             return ActionTask(storeTask: .run(
               id: "download",
               operation: {
                 // Simulate download with progress
-                for i in 1...10 {
+                for _ in 1...10 {
                   try await Task.sleep(for: .milliseconds(10))
                   if Task.isCancelled { break }
                   // In real scenario, would update progress

@@ -10,7 +10,6 @@ final class TaskManagerTests: XCTestCase {
   var sut: TaskManager!
 
   override func setUp() async throws {
-    try await super.setUp()
     sut = TaskManager()
   }
 
@@ -19,7 +18,6 @@ final class TaskManagerTests: XCTestCase {
     sut?.cancelAllTasks()
     try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
     sut = nil
-    try await super.tearDown()
   }
 
   // MARK: - init()
