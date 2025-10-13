@@ -427,8 +427,8 @@ import Testing
 
     @Test func differentActionTypes_createDifferentTaskTypes() {
         // GIVEN: Different Action types
-        enum Action1 { case a }
-        enum Action2 { case b }
+        enum Action1 { case actionA }
+        enum Action2 { case actionB }
 
         // WHEN: Create tasks with different types
         let task1: StoreTask<Action1, TestState> = .none

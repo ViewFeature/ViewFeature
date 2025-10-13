@@ -253,9 +253,9 @@ import Testing
         // WHEN: Perform many state updates
         let startTime = Date()
 
-        for i in 0..<1000 {
-            await sut.send(.addToArray(i)).value
-            await sut.send(.addToDict("key\(i)", i)).value
+        for index in 0..<1000 {
+            await sut.send(.addToArray(index)).value
+            await sut.send(.addToDict("key\(index)", index)).value
             await sut.send(.increment).value
         }
 
@@ -373,8 +373,8 @@ import Testing
         // 80% simple actions, 20% with tasks
         let startTime = Date()
 
-        for i in 0..<500 {
-            if i % 5 == 0 {
+        for index in 0..<500 {
+            if index % 5 == 0 {
                 _ = sut.send(.heavyComputation)
             } else {
                 await sut.send(.increment).value
