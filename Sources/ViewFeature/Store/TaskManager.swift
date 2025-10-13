@@ -157,7 +157,7 @@ public final class TaskManager {
     runningTasks.removeAll()
   }
 
-  /// Executes an asynchronous operation as a tracked task.
+  /// Executes an asynchronous operation as a tracked task and returns the Task.
   ///
   /// Creates and tracks a new task with automatic cleanup. If a task with the same
   /// ID already exists, the old task is cancelled before starting the new one.
@@ -167,10 +167,11 @@ public final class TaskManager {
   ///   - id: Unique identifier for the task (string representation)
   ///   - operation: The asynchronous operation to execute
   ///   - onError: Optional error handler called if the operation throws
+  /// - Returns: The created Task that can be awaited for completion
   ///
   /// ## Example
   /// ```swift
-  /// taskManager.executeTask(
+  /// let task = taskManager.executeTask(
   ///   id: "loadProfile",
   ///   operation: {
   ///     let profile = try await api.fetchProfile()
@@ -180,21 +181,25 @@ public final class TaskManager {
   ///     await store.send(.profileLoadFailed(error))
   ///   }
   /// )
+  ///
+  /// // Optionally wait for completion
+  /// await task.value
   /// ```
   ///
   /// - Note: Tasks automatically remove themselves from tracking upon completion
+  @discardableResult
   public func executeTask(
     id: String,
     operation: @escaping () async throws -> Void,
     onError: ((Error) async -> Void)?
-  ) {
+  ) -> Task<Void, Never> {
     if let existingTask = runningTasks[id] {
       existingTask.cancel()
       runningTasks.removeValue(forKey: id)
     }
 
     // Create task with automatic cleanup on completion
-    runningTasks[id] = Task { [weak self] in
+    let task = Task { [weak self] in
       defer {
         // Automatically remove completed task from tracking
         self?.runningTasks.removeValue(forKey: id)
@@ -208,6 +213,9 @@ public final class TaskManager {
         }
       }
     }
+
+    runningTasks[id] = task
+    return task
   }
 
   /// Internal method to cancel a task by string identifier.

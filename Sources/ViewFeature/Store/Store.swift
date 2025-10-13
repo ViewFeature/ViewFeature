@@ -144,7 +144,8 @@ public final class Store<Feature: StoreFeature> {
 
     case .run(let id, let operation, let onError):
       let errorHandler = createErrorHandler(from: onError)
-      taskManager.executeTask(id: id, operation: operation, onError: errorHandler)
+      let backgroundTask = taskManager.executeTask(id: id, operation: operation, onError: errorHandler)
+      await backgroundTask.value
 
     case .cancel(let id):
       taskManager.cancelTaskInternal(id: id)

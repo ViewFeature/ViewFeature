@@ -307,14 +307,10 @@ final class TaskManagerIntegrationTests: XCTestCase {
     )
 
     // WHEN: Execute tasks sequentially
+    // send().value now waits for task completion, so no additional sleep needed
     await sut.send(.fetch("task1")).value
-    try? await Task.sleep(for: .milliseconds(30))
-
     await sut.send(.fetch("task2")).value
-    try? await Task.sleep(for: .milliseconds(30))
-
     await sut.send(.fetch("task3")).value
-    try? await Task.sleep(for: .milliseconds(30))
 
     // THEN: Tasks should complete in order
     let completed = await tracker.getCompleted()
@@ -348,13 +344,16 @@ final class TaskManagerIntegrationTests: XCTestCase {
       feature: DataFeature()
     )
 
-    // WHEN: Start tasks with same data but different IDs
-    await sut.send(.fetch("data1")).value
+    // WHEN: Start task without waiting (fire and forget)
+    _ = sut.send(.fetch("data1"))
     try? await Task.sleep(for: .milliseconds(10))
 
-    // THEN: Each task should be tracked separately
+    // THEN: Task should be tracked and running
     XCTAssertTrue(sut.isTaskRunning(id: "fetch-data1"))
     XCTAssertFalse(sut.isTaskRunning(id: "fetch-data2"))
+
+    // Cleanup
+    sut.cancelAllTasks()
   }
 
   // MARK: - Task Manager State Consistency
