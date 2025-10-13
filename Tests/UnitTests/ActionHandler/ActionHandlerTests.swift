@@ -78,7 +78,7 @@ import Testing
         // THEN: Should update state
         #expect(state.count == 5)
         if case .none = task.storeTask {
-            #expect(true)
+            #expect(Bool(true))
         } else {
             Issue.record("Expected noTask")
         }
@@ -327,7 +327,7 @@ import Testing
 
         // THEN: noTask should remain
         if case .none = task.storeTask {
-            #expect(true)
+            #expect(Bool(true))
         } else {
             Issue.record("Expected noTask")
         }
@@ -354,7 +354,7 @@ import Testing
         // THEN: Should work with all features
         #expect(state.count == 1)
         if case .run = task.storeTask {
-            #expect(true)
+            #expect(Bool(true))
         }
     }
 

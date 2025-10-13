@@ -42,14 +42,14 @@ import Testing
         // THEN: Both should be noTask type
         switch task1.storeTask {
         case .none:
-            #expect(true)
+            #expect(Bool(true))
         default:
             Issue.record("task1 should be noTask")
         }
 
         switch task2.storeTask {
         case .none:
-            #expect(true)
+            #expect(Bool(true))
         default:
             Issue.record("task2 should be noTask")
         }
@@ -121,10 +121,10 @@ import Testing
 
         // THEN: Should store the operation (cannot directly test, but can verify task type)
         switch sut.storeTask {
-        case .run(_, let storedOperation, _):
+        case .run(_, _, _):
             // Operation is stored - we can't easily test it's the same closure
             // but we verify it's a run task with an operation
-            #expect(storedOperation != nil)
+            #expect(Bool(true))  // Verified it's a run task
         case .none, .cancel:
             Issue.record("Expected run task")
         }
@@ -263,17 +263,17 @@ import Testing
 
         // THEN: All should be valid tasks
         switch noTask.storeTask {
-        case .none: #expect(true)
+        case .none: #expect(Bool(true))
         default: Issue.record("noTask failed")
         }
 
         switch runTask.storeTask {
-        case .run: #expect(true)
+        case .run: #expect(Bool(true))
         default: Issue.record("runTask failed")
         }
 
         switch cancelTask.storeTask {
-        case .cancel: #expect(true)
+        case .cancel: #expect(Bool(true))
         default: Issue.record("cancelTask failed")
         }
     }
