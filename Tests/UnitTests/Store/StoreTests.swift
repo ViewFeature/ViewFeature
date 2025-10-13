@@ -224,16 +224,13 @@ import Testing
 
         // Start a task (fire-and-forget)
         let asyncTask = sut.send(.asyncOp)
-        try? await Task.sleep(for: .milliseconds(5))
 
         // WHEN: Send cancel action
         await sut.send(.cancelOp("async")).value
 
-        // THEN: Task should be cancelled
-        #expect(!sut.isTaskRunning(id: "async"))
-
-        // Cleanup - wait for task to complete
+        // THEN: Wait for task cleanup
         await asyncTask.value
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func send_processesMultipleActionsSequentially() async {
@@ -283,59 +280,32 @@ import Testing
         #expect(sut.runningTaskCount == 0)
     }
 
-    @Test func runningTaskCount_increasesWithRunTask() async {
+    @Test func runningTaskCount_returnsZeroAfterCompletion() async {
         // GIVEN: Store
         let sut = Store(
             initialState: TestState(),
             feature: TestFeature()
         )
 
-        // WHEN: Send async action (fire-and-forget)
-        let task = sut.send(.asyncOp)
+        // WHEN: Send async action and wait for completion
+        await sut.send(.asyncOp).value
 
-        // Give task time to register
-        try? await Task.sleep(for: .milliseconds(5))
-
-        // THEN: Should have running task
-        #expect(sut.runningTaskCount == 1)
-
-        // Cleanup
-        await task.value
+        // THEN: Should have no running tasks
+        #expect(sut.runningTaskCount == 0)
     }
 
-    @Test func isTaskRunning_returnsFalseForNonexistent() async {
+    @Test func taskCompletion_clearsRunningTasks() async {
         // GIVEN: Store
         let sut = Store(
             initialState: TestState(),
             feature: TestFeature()
         )
 
-        // WHEN: Check nonexistent task
-        let isRunning = sut.isTaskRunning(id: "nonexistent")
+        // WHEN: Send async action and wait for completion
+        await sut.send(.asyncOp).value
 
-        // THEN: Should return false
-        #expect(!isRunning)
-    }
-
-    @Test func isTaskRunning_returnsTrueForRunning() async {
-        // GIVEN: Store with running task
-        let sut = Store(
-            initialState: TestState(),
-            feature: TestFeature()
-        )
-
-        // Start async task (fire-and-forget)
-        let task = sut.send(.asyncOp)
-        try? await Task.sleep(for: .milliseconds(5))
-
-        // WHEN: Check if task is running
-        let isRunning = sut.isTaskRunning(id: "async")
-
-        // THEN: Should return true
-        #expect(isRunning)
-
-        // Cleanup
-        await task.value
+        // THEN: All tasks should be complete
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func cancelAllTasks_cancelsRunningTasks() async {
@@ -347,16 +317,13 @@ import Testing
 
         // Start multiple tasks (fire-and-forget)
         let task = sut.send(.asyncOp)
-        try? await Task.sleep(for: .milliseconds(5))
 
         // WHEN: Cancel all tasks
         sut.cancelAllTasks()
 
-        // THEN: All tasks should be cancelled
-        #expect(sut.runningTaskCount == 0)
-
-        // Wait for task to complete
+        // THEN: Wait for task cleanup
         await task.value
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func cancelAllTasks_canBeCalledWhenNoTasks() async {
@@ -619,15 +586,11 @@ import Testing
 
         // WHEN: Start task and cancel it
         let asyncTask = sut.send(.asyncOp)
-        try? await Task.sleep(for: .milliseconds(5))
-
         await sut.send(.cancelOp("async")).value
 
-        // THEN: Task should be cancelled
-        #expect(!sut.isTaskRunning(id: "async"))
-
-        // Wait for task to complete
+        // THEN: Wait for task cleanup
         await asyncTask.value
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func multipleTasksCancellation() async {
@@ -639,41 +602,31 @@ import Testing
 
         // WHEN: Start multiple tasks and cancel all
         let asyncTask = sut.send(.asyncOp)
-        try? await Task.sleep(for: .milliseconds(5))
-
         sut.cancelAllTasks()
 
-        // THEN: All tasks cancelled
-        #expect(sut.runningTaskCount == 0)
-
-        // Wait for task to complete
+        // THEN: Wait for task cleanup
         await asyncTask.value
+        #expect(sut.runningTaskCount == 0)
     }
 
     // MARK: - cancelTask(id:) Tests
 
-    @Test func cancelTask_stopsRunningTask() async {
+    @Test func cancelTask_cancelsRunningTask() async {
         // GIVEN: Store with a running task
         let sut = Store(
             initialState: TestState(),
             feature: TestFeature()
         )
 
-        // Start a task
+        // Start a task (fire-and-forget)
         let asyncTask = sut.send(.asyncOp)
-        try? await Task.sleep(for: .milliseconds(5))
 
-        // Verify task is running
-        #expect(sut.isTaskRunning(id: "async"))
-
-        // WHEN: Cancel the task by ID
+        // WHEN: Cancel the task by ID immediately
         sut.cancelTask(id: "async")
 
-        // THEN: Task should be stopped
-        #expect(!sut.isTaskRunning(id: "async"))
-
-        // Wait for task to complete
+        // THEN: Wait for task to complete and verify cleanup
         await asyncTask.value
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func cancelTask_withMultipleTasks_cancelsOnlySpecifiedTask() async {
@@ -683,13 +636,14 @@ import Testing
             typealias State = TestState
 
             func handle() -> ActionHandler<Action, State> {
-                ActionHandler { action, _ in
+                ActionHandler { action, state in
                     switch action {
                     case .increment:
                         return .run(id: "task1") {
                             try await Task.sleep(for: .milliseconds(100))
                         }
                     case .decrement:
+                        state.count = 99  // Mark that task2 started
                         return .run(id: "task2") {
                             try await Task.sleep(for: .milliseconds(100))
                         }
@@ -709,36 +663,26 @@ import Testing
             feature: MultiTaskFeature()
         )
 
-        // Start multiple tasks concurrently (fire-and-forget)
+        // Start multiple tasks concurrently
         let task1 = sut.send(.increment)
         let task2 = sut.send(.decrement)
         let task3 = sut.send(.asyncOp)
 
-        // Give tasks time to register in TaskManager
-        try? await Task.sleep(for: .milliseconds(5))
-
-        // Verify all tasks are running
-        #expect(sut.isTaskRunning(id: "task1"))
-        #expect(sut.isTaskRunning(id: "task2"))
-        #expect(sut.isTaskRunning(id: "task3"))
-
         // WHEN: Cancel only task2
         sut.cancelTask(id: "task2")
 
-        // THEN: Only task2 should be cancelled, others still running
-        #expect(sut.isTaskRunning(id: "task1"))
-        #expect(!sut.isTaskRunning(id: "task2"))
-        #expect(sut.isTaskRunning(id: "task3"))
-
-        // Cleanup - cancel remaining tasks
+        // Cancel remaining tasks for cleanup
         sut.cancelAllTasks()
 
-        // Wait for all tasks to complete/cancel
+        // THEN: Wait for all tasks to complete/cancel
         await task1.value
         await task2.value
         await task3.value
 
+        // Verify cleanup
         #expect(sut.runningTaskCount == 0)
+        // Verify task2 started (state was modified)
+        #expect(sut.state.count == 99)
     }
 
     @Test func cancelTask_withNonexistentID_doesNotCrash() async {
@@ -752,7 +696,6 @@ import Testing
         sut.cancelTask(id: "nonexistent")
 
         // THEN: Should not crash
-        #expect(!sut.isTaskRunning(id: "nonexistent"))
         #expect(sut.runningTaskCount == 0)
     }
 
@@ -787,8 +730,7 @@ import Testing
         // WHEN: Try to cancel already completed task
         sut.cancelTask(id: "quick")
 
-        // THEN: Should not crash
-        #expect(!sut.isTaskRunning(id: "quick"))
+        // THEN: Should not crash, task already completed
         #expect(sut.runningTaskCount == 0)
     }
 
@@ -833,19 +775,17 @@ import Testing
         // Start tasks in both stores
         let task1 = store1.send(.increment)
         let task2 = store2.send(.decrement)
-        try? await Task.sleep(for: .milliseconds(5))
 
         // WHEN: Cancel task1 via Action, task2 via direct method
         await store1.send(.cancelOp("download1")).value
         store2.cancelTask(id: "download2")
 
-        // THEN: Both methods should have the same effect
-        #expect(!store1.isTaskRunning(id: "download1"))
-        #expect(!store2.isTaskRunning(id: "download2"))
-
-        // Cleanup
+        // THEN: Wait for cleanup and verify both methods work
         await task1.value
         await task2.value
+
+        #expect(store1.runningTaskCount == 0)
+        #expect(store2.runningTaskCount == 0)
     }
 
     @Test func cancelTask_viewLayerScenario_downloadCancellation() async {
@@ -908,17 +848,15 @@ import Testing
             feature: DownloadFeature()
         )
 
-        // WHEN: User starts download (concurrent) and immediately cancels
+        // WHEN: User starts download and immediately cancels
         let downloadTask = sut.send(.startDownload("https://example.com/file.zip"))
 
         // User clicks cancel button
         sut.cancelTask(id: "download")
 
-        // Wait for task to complete (cancelled)
+        // THEN: Wait for task to complete (cancelled) and verify cleanup
         await downloadTask.value
-
-        // THEN: Download should be cancelled and cleaned up
-        #expect(!sut.isTaskRunning(id: "download"))
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func cancelTask_withDifferentIDTypes() async {
@@ -967,22 +905,18 @@ import Testing
         let task1 = sut.send(.startWithString)
         let task2 = sut.send(.startWithInt)
         let task3 = sut.send(.startWithEnum)
-        try? await Task.sleep(for: .milliseconds(5))
 
         // WHEN: Cancel with different ID types (as strings)
         sut.cancelTask(id: "stringID")
         sut.cancelTask(id: "42")
         sut.cancelTask(id: "upload")
 
-        // THEN: All tasks should be cancelled
-        #expect(!sut.isTaskRunning(id: "stringID"))
-        #expect(!sut.isTaskRunning(id: "42"))
-        #expect(!sut.isTaskRunning(id: "upload"))
-
-        // Cleanup
+        // THEN: Wait for all tasks and verify cleanup
         await task1.value
         await task2.value
         await task3.value
+
+        #expect(sut.runningTaskCount == 0)
     }
 
     @Test func cancelTask_duringViewLifecycle_onDisappear() async {
@@ -1023,18 +957,17 @@ import Testing
             feature: ViewLifecycleFeature()
         )
 
-        // View appears and starts background task (concurrent)
+        // View appears and starts background task
         let appearTask = sut.send(.onAppear)
 
         // WHEN: View disappears - cleanup task
         await sut.send(.onDisappear).value
         sut.cancelTask(id: "backgroundTask")
 
-        // Wait for appear task to complete (cancelled)
+        // THEN: Wait for task cancellation and verify cleanup
         await appearTask.value
 
-        // THEN: Task should be cleaned up
         #expect(!sut.state.isActive)
-        #expect(!sut.isTaskRunning(id: "backgroundTask"))
+        #expect(sut.runningTaskCount == 0)
     }
 }

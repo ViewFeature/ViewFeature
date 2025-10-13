@@ -121,7 +121,7 @@ import Testing
 
         // THEN: Should store the operation (cannot directly test, but can verify task type)
         switch sut.storeTask {
-        case .run(_, _, _):
+        case .run:
             // Operation is stored - we can't easily test it's the same closure
             // but we verify it's a run task with an operation
             #expect(Bool(true))  // Verified it's a run task
