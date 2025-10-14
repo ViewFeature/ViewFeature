@@ -6,17 +6,28 @@ Modern state management for Swift 6.2 with async/await, automatic MainActor isol
 [![Platform](https://img.shields.io/badge/Platform-iOS%20|%20macOS%20|%20watchOS%20|%20tvOS-lightgrey.svg)](https://developer.apple.com)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-## Features
+## What You Get
 
-- 🎯 **Modern Swift**: Built with Swift 6.2, async/await, and strict concurrency
-- 🛡️ **Thread-Safe by Default**: Automatic MainActor isolation for `@Observable` state
-- ⚡ **Type-Safe**: Leverages Swift's type system for compile-time safety
-- 🔄 **Reactive**: Seamless SwiftUI integration with `@Observable`
-- 🏗 **SOLID Architecture**: Clean separation of concerns following SOLID principles
-- 🧪 **Flexible Testing**: 3 testing patterns supporting both Equatable and non-Equatable states
+### Core Features
+
+- **Unidirectional Data Flow** - Predictable state updates via explicit actions
+- **Action-Based State Mutations** - All changes go through typed, Sendable actions
+- **Async Task Management** - ID-based task tracking with automatic lifecycle management
+- **Task Cancellation** - Cancel running operations by ID when no longer needed
+- **Error Handling** - Built-in `.catch` for graceful error recovery
+- **Middleware System** - Extensible hooks for logging, analytics, and validation
+- **SwiftUI @Observable Integration** - Native observation without manual @Published
+- **Dependency Injection** - Protocol-based dependencies via initializers
+
+### Built on Swift 6.2
+
+- 🎯 **Modern Swift**: async/await, strict concurrency, and @Observable
+- 🛡️ **Thread-Safe by Default**: Automatic MainActor isolation (no manual annotations)
+- ⚡ **Type-Safe**: Compile-time safety via Swift's type system
+- 🏗 **SOLID Architecture**: Clean separation following SOLID principles
 - ✅ **100% Tested**: 267 tests with comprehensive coverage
-- 📦 **Lightweight**: Minimal dependencies (only swift-log)
-- 🚀 **Production-Ready**: Battle-tested integration and performance tests
+- 📦 **Lightweight**: Only swift-log dependency
+- 🚀 **Production-Ready**: Battle-tested with integration and performance tests
 
 ## Why ViewFeature?
 
