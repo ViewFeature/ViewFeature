@@ -122,6 +122,36 @@ public final class Store<F: Feature> {
   /// // Wait for completion
   /// await store.send(.loadData).value
   /// ```
+  ///
+  /// ## Important: Sequential Execution Behavior
+  /// Actions are processed **sequentially** on the MainActor. If an action returns
+  /// a `.run` task, the Store will await its completion before processing the next action.
+  ///
+  /// This means:
+  /// ```swift
+  /// store.send(.longRunningTask)  // Takes 5 seconds
+  /// store.send(.quickTask)        // Will wait until longRunningTask completes
+  /// ```
+  ///
+  /// **Why this design?**
+  /// - Ensures state consistency (no concurrent mutations)
+  /// - Simplifies reasoning about action order
+  /// - Prevents race conditions
+  ///
+  /// **Note:** Even with task IDs, the Store awaits task completion (line 190).
+  /// This is intentional to maintain state consistency and simplify the mental model.
+  ///
+  /// If you need truly concurrent background work, dispatch it inside the `.run` block
+  /// without making the outer operation wait:
+  /// ```swift
+  /// return .run { state in
+  ///   // Fire-and-forget background work
+  ///   Task.detached {
+  ///     await heavyBackgroundWork()
+  ///   }
+  ///   // This returns immediately
+  /// }
+  /// ```
   @discardableResult
   public func send(_ action: F.Action) -> Task<Void, Never> {
     Task { @MainActor in
@@ -132,8 +162,12 @@ public final class Store<F: Feature> {
   // MARK: - Private Implementation
 
   private func processAction(_ action: F.Action) async {
+    // State is a reference type (AnyObject), so we need to use a local variable
+    // to satisfy Swift's inout parameter rules with async functions
     var mutableState = _state
     let actionTask = await handler.handle(action: action, state: &mutableState)
+    // No need to reassign since _state and mutableState reference the same object
+    // but we do it for clarity and potential future changes
     _state = mutableState
     await executeTask(actionTask.storeTask)
   }

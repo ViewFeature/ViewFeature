@@ -9,11 +9,16 @@ import XCTest
 
 // MARK: - Counter Test Fixtures
 
-public struct CounterState: Equatable, Sendable {
+@Observable
+public final class CounterState: Equatable, @unchecked Sendable {
   public var count: Int
 
   public init(count: Int = 0) {
     self.count = count
+  }
+
+  public static func == (lhs: CounterState, rhs: CounterState) -> Bool {
+    lhs.count == rhs.count
   }
 }
 
@@ -24,7 +29,7 @@ public enum CounterAction: Sendable {
   case set(Int)
 }
 
-public struct CounterFeature: Feature {
+public struct CounterFeature: Feature, Sendable {
   public init() {}
 
   public func handle() -> ActionHandler<CounterAction, CounterState> {
@@ -49,7 +54,8 @@ public struct CounterFeature: Feature {
 
 // MARK: - Generic Test Fixtures
 
-public struct TestState: Equatable, Sendable {
+@Observable
+public final class TestState: Equatable, @unchecked Sendable {
   public var value: Int
   public var lastTaskId: String?
   public var isLoading: Bool
@@ -66,6 +72,13 @@ public struct TestState: Equatable, Sendable {
     self.isLoading = isLoading
     self.errorMessage = errorMessage
   }
+
+  public static func == (lhs: TestState, rhs: TestState) -> Bool {
+    lhs.value == rhs.value &&
+    lhs.lastTaskId == rhs.lastTaskId &&
+    lhs.isLoading == rhs.isLoading &&
+    lhs.errorMessage == rhs.errorMessage
+  }
 }
 
 public enum TestAction: Sendable {
@@ -77,7 +90,7 @@ public enum TestAction: Sendable {
   case reset
 }
 
-public struct TestFeature: Feature {
+public struct TestFeature: Feature, Sendable {
   public init() {}
 
   public func handle() -> ActionHandler<TestAction, TestState> {
@@ -99,7 +112,10 @@ public struct TestFeature: Feature {
         state.errorMessage = error
         return .none
       case .reset:
-        state = TestState()
+        state.value = 0
+        state.lastTaskId = nil
+        state.isLoading = false
+        state.errorMessage = nil
         return .none
       }
     }
@@ -108,13 +124,19 @@ public struct TestFeature: Feature {
 
 // MARK: - Concurrent Test Fixtures
 
-public struct ConcurrentState: Equatable, Sendable {
+@Observable
+public final class ConcurrentState: Equatable, @unchecked Sendable {
   public var operations: [String]
   public var completedCount: Int
 
   public init(operations: [String] = [], completedCount: Int = 0) {
     self.operations = operations
     self.completedCount = completedCount
+  }
+
+  public static func == (lhs: ConcurrentState, rhs: ConcurrentState) -> Bool {
+    lhs.operations == rhs.operations &&
+    lhs.completedCount == rhs.completedCount
   }
 }
 
@@ -124,7 +146,7 @@ public enum ConcurrentAction: Sendable {
   case reset
 }
 
-public struct ConcurrentFeature: Feature {
+public struct ConcurrentFeature: Feature, Sendable {
   public init() {}
 
   public func handle() -> ActionHandler<ConcurrentAction, ConcurrentState> {
@@ -137,7 +159,8 @@ public struct ConcurrentFeature: Feature {
         state.completedCount += 1
         return .none
       case .reset:
-        state = ConcurrentState()
+        state.operations = []
+        state.completedCount = 0
         return .none
       }
     }

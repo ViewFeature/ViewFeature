@@ -65,7 +65,7 @@ import Testing
   @Test func run_withIdAndOperation() {
     // GIVEN: An ID and operation
     let taskId = "test-task"
-    let operation: (TestState) async throws -> Void = { _ in }
+    let operation: @Sendable (TestState) async throws -> Void = { _ in }
 
     // WHEN: Create a run task
     let sut: StoreTask<TestAction, TestState> = .run(
@@ -86,7 +86,7 @@ import Testing
 
   @Test func run_withOperationOnly() {
     // GIVEN: Only an operation (no error handler)
-    let operation: (TestState) async throws -> Void = { _ in }
+    let operation: @Sendable (TestState) async throws -> Void = { _ in }
 
     // WHEN: Create a run task with default onError
     let sut: StoreTask<TestAction, TestState> = .run(
@@ -106,7 +106,7 @@ import Testing
 
   @Test func run_withErrorHandler() {
     // GIVEN: Operation and error handler
-    let operation: (TestState) async throws -> Void = { _ in }
+    let operation: @Sendable (TestState) async throws -> Void = { _ in }
     let errorHandler: @MainActor (Error, TestState) -> Void = { _, _ in
       // Error handler exists
     }
@@ -131,7 +131,7 @@ import Testing
   @Test func run_withLongId() {
     // GIVEN: A very long task ID
     let longId = String(repeating: "a", count: 1000)
-    let operation: (TestState) async throws -> Void = { _ in }
+    let operation: @Sendable (TestState) async throws -> Void = { _ in }
 
     // WHEN: Create a run task with long ID
     let sut: StoreTask<TestAction, TestState> = .run(
@@ -153,7 +153,7 @@ import Testing
   @Test func run_withSpecialCharactersInId() {
     // GIVEN: An ID with special characters
     let specialId = "task-🎉-日本語-123"
-    let operation: (TestState) async throws -> Void = { _ in }
+    let operation: @Sendable (TestState) async throws -> Void = { _ in }
 
     // WHEN: Create a run task
     let sut: StoreTask<TestAction, TestState> = .run(
@@ -173,7 +173,7 @@ import Testing
 
   @Test func run_withEmptyId() {
     // GIVEN: An empty string as ID
-    let operation: (TestState) async throws -> Void = { _ in }
+    let operation: @Sendable (TestState) async throws -> Void = { _ in }
 
     // WHEN: Create a run task with empty ID
     let sut: StoreTask<TestAction, TestState> = .run(
@@ -194,7 +194,7 @@ import Testing
   @Test func run_operationCanThrow() async {
     // GIVEN: A throwing operation
     struct TestError: Error {}
-    let operation: (TestState) async throws -> Void = { _ in
+    let operation: @Sendable (TestState) async throws -> Void = { _ in
       throw TestError()
     }
 
@@ -221,10 +221,22 @@ import Testing
   }
 
   @Test func run_operationCanExecuteSuccessfully() async {
-    // GIVEN: A successful operation
-    var didExecute = false
-    let operation: (TestState) async throws -> Void = { _ in
-      didExecute = true
+    // GIVEN: A successful operation using an actor to track execution
+    actor ExecutionTracker {
+      var didExecute = false
+
+      func markExecuted() {
+        didExecute = true
+      }
+
+      func wasExecuted() -> Bool {
+        didExecute
+      }
+    }
+
+    let tracker = ExecutionTracker()
+    let operation: @Sendable (TestState) async throws -> Void = { _ in
+      await tracker.markExecuted()
     }
 
     // WHEN: Create and execute operation
@@ -238,7 +250,8 @@ import Testing
     switch sut {
     case .run(_, let storedOperation, _):
       try? await storedOperation(TestState())
-      #expect(didExecute)
+      let executed = await tracker.wasExecuted()
+      #expect(executed)
     default:
       Issue.record("Expected run case")
     }

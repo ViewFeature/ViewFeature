@@ -61,13 +61,13 @@ import Testing
             return ActionTask(
               storeTask: .run(
                 id: "fetch-\(id)",
-                operation: {
+                operation: { _ in
                   try await Task.sleep(for: .milliseconds(10))
                   throw NetworkError.timeout
                 },
-                onError: { error, state in
-                  state.errors[id] = "\(error)"
-                  state.lastError = "\(error)"
+                onError: { error, errorState in
+                  errorState.errors[id] = "\(error)"
+                  errorState.lastError = "\(error)"
                 }
               ))
           default:
@@ -107,7 +107,7 @@ import Testing
             return ActionTask(
               storeTask: .run(
                 id: "fetch-\(id)",
-                operation: {
+                operation: { _ in
                   try await Task.sleep(for: .milliseconds(10))
                   throw errorType
                 },
@@ -154,12 +154,12 @@ import Testing
             return ActionTask(
               storeTask: .run(
                 id: "fetch-\(id)",
-                operation: {
+                operation: { _ in
                   throw NetworkError.timeout
                 },
-                onError: { error, state in
-                  state.errors[id] = "\(error)"
-                  state.lastError = "\(error)"
+                onError: { error, errorState in
+                  errorState.errors[id] = "\(error)"
+                  errorState.lastError = "\(error)"
                 }
               ))
 
@@ -175,7 +175,7 @@ import Testing
             return ActionTask(
               storeTask: .run(
                 id: "retry-\(id)",
-                operation: {
+                operation: { _ in
                   try await Task.sleep(for: .milliseconds(10))
                   // Simulate success on retry
                 },
@@ -220,7 +220,7 @@ import Testing
             return ActionTask(
               storeTask: .run(
                 id: "fetch-\(id)",
-                operation: {
+                operation: { _ in
                   throw NetworkError.timeout
                 },
                 onError: { error, state in
@@ -231,7 +231,7 @@ import Testing
           case .retryFetch(let id):
             state.retryCount += 1
             state.errors[id] = nil
-            return .run(id: "retry-\(id)") {
+            return .run(id: "retry-\(id)") { _ in
               try await Task.sleep(for: .milliseconds(10))
             }
 
@@ -277,7 +277,7 @@ import Testing
             return ActionTask(
               storeTask: .run(
                 id: "fetch-\(id)",
-                operation: {
+                operation: { _ in
                   throw NetworkError.serverError(500)
                 },
                 onError: { error, state in
@@ -323,7 +323,7 @@ import Testing
             return ActionTask(
               storeTask: .run(
                 id: "fetch-\(id)",
-                operation: {
+                operation: { _ in
                   try await Task.sleep(for: .milliseconds(100))
                 },
                 onError: { error, state in
@@ -372,7 +372,7 @@ import Testing
             return ActionTask(
               storeTask: .run(
                 id: "fetch-\(id)",
-                operation: {
+                operation: { _ in
                   throw NetworkError.unauthorized
                 },
                 onError: { error, state in
@@ -426,7 +426,7 @@ import Testing
             return ActionTask(
               storeTask: .run(
                 id: "fetch-\(id)",
-                operation: {
+                operation: { _ in
                   throw NetworkError.serverError(500)
                 },
                 onError: { error, state in
@@ -472,12 +472,12 @@ import Testing
             return ActionTask(
               storeTask: .run(
                 id: "fetch-\(id)",
-                operation: {
+                operation: { _ in
                   throw NetworkError.timeout
                 },
-                onError: { error, state in
-                  state.errors[id] = "\(error)"
-                  state.lastError = "\(error)"
+                onError: { error, errorState in
+                  errorState.errors[id] = "\(error)"
+                  errorState.lastError = "\(error)"
                 }
               ))
 
@@ -490,7 +490,7 @@ import Testing
               return ActionTask(
                 storeTask: .run(
                   id: "retry-\(id)",
-                  operation: {
+                  operation: { _ in
                     throw NetworkError.timeout
                   },
                   onError: { error, state in
@@ -502,7 +502,7 @@ import Testing
               return ActionTask(
                 storeTask: .run(
                   id: "retry-\(id)",
-                  operation: {
+                  operation: { _ in
                     // Success
                   },
                   onError: nil

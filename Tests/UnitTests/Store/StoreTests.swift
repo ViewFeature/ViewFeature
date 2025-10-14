@@ -65,6 +65,60 @@ import Testing
     }
   }
 
+  // MARK: - Additional Test States
+
+  @Observable
+  final class DownloadState {
+    var isDownloading = false
+    var downloadProgress = 0.0
+    var errorMessage: String?
+
+    init(isDownloading: Bool = false, downloadProgress: Double = 0.0, errorMessage: String? = nil) {
+      self.isDownloading = isDownloading
+      self.downloadProgress = downloadProgress
+      self.errorMessage = errorMessage
+    }
+  }
+
+  @Observable
+  final class ViewState {
+    var isActive = false
+
+    init(isActive: Bool = false) {
+      self.isActive = isActive
+    }
+  }
+
+  @Observable
+  final class CancelState {
+    var isRunning = false
+    var didCatchError = false
+    var caughtCancellationError = false
+
+    init(
+      isRunning: Bool = false, didCatchError: Bool = false, caughtCancellationError: Bool = false
+    ) {
+      self.isRunning = isRunning
+      self.didCatchError = didCatchError
+      self.caughtCancellationError = caughtCancellationError
+    }
+  }
+
+  @Observable
+  final class DirectCancelState {
+    var isRunning = false
+    var didCatchError = false
+    var caughtCancellationError = false
+
+    init(
+      isRunning: Bool = false, didCatchError: Bool = false, caughtCancellationError: Bool = false
+    ) {
+      self.isRunning = isRunning
+      self.didCatchError = didCatchError
+      self.caughtCancellationError = caughtCancellationError
+    }
+  }
+
   // MARK: - init(initialState:feature:taskManager:)
 
   @Test func init_withDefaultTaskManager() async {
@@ -385,9 +439,9 @@ import Testing
                 operation: { _ in
                   throw NSError(domain: "TestError", code: 999)
                 },
-                onError: { error, _ in
-                  state.errorMessage = "Error caught: \(error.localizedDescription)"
-                  state.isLoading = false
+                onError: { error, errorState in
+                  errorState.errorMessage = "Error caught: \(error.localizedDescription)"
+                  errorState.isLoading = false
                 }
               ))
           default:
@@ -819,9 +873,9 @@ import Testing
                     // In real scenario, would update progress
                   }
                 },
-                onError: { error, _ in
-                  state.isDownloading = false
-                  state.errorMessage = "Download failed: \(error.localizedDescription)"
+                onError: { error, errorState in
+                  errorState.isDownloading = false
+                  errorState.errorMessage = "Download failed: \(error.localizedDescription)"
                 }
               ))
 
@@ -836,19 +890,6 @@ import Testing
             return .none
           }
         }
-      }
-    }
-
-    @Observable
-    final class DownloadState {
-      var isDownloading = false
-      var downloadProgress = 0.0
-      var errorMessage: String?
-
-      init(isDownloading: Bool = false, downloadProgress: Double = 0.0, errorMessage: String? = nil) {
-        self.isDownloading = isDownloading
-        self.downloadProgress = downloadProgress
-        self.errorMessage = errorMessage
       }
     }
 
@@ -958,15 +999,6 @@ import Testing
       }
     }
 
-    @Observable
-    final class ViewState {
-      var isActive = false
-
-      init(isActive: Bool = false) {
-        self.isActive = isActive
-      }
-    }
-
     enum ViewAction: Sendable {
       case onAppear
       case onDisappear
@@ -1015,21 +1047,6 @@ import Testing
             return .cancel(id: "long-task")
           }
         }
-      }
-    }
-
-    @Observable
-    final class CancelState {
-      var isRunning = false
-      var didCatchError = false
-      var caughtCancellationError = false
-
-      init(
-        isRunning: Bool = false, didCatchError: Bool = false, caughtCancellationError: Bool = false
-      ) {
-        self.isRunning = isRunning
-        self.didCatchError = didCatchError
-        self.caughtCancellationError = caughtCancellationError
       }
     }
 
@@ -1085,21 +1102,6 @@ import Testing
             }
           }
         }
-      }
-    }
-
-    @Observable
-    final class CancelState {
-      var isRunning = false
-      var didCatchError = false
-      var caughtCancellationError = false
-
-      init(
-        isRunning: Bool = false, didCatchError: Bool = false, caughtCancellationError: Bool = false
-      ) {
-        self.isRunning = isRunning
-        self.didCatchError = didCatchError
-        self.caughtCancellationError = caughtCancellationError
       }
     }
 

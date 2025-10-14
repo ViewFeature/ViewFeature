@@ -81,6 +81,7 @@ import Logging
 /// - ``executeBeforeAction(action:state:)``
 /// - ``executeAfterAction(action:state:result:duration:)``
 /// - ``executeErrorHandling(error:action:state:)``
+@MainActor
 public final class MiddlewareManager<Action, State> {
   private var middlewares: [any BaseActionMiddleware] = []
 

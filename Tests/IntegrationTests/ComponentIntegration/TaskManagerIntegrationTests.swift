@@ -43,7 +43,7 @@ import Testing
         switch action {
         case .fetch(let id):
           state.isLoading[id] = true
-          return .run(id: "fetch-\(id)") {
+          return .run(id: "fetch-\(id)") { _ in
             try await Task.sleep(for: .milliseconds(50))
           }
 
@@ -53,7 +53,7 @@ import Testing
           }
           // Start first task (in real app, you'd handle multiple tasks differently)
           if let firstId = ids.first {
-            return .run(id: "fetch-\(firstId)") {
+            return .run(id: "fetch-\(firstId)") { _ in
               try await Task.sleep(for: .milliseconds(30))
             }
           } else {
@@ -189,7 +189,7 @@ import Testing
         ActionHandler { action, _ in
           switch action {
           case .fetch(let id):
-            return .run(id: "short-\(id)") {
+            return .run(id: "short-\(id)") { _ in
               try await Task.sleep(for: .milliseconds(10))
             }
           default:
@@ -227,13 +227,13 @@ import Testing
             return ActionTask(
               storeTask: .run(
                 id: "error-\(id)",
-                operation: {
+                operation: { _ in
                   try await Task.sleep(for: .milliseconds(10))
                   throw NSError(domain: "TestError", code: 1)
                 },
-                onError: { error, state in
-                  state.errors[id] = error.localizedDescription
-                  state.isLoading[id] = false
+                onError: { error, errorState in
+                  errorState.errors[id] = error.localizedDescription
+                  errorState.isLoading[id] = false
                 }
               ))
           default:
@@ -285,7 +285,7 @@ import Testing
         ActionHandler { [tracker] action, _ in
           switch action {
           case .fetch(let id):
-            return .run(id: "track-\(id)") {
+            return .run(id: "track-\(id)") { _ in
               try await Task.sleep(for: .milliseconds(20))
               await tracker.append(id)
             }

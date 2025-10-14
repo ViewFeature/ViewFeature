@@ -200,17 +200,20 @@ public final class TaskManager {
 
     // Create task with automatic cleanup on completion
     let task = Task { @MainActor [weak self] in
-      defer {
-        // Automatically remove completed task from tracking
-        self?.runningTasks.removeValue(forKey: id)
-      }
-
       do {
         try await operation()
       } catch {
         if let errorHandler = onError {
           await errorHandler(error)
         }
+      }
+
+      // Cleanup: Remove task from tracking after completion
+      // Note: This is safe because MainActor ensures sequential execution
+      // Even if a new task with the same ID was started, it would have
+      // already replaced this task in the dictionary before we reach here
+      _ = await MainActor.run { [weak self] in
+        self?.runningTasks.removeValue(forKey: id)
       }
     }
 

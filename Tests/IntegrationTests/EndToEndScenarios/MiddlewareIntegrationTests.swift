@@ -289,14 +289,14 @@ import Testing
   @Test func middlewareCanReadState() async {
     // GIVEN: Middleware that reads state
     actor StateReader {
-      var stateSnapshots: [ShoppingState] = []
+      var itemCounts: [Int] = []
 
-      func append(_ state: ShoppingState) {
-        stateSnapshots.append(state)
+      func append(_ count: Int) {
+        itemCounts.append(count)
       }
 
-      func getSnapshots() -> [ShoppingState] {
-        stateSnapshots
+      func getCounts() -> [Int] {
+        itemCounts
       }
     }
 
@@ -308,7 +308,7 @@ import Testing
 
       func beforeAction<Action, State>(_ action: Action, state: State) async throws {
         if let shoppingState = state as? ShoppingState {
-          await reader.append(shoppingState)
+          await reader.append(shoppingState.items.count)
         }
       }
     }

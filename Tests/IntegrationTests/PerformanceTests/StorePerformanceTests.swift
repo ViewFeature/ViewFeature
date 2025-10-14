@@ -54,9 +54,51 @@ import Testing
 
         case .lightTask:
           state.operations += 1
-          return .run(id: "light-\(state.operations)") {
+          return .run(id: "light-\(state.operations)") { _ in
             try await Task.sleep(for: .milliseconds(1))
           }
+        }
+      }
+    }
+  }
+
+  // MARK: - Complex State Test Fixtures
+
+  @Observable
+  final class ComplexState {
+    var array: [Int] = []
+    var dict: [String: Int] = [:]
+    var counter: Int = 0
+
+    init(array: [Int] = [], dict: [String: Int] = [:], counter: Int = 0) {
+      self.array = array
+      self.dict = dict
+      self.counter = counter
+    }
+  }
+
+  enum ComplexAction: Sendable {
+    case addToArray(Int)
+    case addToDict(String, Int)
+    case increment
+  }
+
+  struct ComplexFeature: Feature, Sendable {
+    typealias Action = ComplexAction
+    typealias State = ComplexState
+
+    func handle() -> ActionHandler<Action, State> {
+      ActionHandler { action, state in
+        switch action {
+        case .addToArray(let value):
+          state.array.append(value)
+          return .none
+        case .addToDict(let key, let value):
+          state.dict[key] = value
+          return .none
+        case .increment:
+          state.counter += 1
+          return .none
         }
       }
     }
@@ -218,46 +260,6 @@ import Testing
 
   @Test func rapidStateUpdates() async {
     // GIVEN: Store with complex state
-    @Observable
-    final class ComplexState {
-      var array: [Int] = []
-      var dict: [String: Int] = [:]
-      var counter: Int = 0
-
-      init(array: [Int] = [], dict: [String: Int] = [:], counter: Int = 0) {
-        self.array = array
-        self.dict = dict
-        self.counter = counter
-      }
-    }
-
-    enum ComplexAction: Sendable {
-      case addToArray(Int)
-      case addToDict(String, Int)
-      case increment
-    }
-
-    struct ComplexFeature: Feature, Sendable {
-      typealias Action = ComplexAction
-      typealias State = ComplexState
-
-      func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
-          switch action {
-          case .addToArray(let value):
-            state.array.append(value)
-            return .none
-          case .addToDict(let key, let value):
-            state.dict[key] = value
-            return .none
-          case .increment:
-            state.counter += 1
-            return .none
-          }
-        }
-      }
-    }
-
     let sut = Store(
       initialState: ComplexState(),
       feature: ComplexFeature()
