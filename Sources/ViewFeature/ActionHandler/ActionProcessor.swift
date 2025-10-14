@@ -67,8 +67,9 @@ public final class ActionProcessor<Action, State> {
   ) async throws -> ActionTask<Action, State> {
     try await middlewareManager.executeBeforeAction(action: action, state: state)
     let result = await baseExecution(action, &state)
-    let durationNanoseconds = startTime.duration(to: ContinuousClock.now).components.attoseconds / 1_000_000_000
-    let duration = TimeInterval(durationNanoseconds) / 1_000_000_000.0  // Convert to seconds
+    let elapsed = startTime.duration(to: ContinuousClock.now)
+    let duration = TimeInterval(elapsed.components.seconds) +
+                   TimeInterval(elapsed.components.attoseconds) / 1e18
     try await middlewareManager.executeAfterAction(
       action: action, state: state, result: result, duration: duration)
     return result

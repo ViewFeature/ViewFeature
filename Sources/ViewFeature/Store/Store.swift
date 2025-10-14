@@ -165,13 +165,10 @@ public final class Store<F: Feature> {
   // MARK: - Private Implementation
 
   private func processAction(_ action: F.Action) async {
-    // State is a reference type (AnyObject), so we need to use a local variable
-    // to satisfy Swift's inout parameter rules with async functions
+    // State is a reference type (AnyObject), so handler mutations affect _state directly
     var mutableState = _state
     let actionTask = await handler.handle(action: action, state: &mutableState)
-    // No need to reassign since _state and mutableState reference the same object
-    // but we do it for clarity and potential future changes
-    _state = mutableState
+    // No reassignment needed - _state and mutableState reference the same object
     await executeTask(actionTask.storeTask)
   }
 
