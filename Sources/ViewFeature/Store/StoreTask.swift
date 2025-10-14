@@ -10,19 +10,19 @@
 /// - ``run(id:operation:onError:)``
 /// - ``cancel(id:)``
 public enum StoreTask<Action, State> {
-    /// No task to execute
-    case none
+  /// No task to execute
+  case none
 
-    /// Execute an asynchronous operation
-    ///
-    /// The operation receives the current state, allowing
-    /// safe state mutation within the MainActor context.
-    case run(
-            id: String,
-            operation: @MainActor (State) async throws -> Void,
-            onError: (@MainActor (Error, State) -> Void)?
-         )
+  /// Execute an asynchronous operation
+  ///
+  /// The operation receives the current state, allowing
+  /// safe state mutation within the MainActor context.
+  case run(
+    id: String,
+    operation: @MainActor (State) async throws -> Void,
+    onError: (@MainActor (Error, State) -> Void)?
+  )
 
-    /// Cancel a running task
-    case cancel(id: String)
+  /// Cancel a running task
+  case cancel(id: String)
 }

@@ -8,454 +8,454 @@ import Testing
 /// Tests every public method in ActionHandler.swift
 @MainActor
 @Suite struct ActionHandlerTests {
-    // MARK: - Test Fixtures
+  // MARK: - Test Fixtures
 
-    enum TestAction: Sendable {
-        case increment
-        case decrement
-        case asyncOp
+  enum TestAction: Sendable {
+    case increment
+    case decrement
+    case asyncOp
+  }
+
+  struct TestState: Equatable, Sendable {
+    var count = 0
+    var errorMessage: String?
+    var isLoading = false
+  }
+
+  // MARK: - init(_:)
+
+  @Test func init_createsHandler() async {
+    // GIVEN & WHEN: Create handler
+    let sut = ActionHandler<TestAction, TestState> { _, state in
+      state.count += 1
+      return .none
     }
 
-    struct TestState: Equatable, Sendable {
-        var count = 0
-        var errorMessage: String?
-        var isLoading = false
+    // THEN: Should handle actions
+    var state = TestState()
+    _ = await sut.handle(action: .increment, state: &state)
+    #expect(state.count == 1)
+  }
+
+  @Test func init_withComplexLogic() async {
+    // GIVEN: Handler with complex logic
+    let sut = ActionHandler<TestAction, TestState> { action, state in
+      switch action {
+      case .increment:
+        state.count += 1
+      case .decrement:
+        state.count -= 1
+      case .asyncOp:
+        state.isLoading = true
+        return .run(id: "async") { _ in }
+      }
+      return .none
     }
 
-    // MARK: - init(_:)
+    // WHEN: Handle different actions
+    var state = TestState()
+    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .decrement, state: &state)
 
-    @Test func init_createsHandler() async {
-        // GIVEN & WHEN: Create handler
-        let sut = ActionHandler<TestAction, TestState> { _, state in
-            state.count += 1
-            return .none
-        }
+    // THEN: Should process all actions
+    // swiftlint:disable:next empty_count
+    #expect(state.count == 0)  // +1 -1 = 0
+  }
 
-        // THEN: Should handle actions
-        var state = TestState()
-        _ = await sut.handle(action: .increment, state: &state)
-        #expect(state.count == 1)
+  // MARK: - handle(action:state:)
+
+  @Test func handle_executesAction() async {
+    // GIVEN: Handler
+    let sut = ActionHandler<TestAction, TestState> { _, state in
+      state.count += 5
+      return .none
     }
 
-    @Test func init_withComplexLogic() async {
-        // GIVEN: Handler with complex logic
-        let sut = ActionHandler<TestAction, TestState> { action, state in
-            switch action {
-            case .increment:
-                state.count += 1
-            case .decrement:
-                state.count -= 1
-            case .asyncOp:
-                state.isLoading = true
-                return .run(id: "async") { _ in }
-            }
-            return .none
-        }
+    // WHEN: Handle action
+    var state = TestState()
+    let task = await sut.handle(action: .increment, state: &state)
 
-        // WHEN: Handle different actions
-        var state = TestState()
-        _ = await sut.handle(action: .increment, state: &state)
-        _ = await sut.handle(action: .decrement, state: &state)
+    // THEN: Should update state
+    #expect(state.count == 5)
+    if case .none = task.storeTask {
+      #expect(Bool(true))
+    } else {
+      Issue.record("Expected noTask")
+    }
+  }
 
-        // THEN: Should process all actions
-        // swiftlint:disable:next empty_count
-        #expect(state.count == 0)  // +1 -1 = 0
+  @Test func handle_returnsRunTask() async {
+    // GIVEN: Handler returning run task
+    let sut = ActionHandler<TestAction, TestState> { _, state in
+      state.isLoading = true
+      return .run(id: "test") { _ in }
     }
 
-    // MARK: - handle(action:state:)
+    // WHEN: Handle action
+    var state = TestState()
+    let task = await sut.handle(action: .asyncOp, state: &state)
 
-    @Test func handle_executesAction() async {
-        // GIVEN: Handler
-        let sut = ActionHandler<TestAction, TestState> { _, state in
-            state.count += 5
-            return .none
-        }
+    // THEN: Should return run task
+    #expect(state.isLoading)
+    if case .run(let id, _, _) = task.storeTask {
+      #expect(id == "test")
+    } else {
+      Issue.record("Expected run task")
+    }
+  }
 
-        // WHEN: Handle action
-        var state = TestState()
-        let task = await sut.handle(action: .increment, state: &state)
-
-        // THEN: Should update state
-        #expect(state.count == 5)
-        if case .none = task.storeTask {
-            #expect(Bool(true))
-        } else {
-            Issue.record("Expected noTask")
-        }
+  @Test func handle_returnsCancelTask() async {
+    // GIVEN: Handler returning cancel task
+    let sut = ActionHandler<TestAction, TestState> { _, _ in
+      .cancel(id: "cancel-me")
     }
 
-    @Test func handle_returnsRunTask() async {
-        // GIVEN: Handler returning run task
-        let sut = ActionHandler<TestAction, TestState> { _, state in
-            state.isLoading = true
-            return .run(id: "test") { _ in }
-        }
+    // WHEN: Handle action
+    var state = TestState()
+    let task = await sut.handle(action: .increment, state: &state)
 
-        // WHEN: Handle action
-        var state = TestState()
-        let task = await sut.handle(action: .asyncOp, state: &state)
+    // THEN: Should return cancel task
+    if case .cancel(let id) = task.storeTask {
+      #expect(id == "cancel-me")
+    } else {
+      Issue.record("Expected cancel task")
+    }
+  }
 
-        // THEN: Should return run task
-        #expect(state.isLoading)
-        if case .run(let id, _, _) = task.storeTask {
-            #expect(id == "test")
-        } else {
-            Issue.record("Expected run task")
-        }
+  @Test func handle_multipleTimes() async {
+    // GIVEN: Handler
+    let sut = ActionHandler<TestAction, TestState> { _, state in
+      state.count += 1
+      return .none
     }
 
-    @Test func handle_returnsCancelTask() async {
-        // GIVEN: Handler returning cancel task
-        let sut = ActionHandler<TestAction, TestState> { _, _ in
-            .cancel(id: "cancel-me")
-        }
+    // WHEN: Handle multiple times
+    var state = TestState()
+    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .increment, state: &state)
 
-        // WHEN: Handle action
-        var state = TestState()
-        let task = await sut.handle(action: .increment, state: &state)
+    // THEN: Should accumulate
+    #expect(state.count == 3)
+  }
 
-        // THEN: Should return cancel task
-        if case .cancel(let id) = task.storeTask {
-            #expect(id == "cancel-me")
-        } else {
-            Issue.record("Expected cancel task")
-        }
+  // MARK: - onError(_:)
+
+  @Test func onError_returnsNewHandler() async {
+    // GIVEN: Base handler
+    let baseHandler = ActionHandler<TestAction, TestState> { _, state in
+      state.count += 1
+      return .none
     }
 
-    @Test func handle_multipleTimes() async {
-        // GIVEN: Handler
-        let sut = ActionHandler<TestAction, TestState> { _, state in
-            state.count += 1
-            return .none
-        }
-
-        // WHEN: Handle multiple times
-        var state = TestState()
-        _ = await sut.handle(action: .increment, state: &state)
-        _ = await sut.handle(action: .increment, state: &state)
-        _ = await sut.handle(action: .increment, state: &state)
-
-        // THEN: Should accumulate
-        #expect(state.count == 3)
+    // WHEN: Add error handler
+    let sut = baseHandler.onError { _, state in
+      state.errorMessage = "Error handled"
     }
 
-    // MARK: - onError(_:)
+    // THEN: Should return a working handler
+    var state = TestState()
+    _ = await sut.handle(action: .increment, state: &state)
+    #expect(state.count == 1)
+  }
 
-    @Test func onError_returnsNewHandler() async {
-        // GIVEN: Base handler
-        let baseHandler = ActionHandler<TestAction, TestState> { _, state in
-            state.count += 1
-            return .none
-        }
+  @Test func onError_supportsChaining() async {
+    // GIVEN: Handler with multiple chained methods
+    let sut = ActionHandler<TestAction, TestState> { _, state in
+      state.count += 1
+      return .none
+    }
+    .onError { _, state in
+      state.errorMessage = "Error"
+    }
+    .use(LoggingMiddleware())
 
-        // WHEN: Add error handler
-        let sut = baseHandler.onError { _, state in
-            state.errorMessage = "Error handled"
-        }
+    // WHEN: Handle action
+    var state = TestState()
+    _ = await sut.handle(action: .increment, state: &state)
 
-        // THEN: Should return a working handler
-        var state = TestState()
-        _ = await sut.handle(action: .increment, state: &state)
-        #expect(state.count == 1)
+    // THEN: Should work with chaining
+    #expect(state.count == 1)
+  }
+
+  @Test func onError_canBeCalled() async {
+    // GIVEN: Handler
+    let sut = ActionHandler<TestAction, TestState> { _, state in
+      state.count += 1
+      return .none
+    }
+    .onError { _, state in
+      state.count = 999
     }
 
-    @Test func onError_supportsChaining() async {
-        // GIVEN: Handler with multiple chained methods
-        let sut = ActionHandler<TestAction, TestState> { _, state in
-            state.count += 1
-            return .none
-        }
-        .onError { _, state in
-            state.errorMessage = "Error"
-        }
-        .use(LoggingMiddleware())
+    // WHEN: Handle action (no error occurs)
+    var state = TestState()
+    _ = await sut.handle(action: .increment, state: &state)
 
-        // WHEN: Handle action
-        var state = TestState()
-        _ = await sut.handle(action: .increment, state: &state)
+    // THEN: Normal operation works
+    #expect(state.count == 1)
+  }
 
-        // THEN: Should work with chaining
-        #expect(state.count == 1)
+  // MARK: - use(_:)
+
+  @Test func use_addsMiddleware() async {
+    // GIVEN: Handler with middleware
+    let sut = ActionHandler<TestAction, TestState> { _, state in
+      state.count += 1
+      return .none
+    }
+    .use(LoggingMiddleware(category: "TestFeature"))
+
+    // WHEN: Handle action
+    var state = TestState()
+    _ = await sut.handle(action: .increment, state: &state)
+
+    // THEN: Should execute with middleware
+    #expect(state.count == 1)
+  }
+
+  @Test func use_defaultCategory() async {
+    // GIVEN: Handler with default middleware
+    let sut = ActionHandler<TestAction, TestState> { _, state in
+      state.count += 1
+      return .none
+    }
+    .use(LoggingMiddleware())
+
+    // WHEN: Handle action
+    var state = TestState()
+    _ = await sut.handle(action: .increment, state: &state)
+
+    // THEN: Should execute with default middleware
+    #expect(state.count == 1)
+  }
+
+  @Test func use_supportsChaining() async {
+    // GIVEN: Handler with multiple middleware
+    let sut = ActionHandler<TestAction, TestState> { _, state in
+      state.count += 1
+      return .none
+    }
+    .use(LoggingMiddleware(category: "Cat1"))
+    .use(LoggingMiddleware(category: "Cat2"))
+    .onError { _, state in
+      state.errorMessage = "Error"
     }
 
-    @Test func onError_canBeCalled() async {
-        // GIVEN: Handler
-        let sut = ActionHandler<TestAction, TestState> { _, state in
-            state.count += 1
-            return .none
-        }
-        .onError { _, state in
-            state.count = 999
-        }
+    // WHEN: Handle action
+    var state = TestState()
+    _ = await sut.handle(action: .increment, state: &state)
 
-        // WHEN: Handle action (no error occurs)
-        var state = TestState()
-        _ = await sut.handle(action: .increment, state: &state)
+    // THEN: Should work with multiple middleware
+    #expect(state.count == 1)
+  }
 
-        // THEN: Normal operation works
-        #expect(state.count == 1)
+  // MARK: - transform(_:)
+
+  @Test func transform_modifiesTask() async {
+    // GIVEN: Handler with transform
+    let sut = ActionHandler<TestAction, TestState> { _, state in
+      state.count += 1
+      return .run(id: "original") { _ in }
+    }
+    .transform { task in
+      switch task.storeTask {
+      case .run:
+        return .run(id: "transformed") { _ in }
+      default:
+        return task
+      }
     }
 
-    // MARK: - use(_:)
+    // WHEN: Handle action
+    var state = TestState()
+    let task = await sut.handle(action: .increment, state: &state)
 
-    @Test func use_addsMiddleware() async {
-        // GIVEN: Handler with middleware
-        let sut = ActionHandler<TestAction, TestState> { _, state in
-            state.count += 1
-            return .none
-        }
-        .use(LoggingMiddleware(category: "TestFeature"))
+    // THEN: Task should be transformed
+    #expect(state.count == 1)
+    if case .run(let id, _, _) = task.storeTask {
+      #expect(id == "transformed")
+    } else {
+      Issue.record("Expected run task")
+    }
+  }
 
-        // WHEN: Handle action
-        var state = TestState()
-        _ = await sut.handle(action: .increment, state: &state)
-
-        // THEN: Should execute with middleware
-        #expect(state.count == 1)
+  @Test func transform_canConvertTasks() async {
+    // GIVEN: Handler that converts tasks
+    let sut = ActionHandler<TestAction, TestState> { _, _ in
+      .run(id: "convert") { _ in }
+    }
+    .transform { task in
+      switch task.storeTask {
+      case .run(let id, _, _):
+        return .cancel(id: id)
+      default:
+        return task
+      }
     }
 
-    @Test func use_defaultCategory() async {
-        // GIVEN: Handler with default middleware
-        let sut = ActionHandler<TestAction, TestState> { _, state in
-            state.count += 1
-            return .none
-        }
-        .use(LoggingMiddleware())
+    // WHEN: Handle action
+    var state = TestState()
+    let task = await sut.handle(action: .asyncOp, state: &state)
 
-        // WHEN: Handle action
-        var state = TestState()
-        _ = await sut.handle(action: .increment, state: &state)
+    // THEN: Should convert to cancel
+    if case .cancel(let id) = task.storeTask {
+      #expect(id == "convert")
+    } else {
+      Issue.record("Expected cancel task")
+    }
+  }
 
-        // THEN: Should execute with default middleware
-        #expect(state.count == 1)
+  @Test func transform_leavesNoTaskUnchanged() async {
+    // GIVEN: Handler with transform
+    let sut = ActionHandler<TestAction, TestState> { _, state in
+      state.count += 1
+      return .none
+    }
+    .transform { task in
+      switch task.storeTask {
+      case .run:
+        return .cancel(id: "modified")
+      default:
+        return task
+      }
     }
 
-    @Test func use_supportsChaining() async {
-        // GIVEN: Handler with multiple middleware
-        let sut = ActionHandler<TestAction, TestState> { _, state in
-            state.count += 1
-            return .none
-        }
-        .use(LoggingMiddleware(category: "Cat1"))
-        .use(LoggingMiddleware(category: "Cat2"))
-        .onError { _, state in
-            state.errorMessage = "Error"
-        }
+    // WHEN: Handle action returning noTask
+    var state = TestState()
+    let task = await sut.handle(action: .increment, state: &state)
 
-        // WHEN: Handle action
-        var state = TestState()
-        _ = await sut.handle(action: .increment, state: &state)
+    // THEN: noTask should remain
+    if case .none = task.storeTask {
+      #expect(Bool(true))
+    } else {
+      Issue.record("Expected noTask")
+    }
+  }
 
-        // THEN: Should work with multiple middleware
-        #expect(state.count == 1)
+  @Test func transform_supportsChaining() async {
+    // GIVEN: Handler with all features
+    let sut = ActionHandler<TestAction, TestState> { _, state in
+      state.count += 1
+      return .run(id: "task") { _ in }
+    }
+    .use(LoggingMiddleware())
+    .onError { _, state in
+      state.errorMessage = "Error"
+    }
+    .transform { task in
+      task
     }
 
-    // MARK: - transform(_:)
+    // WHEN: Handle action
+    var state = TestState()
+    let task = await sut.handle(action: .asyncOp, state: &state)
 
-    @Test func transform_modifiesTask() async {
-        // GIVEN: Handler with transform
-        let sut = ActionHandler<TestAction, TestState> { _, state in
-            state.count += 1
-            return .run(id: "original") { _ in }
-        }
-        .transform { task in
-            switch task.storeTask {
-            case .run:
-                return .run(id: "transformed") { _ in }
-            default:
-                return task
-            }
-        }
+    // THEN: Should work with all features
+    #expect(state.count == 1)
+    if case .run = task.storeTask {
+      #expect(Bool(true))
+    }
+  }
 
-        // WHEN: Handle action
-        var state = TestState()
-        let task = await sut.handle(action: .increment, state: &state)
+  // MARK: - Integration Tests
 
-        // THEN: Task should be transformed
-        #expect(state.count == 1)
-        if case .run(let id, _, _) = task.storeTask {
-            #expect(id == "transformed")
-        } else {
-            Issue.record("Expected run task")
-        }
+  @Test func fullPipeline_successfulExecution() async {
+    // GIVEN: Handler with all features
+    let sut = ActionHandler<TestAction, TestState> { action, state in
+      switch action {
+      case .increment:
+        state.count += 1
+        return .none
+      case .decrement:
+        state.count -= 1
+        return .none
+      case .asyncOp:
+        state.isLoading = true
+        return .run(id: "async") { _ in }
+      }
+    }
+    .use(LoggingMiddleware(category: "Integration"))
+    .onError { _, state in
+      state.errorMessage = "Unexpected error"
+    }
+    .transform { task in
+      task  // Identity
     }
 
-    @Test func transform_canConvertTasks() async {
-        // GIVEN: Handler that converts tasks
-        let sut = ActionHandler<TestAction, TestState> { _, _ in
-            .run(id: "convert") { _ in }
-        }
-        .transform { task in
-            switch task.storeTask {
-            case .run(let id, _, _):
-                return .cancel(id: id)
-            default:
-                return task
-            }
-        }
+    // WHEN: Handle multiple actions
+    var state = TestState()
+    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .decrement, state: &state)
 
-        // WHEN: Handle action
-        var state = TestState()
-        let task = await sut.handle(action: .asyncOp, state: &state)
+    // THEN: Should process all actions
+    #expect(state.count == 1)  // +1 +1 -1 = 1
+    #expect(state.errorMessage == nil)
+  }
 
-        // THEN: Should convert to cancel
-        if case .cancel(let id) = task.storeTask {
-            #expect(id == "convert")
-        } else {
-            Issue.record("Expected cancel task")
-        }
+  @Test func immutabilityOfChaining() async {
+    // GIVEN: Base handler
+    let base = ActionHandler<TestAction, TestState> { _, state in
+      state.count += 1
+      return .none
     }
 
-    @Test func transform_leavesNoTaskUnchanged() async {
-        // GIVEN: Handler with transform
-        let sut = ActionHandler<TestAction, TestState> { _, state in
-            state.count += 1
-            return .none
-        }
-        .transform { task in
-            switch task.storeTask {
-            case .run:
-                return .cancel(id: "modified")
-            default:
-                return task
-            }
-        }
+    // WHEN: Create variants
+    let withMiddleware = base.use(LoggingMiddleware())
+    let withError = base.onError { _, state in state.errorMessage = "E" }
+    let withTransform = base.transform { $0 }
 
-        // WHEN: Handle action returning noTask
-        var state = TestState()
-        let task = await sut.handle(action: .increment, state: &state)
+    // THEN: All should work independently
+    var state1 = TestState()
+    _ = await base.handle(action: .increment, state: &state1)
+    #expect(state1.count == 1)
 
-        // THEN: noTask should remain
-        if case .none = task.storeTask {
-            #expect(Bool(true))
-        } else {
-            Issue.record("Expected noTask")
-        }
+    var state2 = TestState()
+    _ = await withMiddleware.handle(action: .increment, state: &state2)
+    #expect(state2.count == 1)
+
+    var state3 = TestState()
+    _ = await withError.handle(action: .increment, state: &state3)
+    #expect(state3.count == 1)
+
+    var state4 = TestState()
+    _ = await withTransform.handle(action: .increment, state: &state4)
+    #expect(state4.count == 1)
+  }
+
+  @Test func complexScenario() async {
+    // GIVEN: Handler with complex scenario
+    let sut = ActionHandler<TestAction, TestState> { action, state in
+      switch action {
+      case .increment:
+        state.count += 10
+      case .decrement:
+        state.count -= 5
+      case .asyncOp:
+        state.isLoading = true
+        return .run(id: "complex") { _ in }
+      }
+      return .none
+    }
+    .use(LoggingMiddleware(category: "Complex"))
+    .onError { error, state in
+      state.errorMessage = error.localizedDescription
+      state.isLoading = false
     }
 
-    @Test func transform_supportsChaining() async {
-        // GIVEN: Handler with all features
-        let sut = ActionHandler<TestAction, TestState> { _, state in
-            state.count += 1
-            return .run(id: "task") { _ in }
-        }
-        .use(LoggingMiddleware())
-        .onError { _, state in
-            state.errorMessage = "Error"
-        }
-        .transform { task in
-            task
-        }
+    // WHEN: Execute complex sequence
+    var state = TestState(count: 100)
+    _ = await sut.handle(action: .increment, state: &state)
+    #expect(state.count == 110)
 
-        // WHEN: Handle action
-        var state = TestState()
-        let task = await sut.handle(action: .asyncOp, state: &state)
-
-        // THEN: Should work with all features
-        #expect(state.count == 1)
-        if case .run = task.storeTask {
-            #expect(Bool(true))
-        }
+    let task = await sut.handle(action: .asyncOp, state: &state)
+    #expect(state.isLoading)
+    if case .run(let id, _, _) = task.storeTask {
+      #expect(id == "complex")
     }
 
-    // MARK: - Integration Tests
-
-    @Test func fullPipeline_successfulExecution() async {
-        // GIVEN: Handler with all features
-        let sut = ActionHandler<TestAction, TestState> { action, state in
-            switch action {
-            case .increment:
-                state.count += 1
-                return .none
-            case .decrement:
-                state.count -= 1
-                return .none
-            case .asyncOp:
-                state.isLoading = true
-                return .run(id: "async") { _ in }
-            }
-        }
-        .use(LoggingMiddleware(category: "Integration"))
-        .onError { _, state in
-            state.errorMessage = "Unexpected error"
-        }
-        .transform { task in
-            task  // Identity
-        }
-
-        // WHEN: Handle multiple actions
-        var state = TestState()
-        _ = await sut.handle(action: .increment, state: &state)
-        _ = await sut.handle(action: .increment, state: &state)
-        _ = await sut.handle(action: .decrement, state: &state)
-
-        // THEN: Should process all actions
-        #expect(state.count == 1)  // +1 +1 -1 = 1
-        #expect(state.errorMessage == nil)
-    }
-
-    @Test func immutabilityOfChaining() async {
-        // GIVEN: Base handler
-        let base = ActionHandler<TestAction, TestState> { _, state in
-            state.count += 1
-            return .none
-        }
-
-        // WHEN: Create variants
-        let withMiddleware = base.use(LoggingMiddleware())
-        let withError = base.onError { _, state in state.errorMessage = "E" }
-        let withTransform = base.transform { $0 }
-
-        // THEN: All should work independently
-        var state1 = TestState()
-        _ = await base.handle(action: .increment, state: &state1)
-        #expect(state1.count == 1)
-
-        var state2 = TestState()
-        _ = await withMiddleware.handle(action: .increment, state: &state2)
-        #expect(state2.count == 1)
-
-        var state3 = TestState()
-        _ = await withError.handle(action: .increment, state: &state3)
-        #expect(state3.count == 1)
-
-        var state4 = TestState()
-        _ = await withTransform.handle(action: .increment, state: &state4)
-        #expect(state4.count == 1)
-    }
-
-    @Test func complexScenario() async {
-        // GIVEN: Handler with complex scenario
-        let sut = ActionHandler<TestAction, TestState> { action, state in
-            switch action {
-            case .increment:
-                state.count += 10
-            case .decrement:
-                state.count -= 5
-            case .asyncOp:
-                state.isLoading = true
-                return .run(id: "complex") { _ in }
-            }
-            return .none
-        }
-        .use(LoggingMiddleware(category: "Complex"))
-        .onError { error, state in
-            state.errorMessage = error.localizedDescription
-            state.isLoading = false
-        }
-
-        // WHEN: Execute complex sequence
-        var state = TestState(count: 100)
-        _ = await sut.handle(action: .increment, state: &state)
-        #expect(state.count == 110)
-
-        let task = await sut.handle(action: .asyncOp, state: &state)
-        #expect(state.isLoading)
-        if case .run(let id, _, _) = task.storeTask {
-            #expect(id == "complex")
-        }
-
-        _ = await sut.handle(action: .decrement, state: &state)
-        #expect(state.count == 105)  // 110 - 5 = 105
-    }
+    _ = await sut.handle(action: .decrement, state: &state)
+    #expect(state.count == 105)  // 110 - 5 = 105
+  }
 }

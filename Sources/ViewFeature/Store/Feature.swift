@@ -96,68 +96,68 @@ import Foundation
 /// - ``ActionHandler``
 /// - ``ActionTask``
 public protocol Feature: Sendable {
-    /// The type representing actions that can be sent to this feature.
-    ///
-    /// Actions describe events or user intentions that trigger state changes.
-    /// They must conform to `Sendable` for safe concurrency.
-    /// Define as a nested enum within your feature for better namespacing.
-    ///
-    /// ## Example
-    /// ```swift
-    /// struct CounterFeature: Feature {
-    ///   enum Action: Sendable {
-    ///     case increment
-    ///     case decrement
-    ///     case reset
-    ///   }
-    /// }
-    /// ```
-    associatedtype Action: Sendable
+  /// The type representing actions that can be sent to this feature.
+  ///
+  /// Actions describe events or user intentions that trigger state changes.
+  /// They must conform to `Sendable` for safe concurrency.
+  /// Define as a nested enum within your feature for better namespacing.
+  ///
+  /// ## Example
+  /// ```swift
+  /// struct CounterFeature: Feature {
+  ///   enum Action: Sendable {
+  ///     case increment
+  ///     case decrement
+  ///     case reset
+  ///   }
+  /// }
+  /// ```
+  associatedtype Action: Sendable
 
-    /// The type representing the state managed by this feature.
-    ///
-    /// State should be an @Observable class for SwiftUI integration.
-    /// Equatable conformance is optional but enables TestStore's full state comparison.
-    /// Define as a nested class within your feature for better namespacing.
-    ///
-    /// ## Example
-    /// ```swift
-    /// struct CounterFeature: Feature {
-    ///   @Observable
-    ///   final class State {
-    ///     var count = 0
-    ///     var lastUpdated: Date?
-    ///
-    ///     init(count: Int = 0, lastUpdated: Date? = nil) {
-    ///       self.count = count
-    ///       self.lastUpdated = lastUpdated
-    ///     }
-    ///   }
-    /// }
-    /// ```
-    ///
-    /// - Note: @Observable requires class types for SwiftUI observation
-    associatedtype State: AnyObject
+  /// The type representing the state managed by this feature.
+  ///
+  /// State should be an @Observable class for SwiftUI integration.
+  /// Equatable conformance is optional but enables TestStore's full state comparison.
+  /// Define as a nested class within your feature for better namespacing.
+  ///
+  /// ## Example
+  /// ```swift
+  /// struct CounterFeature: Feature {
+  ///   @Observable
+  ///   final class State {
+  ///     var count = 0
+  ///     var lastUpdated: Date?
+  ///
+  ///     init(count: Int = 0, lastUpdated: Date? = nil) {
+  ///       self.count = count
+  ///       self.lastUpdated = lastUpdated
+  ///     }
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// - Note: @Observable requires class types for SwiftUI observation
+  associatedtype State: AnyObject
 
-    /// Creates an ActionHandler that processes actions for this feature.
-    ///
-    /// The handler receives actions and a state parameter (reference type), allowing direct
-    /// mutation for optimal performance. It returns an ``ActionTask`` to handle
-    /// any asynchronous side effects.
-    ///
-    /// ## Example
-    /// ```swift
-    /// func handle() -> ActionHandler<Action, State> {
-    ///   ActionHandler { action, state in
-    ///     switch action {
-    ///     case .increment:
-    ///       state.count += 1
-    ///       return .none
-    ///     }
-    ///   }
-    /// }
-    /// ```
-    ///
-    /// - Returns: An ActionHandler configured for this feature's action handling
-    func handle() -> ActionHandler<Action, State>
+  /// Creates an ActionHandler that processes actions for this feature.
+  ///
+  /// The handler receives actions and a state parameter (reference type), allowing direct
+  /// mutation for optimal performance. It returns an ``ActionTask`` to handle
+  /// any asynchronous side effects.
+  ///
+  /// ## Example
+  /// ```swift
+  /// func handle() -> ActionHandler<Action, State> {
+  ///   ActionHandler { action, state in
+  ///     switch action {
+  ///     case .increment:
+  ///       state.count += 1
+  ///       return .none
+  ///     }
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// - Returns: An ActionHandler configured for this feature's action handling
+  func handle() -> ActionHandler<Action, State>
 }
