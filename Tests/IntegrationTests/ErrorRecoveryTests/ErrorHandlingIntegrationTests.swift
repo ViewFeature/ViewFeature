@@ -55,7 +55,7 @@ import Testing
       typealias State = NetworkState
 
       func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
+        ActionHandler { action, _ in
           switch action {
           case .fetchData(let id):
             return ActionTask(
