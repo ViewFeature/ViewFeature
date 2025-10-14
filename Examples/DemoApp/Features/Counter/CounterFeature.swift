@@ -6,7 +6,6 @@ struct CounterFeature: Feature {
   // MARK: - State
 
   @Observable
-  @MainActor
   final class State {
     var count: Int = 0
     var isLoading: Bool = false
