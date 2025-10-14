@@ -358,9 +358,9 @@ import Testing
     var errorCount = 0
 
     // Fill up to the limit
-    for i in 0..<TaskManager.maxConcurrentTasks {
+    for index in 0..<TaskManager.maxConcurrentTasks {
       sut.executeTask(
-        id: "task-\(i)",
+        id: "task-\(index)",
         operation: { try await Task.sleep(nanoseconds: 1_000_000_000) },  // 1 second
         onError: nil
       )
@@ -373,7 +373,7 @@ import Testing
     sut.executeTask(
       id: "overflow",
       operation: { /* should not execute */ },
-      onError: { error in
+      onError: { _ in
         errorCount += 1
       }
     )
@@ -389,9 +389,9 @@ import Testing
   @Test func executeTask_allowsTaskAfterCancellation() async {
     let sut = TaskManager()
     // GIVEN: Fill up to the limit
-    for i in 0..<TaskManager.maxConcurrentTasks {
+    for index in 0..<TaskManager.maxConcurrentTasks {
       sut.executeTask(
-        id: "task-\(i)",
+        id: "task-\(index)",
         operation: { try await Task.sleep(nanoseconds: 1_000_000_000) },
         onError: nil
       )
@@ -421,9 +421,9 @@ import Testing
   @Test func executeTask_replacementDoesNotCountAsOverflow() async {
     let sut = TaskManager()
     // GIVEN: Fill up to the limit
-    for i in 0..<TaskManager.maxConcurrentTasks {
+    for index in 0..<TaskManager.maxConcurrentTasks {
       sut.executeTask(
-        id: "task-\(i)",
+        id: "task-\(index)",
         operation: { try await Task.sleep(nanoseconds: 1_000_000_000) },
         onError: nil
       )
