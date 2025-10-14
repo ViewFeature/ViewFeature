@@ -166,9 +166,11 @@ Provide unique IDs for all async tasks to enable cancellation:
 **✅ Do: Use task IDs**
 ```swift
 case .loadData:
-    return .run(id: "load-data") {
+    state.isLoading = true
+    return .run(id: "load-data") { state in
         let data = try await apiClient.fetch()
-        await store.send(.dataLoaded(data))
+        state.data = data
+        state.isLoading = false
     }
 ```
 
@@ -212,9 +214,10 @@ Use `.catch` to handle errors gracefully:
 ```swift
 case .loadData:
     state.isLoading = true
-    return .run(id: "load") {
+    return .run(id: "load") { state in
         let data = try await apiClient.fetch()
-        await store.send(.dataLoaded(data))
+        state.data = data
+        state.isLoading = false
     }
     .catch { error, state in
         state.errorMessage = error.localizedDescription
@@ -497,9 +500,11 @@ Debounce actions that fire frequently:
 ```swift
 case .searchTextChanged(let text):
     state.searchText = text
-    return .run(id: "search") {
+    return .run(id: "search") { state in
         try await Task.sleep(for: .milliseconds(300))
-        await store.send(.performSearch)
+        // Perform search with state.searchText
+        let results = try await searchAPI.search(state.searchText)
+        state.searchResults = results
     }
 ```
 
@@ -513,9 +518,11 @@ case .searchTextChanged(let text):
     state.searchText = text
     return .merge(
         .cancel(id: "search"),
-        .run(id: "search") {
+        .run(id: "search") { state in
             try await Task.sleep(for: .milliseconds(300))
-            await store.send(.performSearch)
+            // Perform search with state.searchText
+            let results = try await searchAPI.search(state.searchText)
+            state.searchResults = results
         }
     )
 ```

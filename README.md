@@ -77,15 +77,12 @@ struct UserFeature: Feature {
         ActionHandler { action, state in
             switch action {
             case .load:
-                state.isLoading = true  // ✅ Always safe on MainActor
-                return .run(id: "load") {
+                state.isLoading = true
+                return .run(id: "load") { state in
                     let user = try await api.fetchUser()
-                    await store.send(.loaded(user))  // ✅ Automatically MainActor
+                    state.user = user  // ✅ Direct state mutation
+                    state.isLoading = false
                 }
-            case .loaded(let user):
-                state.user = user
-                state.isLoading = false
-                return .none
             }
         }
     }
@@ -132,12 +129,12 @@ struct CounterFeature: Feature {
                 return .none
 
             case .backgroundIncrement:
-                return .run(id: "bg") {
+                return .run(id: "bg") { state in
                     // Background work here
                     await Task.sleep(for: .seconds(1))
 
-                    // ✅ store.send automatically switches to MainActor
-                    await store.send(.increment)
+                    // ✅ Direct state mutation on MainActor
+                    state.count += 1
                 }
             }
         }
@@ -216,11 +213,15 @@ struct Feature: Feature {
 
     func handle() -> ActionHandler<Action, State> {
         ActionHandler { action, state in
+            switch action {
             case .load:
-                return .run(id: "load") {
-                    let items = await api.fetch()
-                    await store.send(.loaded(items))  // ✅ Automatic MainActor
+                state.isLoading = true
+                return .run(id: "load") { state in
+                    let items = try await api.fetch()
+                    state.data = items  // ✅ Direct state mutation
+                    state.isLoading = false
                 }
+            }
         }
     }
 }
@@ -306,9 +307,9 @@ struct CounterFeature: Feature {
                 return .none
 
             case .asyncIncrement:
-                return .run(id: "increment") {
+                return .run(id: "increment") { state in
                     try await Task.sleep(for: .seconds(1))
-                    await store.send(.increment)
+                    state.count += 1  // ✅ Direct state mutation
                 }
             }
         }
@@ -403,7 +404,6 @@ struct DataFeature: Feature {
     enum Action: Sendable {
         case loadData
         case cancelLoad
-        case dataLoaded([Item])
     }
 
     func handle() -> ActionHandler<Action, State> {
@@ -411,9 +411,10 @@ struct DataFeature: Feature {
             switch action {
             case .loadData:
                 state.isLoading = true
-                return .run(id: "load-data") {
+                return .run(id: "load-data") { state in
                     let data = try await apiClient.fetch()
-                    await store.send(.dataLoaded(data))
+                    state.data = data
+                    state.isLoading = false
                 }
                 .catch { error, state in
                     state.isLoading = false
@@ -423,11 +424,6 @@ struct DataFeature: Feature {
             case .cancelLoad:
                 state.isLoading = false
                 return .cancel(id: "load-data")
-
-            case .dataLoaded(let items):
-                state.data = items
-                state.isLoading = false
-                return .none
             }
         }
     }
@@ -454,8 +450,9 @@ struct NetworkFeature: Feature {
             case .fetch:
                 state.isLoading = true
                 state.errorMessage = nil
-                return .run(id: "fetch") {
+                return .run(id: "fetch") { state in
                     try await networkCall()
+                    state.isLoading = false
                 }
                 .catch { error, state in
                     state.errorMessage = error.localizedDescription
@@ -639,9 +636,9 @@ struct AppFeature: Feature {
 
     enum Action: Sendable {
         case loadUser
-        case userLoaded(User)
-        case loadFailed(String)
     }
+
+    let apiClient: APIClient
 
     func handle() -> ActionHandler<Action, State> {
         ActionHandler { action, state in
@@ -649,24 +646,15 @@ struct AppFeature: Feature {
             case .loadUser:
                 state.isLoading = true
                 state.errorMessage = nil
-                return .run(id: "load") {
+                return .run(id: "load") { state in
                     let user = try await apiClient.fetchUser()
-                    await store.send(.userLoaded(user))
+                    state.user = user
+                    state.isLoading = false
                 }
                 .catch { error, state in
                     state.errorMessage = error.localizedDescription
                     state.isLoading = false
                 }
-
-            case .userLoaded(let user):
-                state.user = user
-                state.isLoading = false
-                return .none
-
-            case .loadFailed(let message):
-                state.errorMessage = message
-                state.isLoading = false
-                return .none
             }
         }
     }
@@ -721,27 +709,24 @@ struct DataFeature: Feature {
 
     enum Action: Sendable {
         case loadData
-        case dataLoaded([String])
         case cancelLoad
     }
+
+    let apiClient: APIClient
 
     func handle() -> ActionHandler<Action, State> {
         ActionHandler { action, state in
             switch action {
             case .loadData:
                 state.isLoading = true
-                return .run(id: "load-data") {
+                return .run(id: "load-data") { state in
                     let data = try await apiClient.fetch()
-                    await store.send(.dataLoaded(data))
+                    state.data = data
+                    state.isLoading = false
                 }
                 .catch { error, state in
                     state.isLoading = false
                 }
-
-            case .dataLoaded(let items):
-                state.data = items
-                state.isLoading = false
-                return .none
 
             case .cancelLoad:
                 state.isLoading = false
@@ -816,12 +801,13 @@ final class State {
 Actions run on MainActor, but effects can spawn background work:
 
 ```swift
-return .run(id: "fetch") {
+return .run(id: "fetch") { state in
     // This closure can do background work
     let data = await heavyComputation()  // Off main thread
 
-    // Send results back to MainActor
-    await store.send(.dataLoaded(data))  // Automatically MainActor
+    // Mutate state directly on MainActor
+    state.data = data  // ✅ Automatically MainActor
+    state.isLoading = false
 }
 ```
 
@@ -911,9 +897,9 @@ struct CounterFeature: Feature {
                 state.count += 1
                 return .none
             case .asyncIncrement:
-                return .run(id: "async") {
+                return .run(id: "async") { state in
                     try await Task.sleep(for: .seconds(1))
-                    await store.send(.increment)
+                    state.count += 1
                 }
             }
         }

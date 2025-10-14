@@ -102,15 +102,16 @@ case .fetch:
 **ViewFeature:**
 ```swift
 case .fetch:
-    return .run(id: "fetch") {
+    return .run(id: "fetch") { state in
         let data = try await api.fetch()
-        await store.send(.dataLoaded(data))
+        state.data = data
+        state.isLoading = false
     }
 ```
 
 **Key changes:**
 - Explicit task IDs for cancellation
-- Direct store access (no `send` parameter)
+- Direct state mutation (no separate action dispatch needed)
 
 #### 4. Composition
 
@@ -251,16 +252,18 @@ struct CounterView: View {
 import ViewFeature
 
 struct CounterFeature: Feature {
+    let apiClient: APIClient
+
     @Observable
     final class State {
         var count = 0
         var data: [Item] = []
+        var isLoading = false
     }
 
     enum Action: Sendable {
         case increment
         case loadData
-        case dataLoaded([Item])
     }
 
     func handle() -> ActionHandler<Action, State> {
@@ -271,14 +274,12 @@ struct CounterFeature: Feature {
                 return .none
 
             case .loadData:
-                return .run(id: "load") {
-                    let data = try await api.fetch()
-                    await store.send(.dataLoaded(data))  // Automatic MainActor
+                state.isLoading = true
+                return .run(id: "load") { state in
+                    let data = try await apiClient.fetch()
+                    state.data = data
+                    state.isLoading = false
                 }
-
-            case .dataLoaded(let items):
-                state.data = items
-                return .none
             }
         }
     }
@@ -372,7 +373,6 @@ struct UserFeature: Feature {
 
     enum Action: Sendable {
         case loadUser
-        case userLoaded(User)
         case refresh
     }
 
@@ -382,19 +382,15 @@ struct UserFeature: Feature {
             case .loadUser, .refresh:
                 state.isLoading = true
                 state.errorMessage = nil
-                return .run(id: "load-user") {
+                return .run(id: "load-user") { state in
                     let user = try await apiClient.fetchUser()
-                    await store.send(.userLoaded(user))  // ✅ Always safe
+                    state.user = user
+                    state.isLoading = false
                 }
                 .catch { error, state in
                     state.errorMessage = error.localizedDescription
                     state.isLoading = false
                 }
-
-            case .userLoaded(let user):
-                state.user = user
-                state.isLoading = false
-                return .none
             }
         }
     }

@@ -133,7 +133,6 @@ struct DataFeature: Feature {
 
     enum Action: Sendable {
         case loadData
-        case dataLoaded([String])
         case cancelLoad
     }
 
@@ -143,19 +142,15 @@ struct DataFeature: Feature {
             case .loadData:
                 state.isLoading = true
                 state.errorMessage = nil
-                return .run(id: "load-data") {
+                return .run(id: "load-data") { state in
                     let data = try await apiClient.fetch()
-                    await store.send(.dataLoaded(data))
+                    state.data = data
+                    state.isLoading = false
                 }
                 .catch { error, state in
                     state.errorMessage = error.localizedDescription
                     state.isLoading = false
                 }
-
-            case .dataLoaded(let items):
-                state.data = items
-                state.isLoading = false
-                return .none
 
             case .cancelLoad:
                 state.isLoading = false

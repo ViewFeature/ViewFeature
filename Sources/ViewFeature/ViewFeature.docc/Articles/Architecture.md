@@ -92,9 +92,10 @@ ActionHandler { action, state in  // state is inout
 
     case .loadData:
         state.isLoading = true
-        return .run(id: "load") {  // Async side effect
+        return .run(id: "load") { state in  // Async side effect
             let data = try await api.fetch()
-            await store.send(.dataLoaded(data))
+            state.data = data
+            state.isLoading = false
         }
     }
 }
