@@ -236,11 +236,9 @@ struct Feature: Feature {
 | Testability | Excellent (pure functions) | Good (needs mocking) |
 | Predictability | High (explicit actions) | Medium (implicit mutations) |
 | Data race protection | Compile-time | Runtime (if you forget `@MainActor`) |
-| Debugging | Action logs, time-travel* | Standard debugging |
+| Debugging | Action logs | Standard debugging |
 | Team consistency | Enforced patterns | Varies by developer |
 | Complex flows | Scales well | Can get messy |
-
-*Coming soon
 
 ### When to Use ViewFeature
 
@@ -693,84 +691,85 @@ struct AppFeature: Feature {
 }
 ```
 
-### Pattern 3: Async Task Testing
+### Pattern 3: Task Lifecycle Management
 
-Test async operations and task lifecycle:
+Test task cancellation and lifecycle:
 
 ```swift
-struct DataFeature: Feature {
-    let apiClient: APIClient
-
+struct DownloadFeature: Feature {
     @Observable
     final class State {
-        var isLoading = false
-        var data: [String] = []
+        var isDownloading = false
+        var progress: Double = 0.0
     }
 
     enum Action: Sendable {
-        case loadData
-        case cancelLoad
+        case startDownload
+        case cancelDownload
     }
-
-    let apiClient: APIClient
 
     func handle() -> ActionHandler<Action, State> {
         ActionHandler { action, state in
             switch action {
-            case .loadData:
-                state.isLoading = true
-                return .run(id: "load-data") { state in
-                    let data = try await apiClient.fetch()
-                    state.data = data
-                    state.isLoading = false
-                }
-                .catch { error, state in
-                    state.isLoading = false
+            case .startDownload:
+                state.isDownloading = true
+                state.progress = 0.0
+                return .run(id: "download") { state in
+                    // Simulate long-running download
+                    for progress in stride(from: 0.0, through: 1.0, by: 0.1) {
+                        try await Task.sleep(for: .milliseconds(100))
+                        state.progress = progress
+                    }
+                    state.isDownloading = false
                 }
 
-            case .cancelLoad:
-                state.isLoading = false
-                return .cancel(id: "load-data")
+            case .cancelDownload:
+                state.isDownloading = false
+                return .cancel(id: "download")
             }
         }
     }
 }
 
 @MainActor
-@Suite struct AsyncTests {
-    @Test func asyncTaskCompletion() async {
+@Suite struct TaskLifecycleTests {
+    @Test func taskCanBeCancelledWhileRunning() async {
         let store = Store(
-            initialState: DataFeature.State(),
-            feature: DataFeature(apiClient: MockAPIClient(data: ["item1", "item2"]))
+            initialState: DownloadFeature.State(),
+            feature: DownloadFeature()
         )
 
-        // Store.send() waits for background tasks to complete
-        await store.send(.loadData).value
+        // Start task (fire-and-forget)
+        store.send(.startDownload)
 
-        // Task is guaranteed to be complete - no Task.sleep needed!
-        #expect(!store.state.isLoading)
-        #expect(store.state.data == ["item1", "item2"])
-        #expect(store.runningTaskCount == 0)
-    }
-
-    @Test func taskCancellation() async {
-        let store = Store(
-            initialState: DataFeature.State(),
-            feature: DataFeature(apiClient: SlowMockAPIClient())
-        )
-
-        // Start task
-        store.send(.loadData)
-
-        // Verify task is running
-        #expect(store.isTaskRunning(id: "load-data"))
+        // Verify task started
+        #expect(store.isTaskRunning(id: "download"))
+        #expect(store.state.isDownloading)
 
         // Cancel it
-        await store.send(.cancelLoad).value
+        await store.send(.cancelDownload).value
 
         // Verify cancellation
-        #expect(!store.isTaskRunning(id: "load-data"))
-        #expect(!store.state.isLoading)
+        #expect(!store.isTaskRunning(id: "download"))
+        #expect(!store.state.isDownloading)
+    }
+
+    @Test func viewDisappearCancelsTask() async {
+        let store = Store(
+            initialState: DownloadFeature.State(),
+            feature: DownloadFeature()
+        )
+
+        // View appears, start download
+        store.send(.startDownload)
+        #expect(store.isTaskRunning(id: "download"))
+
+        // View disappears - cancel task
+        store.cancelTask(id: "download")
+
+        // Verify cleanup
+        #expect(!store.isTaskRunning(id: "download"))
+        #expect(store.runningTaskCount == 0)
     }
 }
 ```
@@ -965,19 +964,6 @@ Full API documentation is available through Swift DocC:
 ```bash
 swift package generate-documentation
 ```
-
-## Roadmap
-
-- ✅ Core state management
-- ✅ Async/await task support
-- ✅ Middleware system
-- ✅ Comprehensive testing utilities
-- ✅ Full documentation
-- 🔄 Enhanced debugging tools
-- 🔄 Time-travel debugging
-- 🔄 State persistence
-- 🔄 SwiftUI bindings helpers
-- 🔄 Performance profiling tools
 
 ## Contributing
 
