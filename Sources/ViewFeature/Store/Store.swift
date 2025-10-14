@@ -85,8 +85,9 @@ public final class Store<F: Feature> {
 
   /// The current state of the feature.
   ///
-  /// This property is @Observable, enabling automatic SwiftUI view updates when state changes.
-  /// Access this property from your views to read the current state.
+  /// The Store is @Observable, so accessing this property from SwiftUI views enables
+  /// automatic updates when state changes. Access this property from your views to
+  /// read the current state.
   public var state: F.State {
     _state
   }

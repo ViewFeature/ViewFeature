@@ -49,7 +49,7 @@ import Logging
 ///
 /// ## Performance Considerations
 /// - Log level checks happen before any string formatting
-/// - Duration tracking uses high-precision CFAbsoluteTime
+/// - Duration tracking uses high-precision ContinuousClock
 /// - Structured logging minimizes allocation overhead
 /// - Subsystem/category enable filtering in production
 ///

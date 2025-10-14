@@ -43,7 +43,7 @@ import Logging
 public final class MiddlewareManager<Action, State> {
   private var middlewares: [any BaseActionMiddleware] = []
 
-  // Cached middleware lists for performance (computed once at initialization)
+  // Cached middleware lists for performance (computed at initialization and when middleware is added)
   private var beforeMiddlewares: [any BeforeActionMiddleware] = []
   private var afterMiddlewares: [any AfterActionMiddleware] = []
   private var errorMiddlewares: [any ErrorHandlingMiddleware] = []
