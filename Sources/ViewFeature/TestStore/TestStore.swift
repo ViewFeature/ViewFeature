@@ -17,7 +17,7 @@ import Foundation
 ///
 /// ### Pattern 1: Full State Comparison (Equatable required)
 /// ```swift
-/// struct CounterFeature: StoreFeature {
+/// struct CounterFeature: Feature {
 ///   @Observable
 ///   final class State: Equatable {
 ///     var count = 0
@@ -60,7 +60,7 @@ import Foundation
 ///
 /// ### Pattern 2: Custom Assertions (No Equatable required)
 /// ```swift
-/// struct AppFeature: StoreFeature {
+/// struct AppFeature: Feature {
 ///   @Observable
 ///   final class State {
 ///     var user: User?
@@ -127,11 +127,11 @@ import Foundation
 /// ### Inspecting State
 /// - ``state``
 /// - ``actionHistory``
-public final class TestStore<Feature: StoreFeature> {
-    private var _state: Feature.State
-    private let feature: Feature
-    private let handler: ActionHandler<Feature.Action, Feature.State>
-    private var _actionHistory: [Feature.Action] = []
+public final class TestStore<F: Feature> {
+    private var _state: F.State
+    private let feature: F
+    private let handler: ActionHandler<F.Action, F.State>
+    private var _actionHistory: [F.Action] = []
     private let assertionProvider: AssertionProvider
 
     /// The current state of the store.
@@ -143,7 +143,7 @@ public final class TestStore<Feature: StoreFeature> {
     /// await store.send(.increment)
     /// XCTAssertEqual(store.state.count, 1)
     /// ```
-    public var state: Feature.State {
+    public var state: F.State {
         _state
     }
 
@@ -158,7 +158,7 @@ public final class TestStore<Feature: StoreFeature> {
     /// await store.send(.fetchProfile)
     /// XCTAssertEqual(store.actionHistory.count, 2)
     /// ```
-    public var actionHistory: [Feature.Action] {
+    public var actionHistory: [F.Action] {
         _actionHistory
     }
 
@@ -185,8 +185,8 @@ public final class TestStore<Feature: StoreFeature> {
     /// )
     /// ```
     public init(
-        initialState: Feature.State,
-        feature: Feature,
+        initialState: F.State,
+        feature: F,
         assertionProvider: AssertionProvider = PrintAssertionProvider()
     ) {
         self._state = initialState
@@ -213,10 +213,10 @@ public final class TestStore<Feature: StoreFeature> {
     /// ```
     @discardableResult
     public func send(
-        _ action: Feature.Action,
+        _ action: F.Action,
         file: StaticString = #file,
         line: UInt = #line
-    ) async -> Feature.State {
+    ) async -> F.State {
         _actionHistory.append(action)
 
         var localState = _state
@@ -249,11 +249,11 @@ public final class TestStore<Feature: StoreFeature> {
     /// - Note: Requires State to conform to Equatable. Use `send(_:assert:)` for non-Equatable states.
     @discardableResult
     public func send(
-        _ action: Feature.Action,
-        expecting: (inout Feature.State) -> Void,
+        _ action: F.Action,
+        expecting: (inout F.State) -> Void,
         file: StaticString = #file,
         line: UInt = #line
-    ) async -> Feature.State where Feature.State: Equatable {
+    ) async -> F.State where F.State: Equatable {
         let previousState = _state
         let newState = await send(action, file: file, line: line)
 
@@ -289,11 +289,11 @@ public final class TestStore<Feature: StoreFeature> {
     /// ```
     @discardableResult
     public func send(
-        _ action: Feature.Action,
-        assert: (Feature.State) -> Void,
+        _ action: F.Action,
+        assert: (F.State) -> Void,
         file: StaticString = #file,
         line: UInt = #line
-    ) async -> Feature.State {
+    ) async -> F.State {
         let newState = await send(action, file: file, line: line)
         assert(newState)
         return newState
@@ -324,12 +324,12 @@ public final class TestStore<Feature: StoreFeature> {
     /// ```
     @discardableResult
     public func send<Value: Equatable>(
-        _ action: Feature.Action,
-        _ keyPath: KeyPath<Feature.State, Value>,
+        _ action: F.Action,
+        _ keyPath: KeyPath<F.State, Value>,
         _ expectedValue: Value,
         file: StaticString = #file,
         line: UInt = #line
-    ) async -> Feature.State {
+    ) async -> F.State {
         let newState = await send(action, file: file, line: line)
         let actualValue = newState[keyPath: keyPath]
 
@@ -364,23 +364,23 @@ public final class TestStore<Feature: StoreFeature> {
     /// ```
     @discardableResult
     public func send<Value: Equatable>(
-        _ action: Feature.Action,
-        expecting keyPath: KeyPath<Feature.State, Value>,
+        _ action: F.Action,
+        expecting keyPath: KeyPath<F.State, Value>,
         toBe expectedValue: Value,
         file: StaticString = #file,
         line: UInt = #line
-    ) async -> Feature.State {
+    ) async -> F.State {
         // Delegate to the unlabeled variant
         await send(action, keyPath, expectedValue, file: file, line: line)
     }
 
     private func validateStateExpectation(
-        previousState: Feature.State,
-        actualState: Feature.State,
-        expecting: (inout Feature.State) -> Void,
+        previousState: F.State,
+        actualState: F.State,
+        expecting: (inout F.State) -> Void,
         file: StaticString,
         line: UInt
-    ) where Feature.State: Equatable {
+    ) where F.State: Equatable {
         var expectedState = previousState
         expecting(&expectedState)
 
@@ -401,7 +401,7 @@ public final class TestStore<Feature: StoreFeature> {
         }
     }
 
-    private func executeStoreTask(_ storeTask: StoreTask<Feature.Action, Feature.State>) async {
+    private func executeStoreTask(_ storeTask: StoreTask<F.Action, F.State>) async {
         switch storeTask {
         case .none:
             return

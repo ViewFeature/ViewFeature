@@ -24,7 +24,7 @@ public enum CounterAction: Sendable {
     case set(Int)
 }
 
-public struct CounterFeature: StoreFeature {
+public struct CounterFeature: Feature {
     public init() {}
 
     public func handle() -> ActionHandler<CounterAction, CounterState> {
@@ -77,7 +77,7 @@ public enum TestAction: Sendable {
     case reset
 }
 
-public struct TestFeature: StoreFeature {
+public struct TestFeature: Feature {
     public init() {}
 
     public func handle() -> ActionHandler<TestAction, TestState> {
@@ -124,7 +124,7 @@ public enum ConcurrentAction: Sendable {
     case reset
 }
 
-public struct ConcurrentFeature: StoreFeature {
+public struct ConcurrentFeature: Feature {
     public init() {}
 
     public func handle() -> ActionHandler<ConcurrentAction, ConcurrentState> {

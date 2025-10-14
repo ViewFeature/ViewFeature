@@ -10,7 +10,7 @@ import Observation
 ///
 /// ## Example Usage
 /// ```swift
-/// struct AppFeature: StoreFeature {
+/// struct AppFeature: Feature {
 ///     @Observable
 ///     final class State {
 ///         var count: Int = 0
@@ -76,15 +76,15 @@ import Observation
 /// - ``isTaskRunning(id:)``
 @Observable
 @MainActor
-public final class Store<Feature: StoreFeature> {
-    private var _state: Feature.State
+public final class Store<F: Feature> {
+    private var _state: F.State
     private let taskManager: TaskManager
-    private let handler: ActionHandler<Feature.Action, Feature.State>
-    private let feature: Feature
+    private let handler: ActionHandler<F.Action, F.State>
+    private let feature: F
     private let logger: Logger
 
     /// Exposes the current state
-    public var state: Feature.State {
+    public var state: F.State {
         _state
     }
 
@@ -92,8 +92,8 @@ public final class Store<Feature: StoreFeature> {
 
     /// Primary initializer with full DIP compliance
     public init(
-        initialState: Feature.State,
-        feature: Feature,
+        initialState: F.State,
+        feature: F,
         taskManager: TaskManager = TaskManager()
     ) {
         self.feature = feature
@@ -102,7 +102,7 @@ public final class Store<Feature: StoreFeature> {
         self.handler = feature.handle()
 
         let subsystem = Bundle.main.bundleIdentifier ?? "com.viewfeature.library"
-        let featureName = String(describing: Feature.self)
+        let featureName = String(describing: F.self)
         self.logger = Logger(label: "\(subsystem).Store.\(featureName)")
     }
 
@@ -123,7 +123,7 @@ public final class Store<Feature: StoreFeature> {
     /// await store.send(.loadData).value
     /// ```
     @discardableResult
-    public func send(_ action: Feature.Action) -> Task<Void, Never> {
+    public func send(_ action: F.Action) -> Task<Void, Never> {
         Task { @MainActor in
             await self.processAction(action)
         }
@@ -131,14 +131,14 @@ public final class Store<Feature: StoreFeature> {
 
     // MARK: - Private Implementation
 
-    private func processAction(_ action: Feature.Action) async {
+    private func processAction(_ action: F.Action) async {
         var mutableState = _state
         let actionTask = await handler.handle(action: action, state: &mutableState)
         _state = mutableState
         await executeTask(actionTask.storeTask)
     }
 
-    private func executeTask(_ storeTask: StoreTask<Feature.Action, Feature.State>) async {
+    private func executeTask(_ storeTask: StoreTask<F.Action, F.State>) async {
         switch storeTask {
         case .none:
             break
@@ -169,7 +169,6 @@ public final class Store<Feature: StoreFeature> {
             taskManager.cancelTaskInternal(id: id)
         }
     }
-
 
     // MARK: - Task Management API
 

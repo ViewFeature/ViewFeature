@@ -32,7 +32,7 @@ import Testing
         }
     }
 
-    struct DataFeature: StoreFeature, Sendable {
+    struct DataFeature: Feature, Sendable {
         typealias Action = DataAction
         typealias State = DataState
 
@@ -179,7 +179,7 @@ import Testing
 
     @Test func taskCompletionUpdatesRunningCount() async {
         // GIVEN: Store with short task
-        struct ShortTaskFeature: StoreFeature, Sendable {
+        struct ShortTaskFeature: Feature, Sendable {
             typealias Action = DataAction
             typealias State = DataState
 
@@ -213,7 +213,7 @@ import Testing
 
     @Test func taskErrorsAreHandled() async {
         // GIVEN: Store with error-throwing task
-        struct ErrorFeature: StoreFeature, Sendable {
+        struct ErrorFeature: Feature, Sendable {
             typealias Action = DataAction
             typealias State = DataState
 
@@ -273,7 +273,7 @@ import Testing
             }
         }
 
-        struct TrackingFeature: StoreFeature, Sendable {
+        struct TrackingFeature: Feature, Sendable {
             let tracker: TaskTracker
 
             typealias Action = DataAction

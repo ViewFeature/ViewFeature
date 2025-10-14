@@ -40,7 +40,7 @@ import Testing
         }
     }
 
-    struct UserFeature: StoreFeature, Sendable {
+    struct UserFeature: Feature, Sendable {
         typealias Action = UserAction
         typealias State = UserState
 

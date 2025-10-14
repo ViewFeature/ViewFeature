@@ -2,7 +2,7 @@ import Foundation
 import Observation
 import ViewFeature
 
-struct CounterFeature: StoreFeature {
+struct CounterFeature: Feature {
     // MARK: - State
 
     @Observable

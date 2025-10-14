@@ -47,7 +47,7 @@ import Testing
 
     @Test func taskErrorsAreHandledGracefully() async {
         // GIVEN: Store with error-throwing feature
-        struct ErrorFeature: StoreFeature, Sendable {
+        struct ErrorFeature: Feature, Sendable {
             typealias Action = NetworkAction
             typealias State = NetworkState
 
@@ -92,7 +92,7 @@ import Testing
 
     @Test func multipleErrorsAreHandledIndependently() async {
         // GIVEN: Store with multiple failing tasks
-        struct MultiErrorFeature: StoreFeature, Sendable {
+        struct MultiErrorFeature: Feature, Sendable {
             typealias Action = NetworkAction
             typealias State = NetworkState
 
@@ -140,7 +140,7 @@ import Testing
 
     @Test func systemRecoversAfterError() async {
         // GIVEN: Store with recovery mechanism
-        struct RecoveryFeature: StoreFeature, Sendable {
+        struct RecoveryFeature: Feature, Sendable {
             typealias Action = NetworkAction
             typealias State = NetworkState
 
@@ -206,7 +206,7 @@ import Testing
 
     @Test func retryMechanismAfterError() async {
         // GIVEN: Store with retry mechanism
-        struct RetryFeature: StoreFeature, Sendable {
+        struct RetryFeature: Feature, Sendable {
             typealias Action = NetworkAction
             typealias State = NetworkState
 
@@ -262,7 +262,7 @@ import Testing
 
     @Test func stateRemainsConsistentAfterError() async {
         // GIVEN: Store with state preservation
-        struct StatePreservingFeature: StoreFeature, Sendable {
+        struct StatePreservingFeature: Feature, Sendable {
             typealias Action = NetworkAction
             typealias State = NetworkState
 
@@ -309,7 +309,7 @@ import Testing
 
     @Test func taskCancellationDoesNotCauseErrors() async {
         // GIVEN: Store with cancellable task
-        struct CancellableFeature: StoreFeature, Sendable {
+        struct CancellableFeature: Feature, Sendable {
             typealias Action = NetworkAction
             typealias State = NetworkState
 
@@ -358,7 +358,7 @@ import Testing
 
     @Test func cascadingErrorHandling() async {
         // GIVEN: Store where errors can trigger other actions
-        struct CascadingFeature: StoreFeature, Sendable {
+        struct CascadingFeature: Feature, Sendable {
             typealias Action = NetworkAction
             typealias State = NetworkState
 
@@ -412,7 +412,7 @@ import Testing
 
     @Test func errorDuringErrorHandling() async {
         // GIVEN: Store where error handler itself doesn't crash
-        struct SafeErrorFeature: StoreFeature, Sendable {
+        struct SafeErrorFeature: Feature, Sendable {
             typealias Action = NetworkAction
             typealias State = NetworkState
 
@@ -458,7 +458,7 @@ import Testing
 
     @Test func fullErrorRecoveryWorkflow() async {
         // GIVEN: Store with complete recovery workflow
-        struct FullRecoveryFeature: StoreFeature, Sendable {
+        struct FullRecoveryFeature: Feature, Sendable {
             typealias Action = NetworkAction
             typealias State = NetworkState
 

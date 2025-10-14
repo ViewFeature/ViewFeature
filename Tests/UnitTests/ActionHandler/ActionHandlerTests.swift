@@ -47,7 +47,7 @@ import Testing
                 state.count -= 1
             case .asyncOp:
                 state.isLoading = true
-                return .run(id: "async") { _ in}
+                return .run(id: "async") { _ in }
             }
             return .none
         }
@@ -88,7 +88,7 @@ import Testing
         // GIVEN: Handler returning run task
         let sut = ActionHandler<TestAction, TestState> { _, state in
             state.isLoading = true
-            return .run(id: "test") { _ in}
+            return .run(id: "test") { _ in }
         }
 
         // WHEN: Handle action
@@ -256,12 +256,12 @@ import Testing
         // GIVEN: Handler with transform
         let sut = ActionHandler<TestAction, TestState> { _, state in
             state.count += 1
-            return .run(id: "original") { _ in}
+            return .run(id: "original") { _ in }
         }
         .transform { task in
             switch task.storeTask {
             case .run:
-                return .run(id: "transformed") { _ in}
+                return .run(id: "transformed") { _ in }
             default:
                 return task
             }
@@ -283,7 +283,7 @@ import Testing
     @Test func transform_canConvertTasks() async {
         // GIVEN: Handler that converts tasks
         let sut = ActionHandler<TestAction, TestState> { _, _ in
-            .run(id: "convert") { _ in}
+            .run(id: "convert") { _ in }
         }
         .transform { task in
             switch task.storeTask {
@@ -337,7 +337,7 @@ import Testing
         // GIVEN: Handler with all features
         let sut = ActionHandler<TestAction, TestState> { _, state in
             state.count += 1
-            return .run(id: "task") { _ in}
+            return .run(id: "task") { _ in }
         }
         .use(LoggingMiddleware())
         .onError { _, state in
@@ -372,7 +372,7 @@ import Testing
                 return .none
             case .asyncOp:
                 state.isLoading = true
-                return .run(id: "async") { _ in}
+                return .run(id: "async") { _ in }
             }
         }
         .use(LoggingMiddleware(category: "Integration"))
@@ -434,7 +434,7 @@ import Testing
                 state.count -= 5
             case .asyncOp:
                 state.isLoading = true
-                return .run(id: "complex") { _ in}
+                return .run(id: "complex") { _ in }
             }
             return .none
         }

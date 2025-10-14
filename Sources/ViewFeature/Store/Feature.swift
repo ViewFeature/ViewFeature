@@ -2,7 +2,7 @@ import Foundation
 
 /// A protocol that defines the core behavior of a feature in the ViewFeature architecture.
 ///
-/// `StoreFeature` is the fundamental building block for creating modular, testable features.
+/// `Feature` is the fundamental building block for creating modular, testable features.
 /// Each feature encapsulates its own state, actions, and business logic, following the
 /// single responsibility principle.
 ///
@@ -15,7 +15,7 @@ import Foundation
 ///
 /// ## Implementation Pattern
 /// ```swift
-/// struct UserFeature: StoreFeature {
+/// struct UserFeature: Feature {
 ///   // 1. Define your state (nested)
 ///   @Observable
 ///   final class State {
@@ -95,7 +95,7 @@ import Foundation
 /// - ``Store``
 /// - ``ActionHandler``
 /// - ``ActionTask``
-public protocol StoreFeature: Sendable {
+public protocol Feature: Sendable {
     /// The type representing actions that can be sent to this feature.
     ///
     /// Actions describe events or user intentions that trigger state changes.
@@ -104,7 +104,7 @@ public protocol StoreFeature: Sendable {
     ///
     /// ## Example
     /// ```swift
-    /// struct CounterFeature: StoreFeature {
+    /// struct CounterFeature: Feature {
     ///   enum Action: Sendable {
     ///     case increment
     ///     case decrement
@@ -122,7 +122,7 @@ public protocol StoreFeature: Sendable {
     ///
     /// ## Example
     /// ```swift
-    /// struct CounterFeature: StoreFeature {
+    /// struct CounterFeature: Feature {
     ///   @Observable
     ///   final class State {
     ///     var count = 0
@@ -141,7 +141,7 @@ public protocol StoreFeature: Sendable {
 
     /// Creates an ActionHandler that processes actions for this feature.
     ///
-    /// The handler receives actions and an `inout` state parameter, allowing direct
+    /// The handler receives actions and a state parameter (reference type), allowing direct
     /// mutation for optimal performance. It returns an ``ActionTask`` to handle
     /// any asynchronous side effects.
     ///

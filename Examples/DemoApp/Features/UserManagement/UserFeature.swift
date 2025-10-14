@@ -26,7 +26,7 @@ enum UserRole: String, CaseIterable, Sendable {
 
 // MARK: - Feature
 
-struct UserFeature: StoreFeature {
+struct UserFeature: Feature {
     // MARK: - State
 
     @Observable

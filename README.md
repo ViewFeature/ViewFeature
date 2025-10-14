@@ -5,78 +5,55 @@
 ![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-**ViewFeature** is a modern, lightweight state management library for Swift applications, built with Swift 6 strict concurrency and designed for seamless SwiftUI integration.
+A lightweight, type-safe state management library for Swift built with Swift 6 strict concurrency and SwiftUI @Observable integration.
 
-## ✨ Key Features
+## Key Features
 
-- **🎯 Modern Swift**: Built with Swift 6, async/await, and strict concurrency
-- **⚡ Type-Safe**: Leverages Swift's type system for compile-time safety
-- **🔄 Reactive**: Seamless SwiftUI integration with @Observable
-- **🏗 SOLID Architecture**: Clean separation of concerns following SOLID principles
-- **🧪 Flexible Testing**: 3 testing patterns supporting both Equatable and non-Equatable states
-- **✅ 100% Tested**: 267 tests with comprehensive coverage
-- **📦 Lightweight**: Minimal dependencies (only swift-log)
-- **🚀 Production-Ready**: Battle-tested integration and performance tests
+- Swift 6 with async/await and strict concurrency
+- Type-safe state management with compile-time guarantees
+- Native SwiftUI @Observable integration
+- Flexible testing supporting non-Equatable states
+- Middleware support for cross-cutting concerns
+- 100% test coverage (267 tests)
 
-## 📖 Quick Start
+## Quick Start
 
 ### Installation
 
-Add ViewFeature to your `Package.swift`:
-
 ```swift
 dependencies: [
-.package(url: "https://github.com/ViewFeature/ViewFeature.git", from: "0.1.0")
+  .package(url: "https://github.com/ViewFeature/ViewFeature.git", from: "0.1.0")
 ]
 ```
 
-Or in Xcode: **File → Add Package Dependencies**
-
-### Basic Example
+### Example
 
 ```swift
 import ViewFeature
 import SwiftUI
 
-// 1. Define your feature
 struct CounterFeature: StoreFeature {
   @Observable
   final class State {
     var count = 0
-
-    init(count: Int = 0) {
-      self.count = count
-    }
+    init(count: Int = 0) { self.count = count }
   }
 
   enum Action: Sendable {
-    case increment
-    case decrement
-    case asyncIncrement
+    case increment, decrement
   }
 
   func handle() -> ActionHandler<Action, State> {
     ActionHandler { action, state in
       switch action {
-      case .increment:
-        state.count += 1
-        return .none
-
-      case .decrement:
-        state.count -= 1
-        return .none
-
-      case .asyncIncrement:
-        return .run(id: "async-increment") {
-          try await Task.sleep(for: .seconds(1))
-          // Send another action after delay
-        }
+      case .increment: state.count += 1
+      case .decrement: state.count -= 1
       }
+      return .none
     }
   }
 }
 
-// 2. Use in SwiftUI
 struct CounterView: View {
   @State private var store = Store(
     initialState: CounterFeature.State(),
@@ -84,263 +61,58 @@ struct CounterView: View {
   )
 
   var body: some View {
-    VStack(spacing: 20) {
-      Text("\(store.state.count)")
-        .font(.largeTitle)
-
-      HStack(spacing: 15) {
-        Button("−") { store.send(.decrement) }
-        Button("+") { store.send(.increment) }
-        Button("Async +") { store.send(.asyncIncrement) }
-      }
-      .buttonStyle(.borderedProminent)
+    VStack {
+      Text("\(store.state.count)").font(.largeTitle)
+      Button("−") { store.send(.decrement) }
+      Button("+") { store.send(.increment) }
     }
-    .padding()
   }
 }
 ```
 
-## 🏗 Architecture
+## Architecture
 
-ViewFeature follows a unidirectional data flow architecture inspired by Redux and The Composable Architecture:
+Unidirectional data flow:
 
 ```
-┌─────────────┐    Action     ┌──────────────┐
-│    View     │──────────────▶│    Store     │
-│  (SwiftUI)  │               │              │
-└─────────────┘               └──────────────┘
-       ▲                             │
-       │                             ▼
-       │                      ┌──────────────┐
-       │        State         │ActionHandler │
-       └──────────────────────│   (Feature)  │
-                              └──────────────┘
-                                     │
-                              ┌──────▼──────┐
-                              │ StoreTask   │
-                              │(Side Effects)│
-                              └─────────────┘
+View → Action → Store → ActionHandler → State → View
+                   ↓
+              StoreTask (side effects)
 ```
 
-### Core Components
+**Store**: Holds state, processes actions, manages tasks
+**ActionHandler**: Transforms state based on actions
+**StoreTask**: Represents async operations (`.run`, `.cancel`, `.none`)
+**TaskManager**: Manages concurrent task lifecycle
 
-#### Store
-The main container that:
-- Holds the current state
-- Processes actions through ActionHandler
-- Manages side effects via TaskManager
-- Observes state changes with @Observable
+## Advanced Usage
 
-#### ActionHandler
-Defines how actions transform state:
-- Pure state transformations
-- Returns `ActionTask` for side effects
-- Supports middleware for cross-cutting concerns
-
-#### StoreTask
-Represents side effects:
-- `.none` - No side effects
-- `.run(id:operation:)` - Execute async operations
-- `.cancel(id:)` - Cancel running tasks
-
-#### TaskManager
-Manages concurrent task execution:
-- Task lifecycle management
-- Cancellation support
-- Error handling
-
-## 🔄 Advanced Features
-
-### Task Management & Cancellation
+### Async Tasks with Cancellation
 
 ```swift
-struct DownloadFeature: StoreFeature {
-  @Observable
-  final class State {
-    var isDownloading = false
-    var progress: Double = 0.0
-    var errorMessage: String?
-
-    init(isDownloading: Bool = false, progress: Double = 0.0, errorMessage: String? = nil) {
-      self.isDownloading = isDownloading
-      self.progress = progress
-      self.errorMessage = errorMessage
-    }
-  }
-
-  enum Action: Sendable {
-    case startDownload
-    case cancelDownload
-    case updateProgress(Double)
-  }
-
-  func handle() -> ActionHandler<Action, State> {
-    ActionHandler { action, state in
-      switch action {
-      case .startDownload:
-        state.isDownloading = true
-        state.progress = 0.0
-        state.errorMessage = nil
-        return .run(id: "download") {
-          // Simulate long-running download
-          for i in 1...10 {
-            try await Task.sleep(for: .seconds(0.5))
-            // Update progress through state mutations in error handler
-            // or handle in View layer
-          }
-        }
-        .catch { error, state in
-          state.isDownloading = false
-          state.errorMessage = error.localizedDescription
-        }
-
-      case .cancelDownload:
-        state.isDownloading = false
-        state.progress = 0.0
-        return .cancel(id: "download")
-
-      case .updateProgress(let value):
-        state.progress = value
-        if value >= 1.0 {
-          state.isDownloading = false
-        }
-        return .none
-      }
-    }
-  }
+return .run(id: "download") {
+  // Long-running async operation
+  try await Task.sleep(for: .seconds(1))
 }
+.catch { error, state in
+  state.errorMessage = error.localizedDescription
+}
+
+// Cancel the task
+return .cancel(id: "download")
 ```
 
-### Error Handling
+### Middleware
+
+Add cross-cutting concerns like logging or analytics:
 
 ```swift
-struct NetworkFeature: StoreFeature {
-  @Observable
-  final class State {
-    var isLoading = false
-    var data: String?
-    var errorMessage: String?
-
-    init(isLoading: Bool = false, data: String? = nil, errorMessage: String? = nil) {
-      self.isLoading = isLoading
-      self.data = data
-      self.errorMessage = errorMessage
-    }
-  }
-
-  enum Action: Sendable {
-    case fetch
-    case fetchSuccess(String)
-  }
-
-  func handle() -> ActionHandler<Action, State> {
-    ActionHandler { action, state in
-      switch action {
-      case .fetch:
-        state.isLoading = true
-        state.errorMessage = nil
-        return .run(id: "fetch") {
-          // Simulate network request that might fail
-          try await Task.sleep(for: .seconds(1))
-          // Simulate random failure
-          if Int.random(in: 0...1) == 0 {
-            throw NSError(domain: "NetworkError", code: -1, userInfo: [
-              NSLocalizedDescriptionKey: "Failed to fetch data"
-            ])
-          }
-        }
-        .catch { error, state in
-          state.errorMessage = error.localizedDescription
-          state.isLoading = false
-        }
-
-      case .fetchSuccess(let data):
-        state.data = data
-        state.isLoading = false
-        return .none
-      }
-    }
-  }
-}
-```
-
-### Middleware Support
-
-ViewFeature supports middleware for cross-cutting concerns like logging, analytics, and validation.
-
-#### Built-in Logging Middleware
-
-```swift
-struct MyFeature: StoreFeature {
-  @Observable
-  final class State {
-    var count = 0
-  }
-
-enum Action: Sendable {
-  case increment
-}
-
 func handle() -> ActionHandler<Action, State> {
   ActionHandler { action, state in
-    switch action {
-      case .increment:
-      state.count += 1
-      return .none
-    }
-}
-.use(LoggingMiddleware(category: "MyFeature"))
-}
-}
-```
-
-#### Custom Middleware
-
-Create custom middleware by conforming to `ActionMiddleware`:
-
-```swift
-struct AnalyticsMiddleware: ActionMiddleware {
-  func beforeAction<Action, State>(action: Action, state: State) async throws {
-// Track action start
-    Analytics.track("action_started", properties: ["action": "\(action)"])
+    // Handle actions
   }
-
-func afterAction<Action, State>(
-action: Action,
-state: State,
-result: ActionTask<Action, State>,
-duration: TimeInterval
-) async throws {
-// Track action completion
-  Analytics.track("action_completed", properties: [
-  "action": "\(action)",
-  "duration": duration
-  ])
-}
-
-func onError<Action, State>(
-error: Error,
-action: Action,
-state: State
-) async {
-// Track errors
-  Analytics.track("action_error", properties: [
-  "action": "\(action)",
-  "error": "\(error)"
-  ])
-}
-}
-
-struct MyFeature: StoreFeature {
-// ...
-
-  func handle() -> ActionHandler<Action, State> {
-    ActionHandler { action, state in
-// Action logic
-    }
-  .use(AnalyticsMiddleware())
   .use(LoggingMiddleware(category: "MyFeature"))
-}
+  .use(AnalyticsMiddleware())
 }
 ```
 

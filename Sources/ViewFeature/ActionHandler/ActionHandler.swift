@@ -12,7 +12,7 @@ import Foundation
 ///
 /// ## Basic Usage
 /// ```swift
-/// struct MyFeature: StoreFeature {
+/// struct MyFeature: Feature {
 ///   @MainActor
 ///   @Observable
 ///   final class State {
@@ -54,7 +54,7 @@ import Foundation
 /// ## Method Chaining
 /// Enhance your handler with additional functionality:
 /// ```swift
-/// struct MyFeature: StoreFeature {
+/// struct MyFeature: Feature {
 ///   @MainActor
 ///   @Observable
 ///   final class State {
@@ -100,7 +100,7 @@ public final class ActionHandler<Action, State> {
     ///
     /// ## Example
     /// ```swift
-    /// struct CounterFeature: StoreFeature {
+    /// struct CounterFeature: Feature {
     ///   @MainActor
     ///   @Observable
     ///   final class State {

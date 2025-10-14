@@ -27,7 +27,7 @@ import Testing
         case taskCompleted
     }
 
-    struct TestFeature: StoreFeature, Sendable {
+    struct TestFeature: Feature, Sendable {
         typealias Action = TestAction
         typealias State = TestState
 
@@ -87,6 +87,7 @@ import Testing
         try? await Task.sleep(for: .milliseconds(50))
 
         // THEN: State should NOT be changed by cancelled task
+        // swiftlint:disable:next empty_count
         #expect(sut.state.count == 0) // Should NOT have been incremented
         #expect(sut.state.completed == false) // Should NOT have been set
         #expect(sut.state.isLoading == false) // Should be reset by cancel action
@@ -136,6 +137,7 @@ import Testing
         try? await Task.sleep(for: .milliseconds(50))
 
         // THEN: Count should still be 0 (all cancelled)
+        // swiftlint:disable:next empty_count
         #expect(sut.state.count == 0)
         #expect(sut.state.completed == false)
     }
@@ -157,6 +159,7 @@ import Testing
         try? await Task.sleep(for: .milliseconds(150))
 
         // THEN: Task should be cancelled
+        // swiftlint:disable:next empty_count
         #expect(sut.state.count == 0)
         #expect(sut.state.completed == false)
         #expect(!sut.isTaskRunning(id: "test-task"))

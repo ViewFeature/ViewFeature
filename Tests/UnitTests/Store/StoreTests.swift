@@ -31,7 +31,7 @@ import Testing
         }
     }
 
-    struct TestFeature: StoreFeature, Sendable {
+    struct TestFeature: Feature, Sendable {
         typealias Action = TestAction
         typealias State = TestState
 
@@ -368,7 +368,7 @@ import Testing
 
     @Test func createErrorHandler_withNonNilHandler() async {
         // GIVEN: Feature with StoreTask-level error handler
-        struct ErrorHandlingFeature: StoreFeature, Sendable {
+        struct ErrorHandlingFeature: Feature, Sendable {
             typealias Action = TestAction
             typealias State = TestState
 
@@ -412,7 +412,7 @@ import Testing
 
     @Test func createErrorHandler_withNilHandler() async {
         // GIVEN: Feature returning StoreTask with nil onError
-        struct NoErrorHandlerFeature: StoreFeature, Sendable {
+        struct NoErrorHandlerFeature: Feature, Sendable {
             typealias Action = TestAction
             typealias State = TestState
 
@@ -451,7 +451,7 @@ import Testing
 
     @Test func createErrorHandler_updatesState() async {
         // GIVEN: Feature with error handler that modifies state
-        struct StateModifyingFeature: StoreFeature, Sendable {
+        struct StateModifyingFeature: Feature, Sendable {
             typealias Action = TestAction
             typealias State = TestState
 
@@ -638,7 +638,7 @@ import Testing
 
     @Test func cancelTask_withMultipleTasks_cancelsOnlySpecifiedTask() async {
         // GIVEN: Feature with multiple async tasks
-        struct MultiTaskFeature: StoreFeature, Sendable {
+        struct MultiTaskFeature: Feature, Sendable {
             typealias Action = TestAction
             typealias State = TestState
 
@@ -708,7 +708,7 @@ import Testing
 
     @Test func cancelTask_withCompletedTask_doesNotCrash() async {
         // GIVEN: Store with a task that completes quickly
-        struct QuickTaskFeature: StoreFeature, Sendable {
+        struct QuickTaskFeature: Feature, Sendable {
             typealias Action = TestAction
             typealias State = TestState
 
@@ -743,7 +743,7 @@ import Testing
 
     @Test func cancelTask_behavesLikeActionCancel() async {
         // GIVEN: Store with a long-running task
-        struct CancelComparisonFeature: StoreFeature, Sendable {
+        struct CancelComparisonFeature: Feature, Sendable {
             typealias Action = TestAction
             typealias State = TestState
 
@@ -797,7 +797,7 @@ import Testing
 
     @Test func cancelTask_viewLayerScenario_downloadCancellation() async {
         // GIVEN: Realistic download scenario
-        struct DownloadFeature: StoreFeature, Sendable {
+        struct DownloadFeature: Feature, Sendable {
             typealias State = DownloadState
             typealias Action = DownloadAction
 
@@ -875,7 +875,7 @@ import Testing
 
     @Test func cancelTask_withDifferentIDTypes() async {
         // GIVEN: Feature supporting different ID types
-        struct MultiIDFeature: StoreFeature, Sendable {
+        struct MultiIDFeature: Feature, Sendable {
             typealias Action = IDAction
             typealias State = TestState
 
@@ -935,7 +935,7 @@ import Testing
 
     @Test func cancelTask_duringViewLifecycle_onDisappear() async {
         // GIVEN: Feature simulating view lifecycle scenario
-        struct ViewLifecycleFeature: StoreFeature, Sendable {
+        struct ViewLifecycleFeature: Feature, Sendable {
             typealias Action = ViewAction
             typealias State = ViewState
 
@@ -992,7 +992,7 @@ import Testing
 
     @Test func cancelTask_triggersCancellationErrorInCatchHandler() async {
         // GIVEN: Feature with .catch handler that verifies CancellationError
-        struct CancellationTestFeature: StoreFeature, Sendable {
+        struct CancellationTestFeature: Feature, Sendable {
             typealias Action = CancelAction
             typealias State = CancelState
 
@@ -1063,7 +1063,7 @@ import Testing
 
     @Test func cancelTaskDirect_triggersCancellationErrorInCatchHandler() async {
         // GIVEN: Feature with .catch handler
-        struct DirectCancelFeature: StoreFeature, Sendable {
+        struct DirectCancelFeature: Feature, Sendable {
             typealias Action = SimpleAction
             typealias State = CancelState
 

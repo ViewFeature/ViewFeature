@@ -18,7 +18,7 @@ struct TodoItem: Identifiable, Equatable, Sendable {
 
 // MARK: - Feature
 
-struct TodoFeature: StoreFeature {
+struct TodoFeature: Feature {
     // MARK: - State
 
     @Observable

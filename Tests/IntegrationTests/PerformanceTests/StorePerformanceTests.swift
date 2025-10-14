@@ -28,7 +28,7 @@ import Testing
         }
     }
 
-    struct PerformanceFeature: StoreFeature, Sendable {
+    struct PerformanceFeature: Feature, Sendable {
         typealias Action = PerformanceAction
         typealias State = PerformanceState
 
@@ -237,7 +237,7 @@ import Testing
             case increment
         }
 
-        struct ComplexFeature: StoreFeature, Sendable {
+        struct ComplexFeature: Feature, Sendable {
             typealias Action = ComplexAction
             typealias State = ComplexState
 

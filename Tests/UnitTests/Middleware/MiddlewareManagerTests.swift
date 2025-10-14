@@ -327,7 +327,7 @@ import Testing
         // GIVEN: Manager with middleware
         let middleware = LoggingMiddleware(logLevel: .info)
         let sut = MiddlewareManager<TestAction, TestState>(middlewares: [middleware])
-        let result: ActionTask<TestAction, TestState> = .run(id: "test") { _ in}
+        let result: ActionTask<TestAction, TestState> = .run(id: "test") { _ in }
 
         // WHEN & THEN: Should handle run task
         try await sut.executeAfterAction(

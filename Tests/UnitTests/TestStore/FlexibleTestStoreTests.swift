@@ -23,7 +23,7 @@ import Testing
         case addTag(String)
     }
 
-    struct TestFeature: StoreFeature {
+    struct TestFeature: Feature {
         typealias State = NonEquatableState
         typealias Action = TestAction
 
@@ -225,7 +225,7 @@ import Testing
         case setName(String)
     }
 
-    struct SimpleFeature: StoreFeature {
+    struct SimpleFeature: Feature {
         typealias State = EquatableState
         typealias Action = SimpleAction
 
@@ -331,7 +331,7 @@ import Testing
         case cancelTask(String)
     }
 
-    struct CancelTaskFeature: StoreFeature {
+    struct CancelTaskFeature: Feature {
         typealias State = CancelTaskState
         typealias Action = CancelTaskAction
 
@@ -411,7 +411,7 @@ import Testing
         case throwWithHandler
     }
 
-    struct ErrorHandlerFeature: StoreFeature {
+    struct ErrorHandlerFeature: Feature {
         typealias State = ErrorHandlerState
         typealias Action = ErrorHandlerAction
 

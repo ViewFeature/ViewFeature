@@ -36,7 +36,7 @@ import Testing
         }
     }
 
-    struct TodoFeature: StoreFeature, Sendable {
+    struct TodoFeature: Feature, Sendable {
         typealias Action = TodoAction
         typealias State = TodoState
 

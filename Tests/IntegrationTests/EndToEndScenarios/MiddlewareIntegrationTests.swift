@@ -31,7 +31,7 @@ import Testing
         }
     }
 
-    struct ShoppingFeature: StoreFeature, Sendable {
+    struct ShoppingFeature: Feature, Sendable {
         typealias Action = ShoppingAction
         typealias State = ShoppingState
 
