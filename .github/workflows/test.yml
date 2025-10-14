@@ -88,6 +88,7 @@ jobs:
             -scheme ViewFeature \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.6' \
             -skipPackagePluginValidation \
+            -skipMacroValidation \
             -enableCodeCoverage YES
 
       - name: Upload Test Results
@@ -138,25 +139,29 @@ jobs:
               xcodebuild build \
                 -scheme ViewFeature \
                 -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.6' \
-                -skipPackagePluginValidation
+                -skipPackagePluginValidation \
+                -skipMacroValidation
               ;;
             macOS)
               xcodebuild build \
                 -scheme ViewFeature \
                 -destination 'platform=macOS' \
-                -skipPackagePluginValidation
+                -skipPackagePluginValidation \
+                -skipMacroValidation
               ;;
             watchOS)
               xcodebuild build \
                 -scheme ViewFeature \
                 -destination 'platform=watchOS Simulator,name=Apple Watch Series 10 (46mm),OS=11.5' \
-                -skipPackagePluginValidation
+                -skipPackagePluginValidation \
+                -skipMacroValidation
               ;;
             tvOS)
               xcodebuild build \
                 -scheme ViewFeature \
                 -destination 'platform=tvOS Simulator,name=Apple TV' \
-                -skipPackagePluginValidation
+                -skipPackagePluginValidation \
+                -skipMacroValidation
               ;;
           esac
 
