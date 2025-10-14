@@ -117,7 +117,7 @@ public protocol Feature: Sendable {
   /// The type representing the state managed by this feature.
   ///
   /// State should be an @Observable class for SwiftUI integration.
-  /// Equatable conformance is optional but enables TestStore's full state comparison.
+  /// Equatable conformance is optional but recommended for better testability.
   /// Define as a nested class within your feature for better namespacing.
   ///
   /// ## Example

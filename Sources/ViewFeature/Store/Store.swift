@@ -138,7 +138,7 @@ public final class Store<F: Feature> {
   /// - Simplifies reasoning about action order
   /// - Prevents race conditions
   ///
-  /// **Note:** Even with task IDs, the Store awaits task completion (line 190).
+  /// **Note:** Even with task IDs, the Store awaits task completion (line 200).
   /// This is intentional to maintain state consistency and simplify the mental model.
   ///
   /// If you need truly concurrent background work, dispatch it inside the `.run` block

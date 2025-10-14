@@ -312,9 +312,9 @@ public final class ActionProcessor<Action, State> {
   /// processor.transform { task in
   ///   switch task.storeTask {
   ///   case .run(let id, let operation, _):
-  ///     return .run(id: id) {
+  ///     return .run(id: id) { state in
   ///       print("Task \(id ?? "unknown") starting...")
-  ///       try await operation()
+  ///       try await operation(state)
   ///       print("Task \(id ?? "unknown") completed")
   ///     }
   ///   default:
@@ -328,9 +328,9 @@ public final class ActionProcessor<Action, State> {
   /// processor.transform { task in
   ///   switch task.storeTask {
   ///   case .run(let id, let operation, _):
-  ///     return ActionTask.run(id: id) {
+  ///     return ActionTask.run(id: id) { state in
   ///       try await withTimeout(seconds: 30) {
-  ///         try await operation()
+  ///         try await operation(state)
   ///       }
   ///     }
   ///   default:
@@ -344,9 +344,9 @@ public final class ActionProcessor<Action, State> {
   /// processor.transform { task in
   ///   switch task.storeTask {
   ///   case .run(let id, let operation, _):
-  ///     return ActionTask.run(id: id) {
+  ///     return ActionTask.run(id: id) { state in
   ///       do {
-  ///         try await operation()
+  ///         try await operation(state)
   ///       } catch {
   ///         // Automatically send error action
   ///         await store.send(.errorOccurred(error))
