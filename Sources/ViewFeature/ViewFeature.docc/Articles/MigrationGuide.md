@@ -207,11 +207,16 @@ struct CounterFeature: Feature {
 - Built-in async support via `ActionTask`
 - Type-safe feature protocol
 
-## From SwiftUI's @StateObject + ObservableObject
+## From SwiftUI's @Observable ViewModels
 
-**ObservableObject:**
+### From ObservableObject
+
+**Before: ObservableObject (Old Pattern)**
 ```swift
-class ViewModel: ObservableObject {
+import SwiftUI
+import Combine
+
+class CounterViewModel: ObservableObject {
     @Published var count = 0
 
     func increment() {
@@ -221,17 +226,31 @@ class ViewModel: ObservableObject {
     func loadData() {
         Task {
             let data = try await api.fetch()
-            await MainActor.run {
+            await MainActor.run {  // Manual MainActor management
                 self.data = data
             }
         }
     }
 }
+
+// In SwiftUI
+struct CounterView: View {
+    @StateObject private var viewModel = CounterViewModel()
+
+    var body: some View {
+        Text("\(viewModel.count)")
+        Button("Increment") {
+            viewModel.increment()
+        }
+    }
+}
 ```
 
-**ViewFeature:**
+**After: ViewFeature**
 ```swift
-struct Feature: Feature {
+import ViewFeature
+
+struct CounterFeature: Feature {
     @Observable
     final class State {
         var count = 0
@@ -254,7 +273,7 @@ struct Feature: Feature {
             case .loadData:
                 return .run(id: "load") {
                     let data = try await api.fetch()
-                    await store.send(.dataLoaded(data))
+                    await store.send(.dataLoaded(data))  // Automatic MainActor
                 }
 
             case .dataLoaded(let items):
@@ -264,13 +283,157 @@ struct Feature: Feature {
         }
     }
 }
+
+// In SwiftUI
+struct CounterView: View {
+    @State private var store = Store(
+        initialState: CounterFeature.State(),
+        feature: CounterFeature()
+    )
+
+    var body: some View {
+        Text("\(store.state.count)")
+        Button("Increment") {
+            store.send(.increment)
+        }
+    }
+}
 ```
 
-**Benefits over ObservableObject:**
-- Explicit action types for all mutations
-- Built-in task management and cancellation
-- Comprehensive testing utilities
-- Predictable unidirectional data flow
+### From @Observable ViewModels
+
+**Before: @Observable ViewModel**
+```swift
+import SwiftUI
+import Observation
+
+@Observable
+final class UserViewModel {
+    var user: User?
+    var isLoading = false
+    var errorMessage: String?
+
+    func loadUser() async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            // Easy to forget MainActor management
+            let user = try await apiClient.fetchUser()
+            self.user = user  // ⚠️ Is this on MainActor?
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    func refresh() async {
+        await loadUser()
+    }
+}
+
+// In SwiftUI
+struct UserView: View {
+    @State private var viewModel = UserViewModel()
+
+    var body: some View {
+        VStack {
+            if viewModel.isLoading {
+                ProgressView()
+            } else if let user = viewModel.user {
+                Text(user.name)
+            }
+
+            if let error = viewModel.errorMessage {
+                Text(error).foregroundColor(.red)
+            }
+        }
+        .task {
+            await viewModel.loadUser()
+        }
+    }
+}
+```
+
+**After: ViewFeature**
+```swift
+import ViewFeature
+
+struct UserFeature: Feature {
+    let apiClient: APIClient
+
+    @Observable  // Automatically MainActor in Swift 6.2 ✨
+    final class State {
+        var user: User?
+        var isLoading = false
+        var errorMessage: String?
+    }
+
+    enum Action: Sendable {
+        case loadUser
+        case userLoaded(User)
+        case refresh
+    }
+
+    func handle() -> ActionHandler<Action, State> {
+        ActionHandler { action, state in
+            switch action {
+            case .loadUser, .refresh:
+                state.isLoading = true
+                state.errorMessage = nil
+                return .run(id: "load-user") {
+                    let user = try await apiClient.fetchUser()
+                    await store.send(.userLoaded(user))  // ✅ Always safe
+                }
+                .catch { error, state in
+                    state.errorMessage = error.localizedDescription
+                    state.isLoading = false
+                }
+
+            case .userLoaded(let user):
+                state.user = user
+                state.isLoading = false
+                return .none
+            }
+        }
+    }
+}
+
+// In SwiftUI
+struct UserView: View {
+    @State private var store = Store(
+        initialState: UserFeature.State(),
+        feature: UserFeature(apiClient: .production)
+    )
+
+    var body: some View {
+        VStack {
+            if store.state.isLoading {
+                ProgressView()
+            } else if let user = store.state.user {
+                Text(user.name)
+            }
+
+            if let error = store.state.errorMessage {
+                Text(error).foregroundColor(.red)
+            }
+        }
+        .task {
+            await store.send(.loadUser).value
+        }
+    }
+}
+```
+
+**Benefits over @Observable ViewModels:**
+- **Explicit action types** - All state mutations are explicit and traceable
+- **Built-in task management** - Automatic task ID tracking and cancellation
+- **Comprehensive testing** - Test business logic without mocking UI
+- **Predictable data flow** - Unidirectional flow prevents implicit mutations
+- **Thread safety** - Compile-time guarantees via Swift 6.2's MainActor isolation
+- **Middleware support** - Add logging, analytics, or validation without touching core logic
+- **Team consistency** - Enforced patterns across the codebase
 
 ## Common Migration Challenges
 
