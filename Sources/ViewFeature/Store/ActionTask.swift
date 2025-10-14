@@ -37,15 +37,25 @@ public typealias TaskID = TaskIDConvertible
 ///
 /// ```swift
 /// // Simple task
-/// return .run { try await api.fetch() }
+/// return .run { state in
+///   let data = try await api.fetch()
+///   state.data = data
+/// }
 ///
 /// // Cancellable task
-/// return .run(id: "fetch") { try await api.fetch() }
+/// return .run(id: "fetch") { state in
+///   let data = try await api.fetch()
+///   state.data = data
+///   state.isLoading = false
+/// }
 /// return .cancel(id: "fetch")
 ///
 /// // With error handling
-/// return .run { try await api.fetch() }
-///   .catch { error, state in state.errorMessage = "\(error)" }
+/// return .run { state in
+///   let data = try await api.fetch()
+///   state.data = data
+/// }
+/// .catch { error, state in state.errorMessage = "\(error)" }
 /// ```
 public struct ActionTask<Action, State> {
   internal let storeTask: StoreTask<Action, State>
@@ -85,7 +95,11 @@ extension ActionTask {
   /// Can be cancelled later using `cancel(id:)`. Tasks with the same ID automatically cancel previous instances.
   ///
   /// ```swift
-  /// return .run(id: "download") { try await download() }
+  /// return .run(id: "download") { state in
+  ///   let data = try await download()
+  ///   state.downloadedData = data
+  ///   state.isDownloading = false
+  /// }
   /// // Later: return .cancel(id: "download")
   /// ```
   public static func run<ID: TaskID>(
@@ -107,10 +121,13 @@ extension ActionTask {
   /// Adds error handling to the task.
   ///
   /// ```swift
-  /// return .run { try await riskyOperation() }
-  ///   .catch { error, state in
-  ///     state.errorMessage = error.localizedDescription
-  ///   }
+  /// return .run { state in
+  ///   let result = try await riskyOperation()
+  ///   state.result = result
+  /// }
+  /// .catch { error, state in
+  ///   state.errorMessage = error.localizedDescription
+  /// }
   /// ```
   public func `catch`(_ handler: @escaping @MainActor (Error, State) -> Void) -> ActionTask {
     switch storeTask {

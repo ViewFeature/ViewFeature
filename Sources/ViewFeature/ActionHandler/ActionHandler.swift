@@ -13,7 +13,8 @@ import Foundation
 /// ## Basic Usage
 /// ```swift
 /// struct MyFeature: Feature {
-///   @MainActor
+///   let apiClient: APIClient
+///
 ///   @Observable
 ///   final class State {
 ///     var count = 0
@@ -24,7 +25,6 @@ import Foundation
 ///   enum Action: Sendable {
 ///     case increment
 ///     case loadData
-///     case dataLoaded([Item])
 ///   }
 ///
 ///   func handle() -> ActionHandler<Action, State> {
@@ -35,16 +35,11 @@ import Foundation
 ///         return .none
 ///       case .loadData:
 ///         state.isLoading = true
-///         return .run(id: "load-data") {
-///           // Perform async operation
-///           try await Task.sleep(for: .seconds(1))
-///           // Note: After task completes, dispatch .dataLoaded
-///           // from the View layer: store.send(.dataLoaded(data))
+///         return .run(id: "load-data") { state in
+///           let data = try await apiClient.fetch()
+///           state.data = data
+///           state.isLoading = false
 ///         }
-///       case .dataLoaded(let items):
-///         state.data = items
-///         state.isLoading = false
-///         return .none
 ///       }
 ///     }
 ///   }
@@ -55,7 +50,6 @@ import Foundation
 /// Enhance your handler with additional functionality:
 /// ```swift
 /// struct MyFeature: Feature {
-///   @MainActor
 ///   @Observable
 ///   final class State {
 ///     var errorMessage: String?
@@ -101,7 +95,6 @@ public final class ActionHandler<Action, State> {
   /// ## Example
   /// ```swift
   /// struct CounterFeature: Feature {
-  ///   @MainActor
   ///   @Observable
   ///   final class State {
   ///     var count = 0

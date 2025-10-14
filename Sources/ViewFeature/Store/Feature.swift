@@ -33,7 +33,6 @@ import Foundation
 ///   // 2. Define your actions (nested)
 ///   enum Action: Sendable {
 ///     case login(credentials: Credentials)
-///     case loginSuccess(User)
 ///     case logout
 ///     case setLoading(Bool)
 ///   }
@@ -44,21 +43,17 @@ import Foundation
 ///       switch action {
 ///       case .login(let credentials):
 ///         state.isLoading = true          // ← Direct state mutation
-///         return .run(id: "login") {      // ← Async task
+///         return .run(id: "login") { state in  // ← Async task
 ///           let user = try await authService.login(credentials)
-///           await store.send(.loginSuccess(user))
+///           state.user = user
+///           state.isAuthenticated = true
+///           state.isLoading = false
 ///         }
-///
-///       case .loginSuccess(let user):
-///         state.user = user
-///         state.isAuthenticated = true
-///         state.isLoading = false
-///         return .none
 ///
 ///       case .logout:
 ///         state.user = nil                // ← Multiple mutations
 ///         state.isAuthenticated = false   // ← in single action
-///         return .none                  // ← No side effects
+///         return .none                    // ← No side effects
 ///
 ///       case .setLoading(let loading):
 ///         state.isLoading = loading
