@@ -827,7 +827,7 @@ struct Feature: Reducer {
     struct State: Equatable {  // struct
         var count = 0
     }
-    enum Action { case increment }
+    enum Action: Sendable { case increment }
 
     func reduce(into state: inout State, action: Action) -> Effect<Action> {
         switch action {

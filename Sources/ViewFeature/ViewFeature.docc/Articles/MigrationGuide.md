@@ -43,7 +43,7 @@ struct CounterFeature: Reducer {
         var count = 0
     }
 
-    enum Action {
+    enum Action: Sendable {
         case increment
     }
 
