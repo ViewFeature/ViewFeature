@@ -508,24 +508,24 @@ case .searchTextChanged(let text):
     }
 ```
 
-### Cancel Redundant Tasks
+### Automatic Task Cancellation
 
-Cancel previous tasks when starting new ones:
+ViewFeature automatically cancels previous tasks when you start a new task with the same ID:
 
-**✅ Do: Cancel previous**
+**✅ Do: Use same task ID (automatic cancellation)**
 ```swift
 case .searchTextChanged(let text):
     state.searchText = text
-    return .merge(
-        .cancel(id: "search"),
-        .run(id: "search") { state in
-            try await Task.sleep(for: .milliseconds(300))
-            // Perform search with state.searchText
-            let results = try await searchAPI.search(state.searchText)
-            state.searchResults = results
-        }
-    )
+    // Starting a new task with id "search" automatically cancels the previous one
+    return .run(id: "search") { state in
+        try await Task.sleep(for: .milliseconds(300))
+        // Perform search with state.searchText
+        let results = try await searchAPI.search(state.searchText)
+        state.searchResults = results
+    }
 ```
+
+> Note: When you start a task with an ID that's already running, ViewFeature automatically cancels the old task before starting the new one. This makes debouncing patterns simple and safe.
 
 ## Middleware Usage
 
