@@ -50,21 +50,21 @@ The central coordinator managing the application state lifecycle.
 **Key Design:**
 ```swift
 @Observable
-public final class Store<Feature: StoreFeature> {
-    private var _state: Feature.State
+public final class Store<F: Feature> {
+    private var _state: F.State
     private let taskManager: TaskManager
-    private let handler: ActionHandler<Feature.Action, Feature.State>
+    private let handler: ActionHandler<F.Action, F.State>
 
-    public var state: Feature.State { _state }
+    public var state: F.State { _state }
 
-    public func send(_ action: Feature.Action) -> Task<Void, Never>
+    public func send(_ action: F.Action) -> Task<Void, Never>
 }
 ```
 
 **MainActor Isolation:**
 All state mutations occur on MainActor, ensuring thread-safety and SwiftUI compatibility.
 
-### StoreFeature
+### Feature
 
 Protocol defining a feature's structure and behavior.
 
@@ -186,9 +186,9 @@ Protocols enable interchangeable implementations:
 ### Interface Segregation
 
 Focused protocols:
-- `StoreFeature`: Minimal contract
+- `Feature`: Minimal contract
 - `Middleware`: Specific hooks only
-- `AssertionProvider`: Testing abstraction
+- Minimal surface area for maximum flexibility
 
 ### Dependency Inversion
 
@@ -236,7 +236,7 @@ The @Observable macro provides:
 ### State Management
 
 1. **Observable classes only** - SwiftUI requirement
-2. **Equatable optional** - Enables TestStore full assertions
+2. **Equatable optional** - Helps with debugging and logging
 3. **Avoid computed properties** - Store derived data if expensive
 
 ### Side Effects
@@ -247,14 +247,14 @@ The @Observable macro provides:
 
 ### Testing
 
-1. **Test state changes** - Use TestStore patterns
-2. **Mock side effects** - Inject dependencies
-3. **Verify action sequences** - Check `actionHistory`
+1. **Test state changes** - Verify state after actions
+2. **Mock side effects** - Inject dependencies via protocols
+3. **Use Swift Testing** - Simple assertions with #expect
 
 ## See Also
 
 - ``Store``
-- ``StoreFeature``
+- ``Feature``
 - ``ActionHandler``
 - ``TaskManager``
 - <doc:TestingGuide>

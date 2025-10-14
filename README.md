@@ -12,9 +12,9 @@ A lightweight, type-safe state management library for Swift built with Swift 6 s
 - Swift 6 with async/await and strict concurrency
 - Type-safe state management with compile-time guarantees
 - Native SwiftUI @Observable integration
-- Flexible testing supporting non-Equatable states
+- Simple and straightforward testing with Swift Testing
 - Middleware support for cross-cutting concerns
-- 100% test coverage (267 tests)
+- Comprehensive test coverage (258 tests)
 
 ## Quick Start
 
@@ -32,7 +32,7 @@ dependencies: [
 import ViewFeature
 import SwiftUI
 
-struct CounterFeature: StoreFeature {
+struct CounterFeature: Feature {
   @Observable
   final class State {
     var count = 0
@@ -87,15 +87,23 @@ View → Action → Store → ActionHandler → State → View
 
 ## Advanced Usage
 
-### Async Tasks with Cancellation
+### Async Tasks with Error Handling
 
 ```swift
-return .run(id: "download") {
-  // Long-running async operation
-  try await Task.sleep(for: .seconds(1))
+// Simple async task
+return .run { state in
+  let data = try await api.fetch()
+  state.data = data
+}
+
+// With error handling
+return .run(id: "download") { state in
+  let file = try await downloader.download(url)
+  state.downloadedFile = file
 }
 .catch { error, state in
   state.errorMessage = error.localizedDescription
+  state.isDownloading = false
 }
 
 // Cancel the task
@@ -118,36 +126,56 @@ func handle() -> ActionHandler<Action, State> {
 
 ## Testing
 
-ViewFeature supports flexible testing patterns using Swift Testing framework:
+ViewFeature uses standard Swift Testing framework with direct Store testing:
 
-### Three Testing Patterns
-
-**1. Full State Comparison** (requires Equatable)
 ```swift
-await store.send(.increment) { state in
-  state.count = 1
+import Testing
+@testable import ViewFeature
+
+@MainActor
+@Test func counterIncrement() async {
+  // GIVEN: Initial state
+  let store = Store(
+    initialState: CounterFeature.State(count: 0),
+    feature: CounterFeature()
+  )
+
+  // WHEN: Increment action is sent
+  await store.send(.increment).value
+
+  // THEN: Count should increase
+  #expect(store.state.count == 1)
 }
-```
 
-**2. Custom Assertions** (no Equatable required)
-```swift
-await store.send(.loadUser, assert: { state in
-  #expect(state.user?.name == "Alice")
-  #expect(state.isLoading)
-})
-```
+@Test func asyncDataLoading() async {
+  let store = Store(
+    initialState: DataFeature.State(),
+    feature: DataFeature()
+  )
 
-**3. KeyPath Assertions** (most concise)
-```swift
-await store.send(.increment, expecting: \.count, toBe: 1)
-```
+  // Send action and wait for completion
+  await store.send(.loadData).value
 
-### Integration Testing
+  // Verify state after async operation
+  #expect(store.state.data != nil)
+  #expect(!store.state.isLoading)
+}
 
-```swift
-let store = Store(initialState: MyFeature.State(), feature: MyFeature())
-await store.send(.loadData).value
-#expect(!store.state.isLoading)
+@Test func taskCancellation() async {
+  let store = Store(
+    initialState: DownloadFeature.State(),
+    feature: DownloadFeature()
+  )
+
+  // Start download
+  store.send(.startDownload)
+
+  // Cancel it
+  await store.send(.cancelDownload).value
+
+  // Verify cancellation
+  #expect(!store.isTaskRunning(id: "download"))
+}
 ```
 
 ## Requirements

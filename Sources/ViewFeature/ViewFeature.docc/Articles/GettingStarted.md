@@ -32,7 +32,7 @@ Create a feature with State, Action, and business logic:
 ```swift
 import ViewFeature
 
-struct CounterFeature: StoreFeature {
+struct CounterFeature: Feature {
     // State: Observable class for SwiftUI integration
     @Observable
     final class State {
@@ -105,7 +105,7 @@ struct CounterView: View {
 Handle side effects with async tasks:
 
 ```swift
-struct DataFeature: StoreFeature {
+struct DataFeature: Feature {
     @Observable
     final class State {
         var isLoading = false
@@ -146,6 +146,6 @@ struct DataFeature: StoreFeature {
 ## See Also
 
 - ``Store``
-- ``StoreFeature``
+- ``Feature``
 - ``ActionHandler``
 - ``ActionTask``

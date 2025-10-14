@@ -1,473 +1,563 @@
 # Testing Guide
 
-Comprehensive testing strategies for ViewFeature applications.
+Comprehensive testing strategies for ViewFeature applications using Swift Testing.
 
 ## Overview
 
-ViewFeature provides ``TestStore`` with three assertion patterns to accommodate different testing needs. Choose the pattern that best fits your state type and testing requirements.
+ViewFeature testing is straightforward: create a ``Store`` directly, send actions, and verify state changes using Swift Testing's `#expect` macro. No special test utilities are needed.
 
-## Testing Patterns
+## Basic Testing Pattern
 
-### Pattern 1: Full State Comparison
-
-**Best for:** Equatable states with straightforward equality logic.
-
-**Requirements:** State must conform to Equatable.
+All tests follow this simple pattern:
 
 ```swift
-struct CounterFeature: StoreFeature {
-    @Observable
-    final class State: Equatable {
-        var count = 0
-
-        init(count: Int = 0) {
-            self.count = count
-        }
-
-        static func == (lhs: State, rhs: State) -> Bool {
-            lhs.count == rhs.count
-        }
-    }
-
-    enum Action: Sendable {
-        case increment
-    }
-
-    func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
-            switch action {
-            case .increment:
-                state.count += 1
-                return .none
-            }
-        }
-    }
-}
+import Testing
+@testable import ViewFeature
 
 @MainActor
-final class CounterTests: XCTestCase {
-    func testIncrement() async {
-        let store = TestStore(
-            initialState: CounterFeature.State(count: 0),
-            feature: CounterFeature()
-        )
+@Test func incrementAction() async {
+  // GIVEN: Create store with initial state
+  let store = Store(
+    initialState: CounterFeature.State(count: 0),
+    feature: CounterFeature()
+  )
 
-        // Full state comparison validates entire state equality
-        await store.send(.increment) { state in
-            state.count = 1
-        }
-    }
+  // WHEN: Send action and wait for completion
+  await store.send(.increment).value
+
+  // THEN: Verify state changes
+  #expect(store.state.count == 1)
 }
 ```
 
-**Benefits:**
-- Catches unexpected state changes
-- Clear error messages
-- Most rigorous validation
-
-**When to use:**
-- Small, simple states
-- All properties are Equatable
-- Want maximum confidence
-
-### Pattern 2: Custom Assertions
-
-**Best for:** Non-Equatable states or complex validation logic.
-
-**Requirements:** None - works with any state type.
+### Feature Definition
 
 ```swift
-struct AppFeature: StoreFeature {
-    @Observable
-    final class State {  // No Equatable conformance
-        var user: User?
-        var isLoading = false
-        var metadata: [String: Any] = [:]
-    }
+struct CounterFeature: Feature {
+  @Observable
+  final class State {
+    var count = 0
 
-    enum Action: Sendable {
-        case loadUser
+    init(count: Int = 0) {
+      self.count = count
     }
+  }
 
-    func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
-            switch action {
-            case .loadUser:
-                state.isLoading = true
-                state.user = User(name: "Alice")
-                return .none
-            }
-        }
+  enum Action: Sendable {
+    case increment
+    case decrement
+    case reset
+  }
+
+  func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+      switch action {
+      case .increment:
+        state.count += 1
+        return .none
+      case .decrement:
+        state.count -= 1
+        return .none
+      case .reset:
+        state.count = 0
+        return .none
+      }
     }
-}
-
-@MainActor
-final class AppTests: XCTestCase {
-    func testLoadUser() async {
-        let store = TestStore(
-            initialState: AppFeature.State(),
-            feature: AppFeature()
-        )
-
-        // Custom assertions - test only what matters
-        await store.send(.loadUser, assert: { state in
-            XCTAssertEqual(state.user?.name, "Alice")
-            XCTAssertTrue(state.isLoading)
-            // metadata not asserted - irrelevant to this test
-        })
-    }
+  }
 }
 ```
 
-**Benefits:**
-- Works with any state type
-- Test only relevant properties
-- Flexible validation logic
-
-**When to use:**
-- Non-Equatable states (dictionaries, closures, etc.)
-- Large states where full comparison is expensive
-- Need custom validation beyond equality
-
-### Pattern 3: KeyPath Assertions
-
-**Best for:** Single property validations and concise tests.
-
-**Requirements:** Property must be Equatable.
+## Testing Multiple Actions
 
 ```swift
-@MainActor
-final class KeyPathTests: XCTestCase {
-    func testSingleProperty() async {
-        let store = TestStore(
-            initialState: CounterFeature.State(),
-            feature: CounterFeature()
-        )
+@Test func multipleActions() async {
+  let store = Store(
+    initialState: CounterFeature.State(count: 5),
+    feature: CounterFeature()
+  )
 
-        // Concise syntax
-        await store.send(.increment, \.count, 1)
-        await store.send(.increment, \.count, 2)
+  await store.send(.increment).value
+  #expect(store.state.count == 6)
 
-        // With labels (more explicit)
-        await store.send(.increment, expecting: \.count, toBe: 3)
-    }
+  await store.send(.increment).value
+  #expect(store.state.count == 7)
 
-    func testNestedProperty() async {
-        await store.send(
-            .updateUser,
-            \.user.name,
-            "Bob"
-        )
-    }
+  await store.send(.decrement).value
+  #expect(store.state.count == 6)
+
+  await store.send(.reset).value
+  #expect(store.state.count == 0)
 }
 ```
-
-**Benefits:**
-- Most concise syntax
-- Fast to write
-- Clear intent
-
-**When to use:**
-- Validating single properties
-- Quick unit tests
-- Property-focused testing
 
 ## Testing Async Operations
 
-### With Task IDs
+### Basic Async Task
 
 ```swift
-struct DataFeature: StoreFeature {
-    @Observable
-    final class State {
-        var isLoading = false
-        var data: [String] = []
-    }
+struct DataFeature: Feature {
+  let apiClient: APIClient
 
-    enum Action: Sendable {
-        case loadData
-        case dataLoaded([String])
-    }
+  @Observable
+  final class State {
+    var isLoading = false
+    var data: [String] = []
+    var error: String?
+  }
 
-    func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
-            switch action {
-            case .loadData:
-                state.isLoading = true
-                return .run(id: "load-data") {
-                    let data = try await fetchData()
-                    await store.send(.dataLoaded(data))
-                }
+  enum Action: Sendable {
+    case loadData
+    case dataLoaded([String])
+    case loadFailed(Error)
+  }
 
-            case .dataLoaded(let items):
-                state.data = items
-                state.isLoading = false
-                return .none
-            }
-        }
-    }
-}
-
-@MainActor
-final class DataTests: XCTestCase {
-    func testLoadData() async {
-        let store = TestStore(
-            initialState: DataFeature.State(),
-            feature: DataFeature()
-        )
-
-        // TestStore executes tasks synchronously
-        await store.send(.loadData) { state in
-            state.isLoading = true
-        }
-
-        // If task dispatches completion action, it executes immediately
-        await store.send(.dataLoaded(["item1", "item2"])) { state in
-            state.data = ["item1", "item2"]
-            state.isLoading = false
-        }
-    }
-}
-```
-
-### Testing Task Cancellation
-
-```swift
-func testCancellation() async {
-    let store = TestStore(
-        initialState: DataFeature.State(),
-        feature: DataFeature()
-    )
-
-    await store.send(.startTask) { state in
+  func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+      switch action {
+      case .loadData:
         state.isLoading = true
-    }
-
-    await store.send(.cancelTask) { state in
-        state.isLoading = false
-    }
-}
-```
-
-## Error Handling Tests
-
-### With onError Handler
-
-```swift
-struct NetworkFeature: StoreFeature {
-    @Observable
-    final class State {
-        var errorMessage: String?
-    }
-
-    enum Action: Sendable {
-        case fetch
-    }
-
-    func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
-            switch action {
-            case .fetch:
-                return .run(id: "fetch") {
-                    try await performRequest()
-                }
-                .catch { error, state in
-                    state.errorMessage = error.localizedDescription
-                }
-            }
+        return .run(id: "load-data") { state in
+          let data = try await apiClient.fetch()
+          state.data = data
+          state.isLoading = false
         }
+        .catch { error, state in
+          state.error = error.localizedDescription
+          state.isLoading = false
+        }
+
+      case .dataLoaded(let items):
+        state.data = items
+        state.isLoading = false
+        return .none
+
+      case .loadFailed(let error):
+        state.error = error.localizedDescription
+        state.isLoading = false
+        return .none
+      }
     }
+  }
 }
 
-@MainActor
-final class NetworkTests: XCTestCase {
-    func testErrorHandling() async {
-        let store = TestStore(
-            initialState: NetworkFeature.State(),
-            feature: NetworkFeature()
-        )
+@Test func asyncDataLoading() async {
+  let mockClient = MockAPIClient(mockData: ["item1", "item2"])
+  let store = Store(
+    initialState: DataFeature.State(),
+    feature: DataFeature(apiClient: mockClient)
+  )
 
-        // Inject error via mock
-        await store.send(.fetch, assert: { state in
-            XCTAssertNotNil(state.errorMessage)
-        })
-    }
-}
-```
+  // Send action and wait for completion
+  await store.send(.loadData).value
 
-## Integration Testing with Store
-
-For integration tests, use production ``Store`` instead of TestStore:
-
-```swift
-@MainActor
-final class IntegrationTests: XCTestCase {
-    func testRealStore() async {
-        let store = Store(
-            initialState: CounterFeature.State(),
-            feature: CounterFeature()
-        )
-
-        await store.send(.increment).value
-        XCTAssertEqual(store.state.count, 1)
-
-        await store.send(.increment).value
-        XCTAssertEqual(store.state.count, 2)
-    }
+  // Verify final state
+  #expect(store.state.data == ["item1", "item2"])
+  #expect(!store.state.isLoading)
+  #expect(store.state.error == nil)
 }
 ```
 
-## Action History Validation
-
-TestStore tracks all dispatched actions:
+### Testing Error Handling
 
 ```swift
-func testActionSequence() async {
-    let store = TestStore(
-        initialState: Feature.State(),
-        feature: Feature()
-    )
+@Test func errorHandling() async {
+  let mockClient = MockAPIClient(shouldFail: true)
+  let store = Store(
+    initialState: DataFeature.State(),
+    feature: DataFeature(apiClient: mockClient)
+  )
 
-    await store.send(.action1)
-    await store.send(.action2)
-    await store.send(.action3)
+  await store.send(.loadData).value
 
-    XCTAssertEqual(store.actionHistory.count, 3)
+  #expect(store.state.data.isEmpty)
+  #expect(!store.state.isLoading)
+  #expect(store.state.error != nil)
+}
+```
 
-    // Verify sequence
-    if case .action1 = store.actionHistory[0] {} else {
-        XCTFail("Expected action1")
+## Testing Task Cancellation
+
+```swift
+struct DownloadFeature: Feature {
+  @Observable
+  final class State {
+    var isDownloading = false
+    var progress: Double = 0.0
+  }
+
+  enum Action: Sendable {
+    case startDownload
+    case cancelDownload
+    case updateProgress(Double)
+  }
+
+  func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+      switch action {
+      case .startDownload:
+        state.isDownloading = true
+        return .run(id: "download") { state in
+          for progress in stride(from: 0.0, through: 1.0, by: 0.1) {
+            try await Task.sleep(for: .milliseconds(100))
+            state.progress = progress
+          }
+          state.isDownloading = false
+        }
+
+      case .cancelDownload:
+        state.isDownloading = false
+        return .cancel(id: "download")
+
+      case .updateProgress(let value):
+        state.progress = value
+        return .none
+      }
     }
+  }
+}
+
+@Test func taskCancellation() async {
+  let store = Store(
+    initialState: DownloadFeature.State(),
+    feature: DownloadFeature()
+  )
+
+  // Start download
+  store.send(.startDownload)
+
+  // Wait a bit
+  try? await Task.sleep(for: .milliseconds(50))
+
+  // Cancel it
+  await store.send(.cancelDownload).value
+
+  // Verify cancellation
+  #expect(!store.state.isDownloading)
+  #expect(!store.isTaskRunning(id: "download"))
 }
 ```
 
 ## Dependency Injection for Testing
 
-Inject dependencies through feature initializer:
+Always inject dependencies through feature initializer for testability:
 
 ```swift
-struct APIFeature: StoreFeature {
-    let apiClient: APIClientProtocol
-
-    @Observable
-    final class State {
-        var data: String?
-    }
-
-    enum Action: Sendable {
-        case fetch
-    }
-
-    func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
-            switch action {
-            case .fetch:
-                return .run(id: "fetch") {
-                    let data = try await apiClient.fetch()
-                    await store.send(.dataLoaded(data))
-                }
-            }
-        }
-    }
+protocol APIClient: Sendable {
+  func fetch() async throws -> [String]
 }
 
-// In tests:
-let mockClient = MockAPIClient()
-let store = TestStore(
-    initialState: APIFeature.State(),
-    feature: APIFeature(apiClient: mockClient)
+struct ProductionAPIClient: APIClient {
+  func fetch() async throws -> [String] {
+    // Real API call
+  }
+}
+
+struct MockAPIClient: APIClient {
+  let mockData: [String]
+  let shouldFail: Bool
+
+  init(mockData: [String] = [], shouldFail: Bool = false) {
+    self.mockData = mockData
+    self.shouldFail = shouldFail
+  }
+
+  func fetch() async throws -> [String] {
+    if shouldFail {
+      throw NSError(domain: "Test", code: 1)
+    }
+    return mockData
+  }
+}
+
+// In production:
+let store = Store(
+  initialState: DataFeature.State(),
+  feature: DataFeature(apiClient: ProductionAPIClient())
 )
+
+// In tests:
+let store = Store(
+  initialState: DataFeature.State(),
+  feature: DataFeature(apiClient: MockAPIClient(mockData: ["test"]))
+)
+```
+
+## Testing Non-Equatable States
+
+You don't need Equatable conformance - just test individual properties:
+
+```swift
+@Observable
+final class ComplexState {
+  var user: User?
+  var settings: [String: Any] = [:]  // Not Equatable
+  var isLoading = false
+}
+
+@Test func nonEquatableState() async {
+  let store = Store(
+    initialState: ComplexFeature.State(),
+    feature: ComplexFeature()
+  )
+
+  await store.send(.loadUser).value
+
+  // Test only what matters
+  #expect(store.state.user?.name == "Alice")
+  #expect(store.state.user?.age == 30)
+  #expect(!store.state.isLoading)
+  // settings not tested - irrelevant for this test
+}
 ```
 
 ## Performance Testing
 
-Test throughput and latency:
+Test throughput and resource usage:
 
 ```swift
-func testPerformance() async {
-    let store = Store(
-        initialState: Feature.State(),
-        feature: Feature()
+@Test func performanceThroughput() async {
+  let store = Store(
+    initialState: CounterFeature.State(),
+    feature: CounterFeature()
+  )
+
+  let startTime = Date()
+  let actionCount = 10_000
+
+  for _ in 0..<actionCount {
+    await store.send(.increment).value
+  }
+
+  let duration = Date().timeIntervalSince(startTime)
+  let throughput = Double(actionCount) / duration
+
+  #expect(store.state.count == actionCount)
+  #expect(throughput > 5_000) // At least 5k actions/sec
+
+  print("Throughput: \(Int(throughput)) actions/second")
+}
+```
+
+## Integration Testing
+
+For integration tests, test the full workflow:
+
+```swift
+@Test func fullUserWorkflow() async {
+  let store = Store(
+    initialState: AppFeature.State(),
+    feature: AppFeature(
+      apiClient: MockAPIClient(),
+      database: MockDatabase()
     )
+  )
 
-    let startTime = Date()
+  // Step 1: Load initial data
+  await store.send(.loadInitialData).value
+  #expect(!store.state.isLoading)
+  #expect(store.state.data != nil)
 
-    for _ in 0..<10_000 {
-        await store.send(.increment).value
+  // Step 2: User action
+  await store.send(.selectItem("item1")).value
+  #expect(store.state.selectedItem == "item1")
+
+  // Step 3: Save changes
+  await store.send(.saveChanges).value
+  #expect(store.state.isSaving == false)
+  #expect(store.state.saveSuccess == true)
+}
+```
+
+## Testing with Middleware
+
+```swift
+@Test func middlewareIntegration() async {
+  // Create tracking middleware
+  actor ActionTracker {
+    var actions: [String] = []
+    func append(_ action: String) {
+      actions.append(action)
     }
+    func getActions() -> [String] {
+      actions
+    }
+  }
 
-    let duration = Date().timeIntervalSince(startTime)
-    let throughput = 10_000.0 / duration
+  let tracker = ActionTracker()
 
-    XCTAssertGreaterThan(throughput, 40_000) // 40k+ actions/sec
+  struct TrackingMiddleware: ActionMiddleware {
+    let id = "TrackingMiddleware"
+    let tracker: ActionTracker
+
+    func beforeAction<Action, State>(_ action: Action, state: State) async throws {
+      await tracker.append("\(action)")
+    }
+  }
+
+  // Create store with middleware
+  let store = Store(
+    initialState: CounterFeature.State(),
+    feature: CounterFeature()
+  )
+
+  // Note: Middleware attachment would need to be done through ActionHandler
+  // This is just an example of testing pattern
+
+  await store.send(.increment).value
+  await store.send(.increment).value
+
+  let actions = await tracker.getActions()
+  #expect(actions.count == 2)
 }
 ```
 
 ## Best Practices
 
-### 1. Choose the Right Pattern
-
-- **Full state**: Small, Equatable states
-- **Custom assertions**: Complex or non-Equatable states
-- **KeyPath**: Single property validations
-
-### 2. Test State Changes, Not Implementation
+### 1. Always Wait for Completion
 
 ```swift
-// ✅ Good - test observable behavior
-await store.send(.increment) { state in
-    state.count = 1
-}
+// ✅ Good - wait for action to complete
+await store.send(.loadData).value
+
+// ❌ Bad - fire-and-forget can cause race conditions
+store.send(.loadData)
+```
+
+### 2. Test Behavior, Not Implementation
+
+```swift
+// ✅ Good - test observable state changes
+await store.send(.increment).value
+#expect(store.state.count == 1)
 
 // ❌ Bad - testing implementation details
-// verify internal function calls
+// Verify internal method calls, private state, etc.
 ```
 
 ### 3. Use Descriptive Test Names
 
 ```swift
-// ✅ Good
-func testIncrementIncreasesCountByOne() async
+// ✅ Good - clear what is being tested
+@Test func incrementIncreasesCountByOne() async
 
-// ❌ Bad
-func testIncrement() async
+// ❌ Bad - vague
+@Test func testIncrement() async
 ```
 
 ### 4. Test Edge Cases
 
 ```swift
-func testDecrementBelowZeroClampedAtZero() async {
-    let store = TestStore(
-        initialState: CounterFeature.State(count: 0),
-        feature: CounterFeature()
-    )
+@Test func decrementAtZeroStaysAtZero() async {
+  let store = Store(
+    initialState: CounterFeature.State(count: 0),
+    feature: CounterFeature()
+  )
 
-    await store.send(.decrement) { state in
-        state.count = 0  // Stays at 0
-    }
+  await store.send(.decrement).value
+  #expect(store.state.count == 0)  // Clamped at zero
 }
 ```
 
 ### 5. Isolate Tests
 
-Each test should be independent:
+Each test should create its own store:
 
 ```swift
 // ✅ Good - fresh store per test
-func testFeature() async {
-    let store = TestStore(...)
-    // test code
+@Test func testFeature() async {
+  let store = Store(...)
+  // test code
 }
 
 // ❌ Bad - shared store across tests
-class Tests: XCTestCase {
-    let store = TestStore(...)  // ⚠️ Shared state
+@Suite struct Tests {
+  let store = Store(...)  // ⚠️ Shared state causes issues
+}
+```
+
+### 6. Use Actor for Thread-Safe Mocks
+
+```swift
+actor MockDatabase {
+  var savedItems: [String] = []
+
+  func save(_ item: String) {
+    savedItems.append(item)
+  }
+
+  func getSaved() -> [String] {
+    savedItems
+  }
+}
+
+@Test func databaseIntegration() async {
+  let mockDB = MockDatabase()
+  let store = Store(
+    initialState: Feature.State(),
+    feature: Feature(database: mockDB)
+  )
+
+  await store.send(.saveItem("test")).value
+
+  let saved = await mockDB.getSaved()
+  #expect(saved.contains("test"))
+}
+```
+
+## Common Patterns
+
+### Testing Loading States
+
+```swift
+@Test func loadingStates() async {
+  let store = Store(
+    initialState: DataFeature.State(),
+    feature: DataFeature(apiClient: SlowMockClient())
+  )
+
+  // Before action
+  #expect(!store.state.isLoading)
+
+  // Send action (don't wait)
+  let task = store.send(.loadData)
+
+  // During loading (may need a small delay)
+  try? await Task.sleep(for: .milliseconds(10))
+  #expect(store.state.isLoading)
+
+  // After completion
+  await task.value
+  #expect(!store.state.isLoading)
+  #expect(store.state.data != nil)
+}
+```
+
+### Testing Debouncing
+
+```swift
+@Test func searchDebouncing() async {
+  let store = Store(
+    initialState: SearchFeature.State(),
+    feature: SearchFeature()
+  )
+
+  // Rapid searches
+  store.send(.searchTextChanged("a"))
+  store.send(.searchTextChanged("ab"))
+  await store.send(.searchTextChanged("abc")).value
+
+  // Wait for debounce
+  try? await Task.sleep(for: .milliseconds(350))
+
+  // Only last search should execute
+  #expect(store.state.searchResults.count > 0)
+  #expect(store.state.lastSearchedText == "abc")
 }
 ```
 
 ## See Also
 
-- ``TestStore``
-- ``AssertionProvider``
 - ``Store``
+- ``Feature``
+- ``ActionHandler``
 - <doc:Architecture>

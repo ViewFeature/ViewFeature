@@ -12,10 +12,10 @@ This guide helps you migrate from popular Swift state management frameworks to V
 
 | TCA | ViewFeature | Notes |
 |-----|-------------|-------|
-| `Reducer` protocol | `StoreFeature` protocol | Similar purpose, different API |
+| `Reducer` protocol | `Feature` protocol | Similar purpose, different API |
 | `Store` | `Store` | Direct equivalent |
 | `Effect` | `ActionTask` | Simplified task model |
-| `TestStore` | `TestStore` | Similar testing approach |
+| `TestStore` | `Store` + Swift Testing | Use production Store for tests |
 | `ViewStore` | Not needed | @Observable handles observation |
 
 ### Key Differences
@@ -59,7 +59,7 @@ struct CounterFeature: Reducer {
 
 **ViewFeature:**
 ```swift
-struct CounterFeature: StoreFeature {
+struct CounterFeature: Feature {
     @Observable
     final class State {
         var count = 0
@@ -121,7 +121,7 @@ Uses `Scope` and `Reducer` composition operators.
 Manual composition through nested stores:
 
 ```swift
-struct ParentFeature: StoreFeature {
+struct ParentFeature: Feature {
     @Observable
     final class State {
         var child: ChildFeature.State
@@ -149,7 +149,7 @@ struct ParentFeature: StoreFeature {
 2. **Update state to @Observable class**: Convert structs to classes
 3. **Add Sendable to actions**: Required for Swift 6
 4. **Replace Effects with ActionTask**: Use `.run(id:)` pattern
-5. **Update tests**: TestStore API is similar but not identical
+5. **Update tests**: Use Store directly with Swift Testing's #expect
 6. **Remove ViewStore**: Use Store directly with @State
 
 ## From Redux-like Architectures
@@ -178,7 +178,7 @@ func counterReducer(action: Action, state: AppState?) -> AppState {
 
 **ViewFeature:**
 ```swift
-struct CounterFeature: StoreFeature {
+struct CounterFeature: Feature {
     @Observable
     final class State {
         var count = 0
@@ -231,7 +231,7 @@ class ViewModel: ObservableObject {
 
 **ViewFeature:**
 ```swift
-struct Feature: StoreFeature {
+struct Feature: Feature {
     @Observable
     final class State {
         var count = 0
@@ -330,7 +330,7 @@ return .run(id: "fetch") { ... }
 **Solution:** Use initializer injection:
 
 ```swift
-struct Feature: StoreFeature {
+struct Feature: Feature {
     let apiClient: APIClient
 
     // Inject dependencies via initializer
@@ -356,7 +356,7 @@ let feature = Feature(apiClient: .mock)
 **Solution:** Manual forwarding or nested stores:
 
 ```swift
-struct ParentFeature: StoreFeature {
+struct ParentFeature: Feature {
     @Observable
     final class State {
         var child = ChildFeature.State()
@@ -392,11 +392,11 @@ struct ParentFeature: StoreFeature {
 - [ ] Add Sendable conformance to Actions
 - [ ] Replace Effect with ActionTask
 - [ ] Add task IDs for cancellable operations
-- [ ] Update TestStore usage
+- [ ] Update tests to use Store with Swift Testing
 - [ ] Replace ViewStore with direct Store access
 - [ ] Implement dependency injection via initializers
 - [ ] Update SwiftUI views to use @State
-- [ ] Add Equatable to State if using full state assertions
+- [ ] Add Equatable to State if needed for debugging
 - [ ] Test migration incrementally
 
 ## Performance Considerations
@@ -421,4 +421,4 @@ ViewFeature offers better performance due to:
 - <doc:Architecture>
 - <doc:TestingGuide>
 - ``Store``
-- ``StoreFeature``
+- ``Feature``
