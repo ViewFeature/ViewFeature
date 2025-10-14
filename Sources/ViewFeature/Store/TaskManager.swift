@@ -198,23 +198,31 @@ public final class TaskManager {
       runningTasks.removeValue(forKey: id)
     }
 
-    // Create task with automatic cleanup on completion
+    // Create task with structured cleanup using withTaskCancellationHandler
     let task = Task { @MainActor [weak self] in
-      do {
-        try await operation()
-      } catch {
-        if let errorHandler = onError {
-          await errorHandler(error)
+      // Capture self for onCancel handler (required by Sendable closure)
+      guard let taskManager = self else { return }
+
+      await withTaskCancellationHandler {
+        do {
+          try await operation()
+        } catch {
+          if let errorHandler = onError {
+            await errorHandler(error)
+          }
+        }
+      } onCancel: { @Sendable [taskManager] in
+        // Cleanup on cancellation - executed immediately when task is cancelled
+        // Note: This runs synchronously on the cancelling thread, so we schedule
+        // the actual cleanup on MainActor
+        Task { @MainActor in
+          taskManager.runningTasks.removeValue(forKey: id)
         }
       }
 
-      // Cleanup: Remove task from tracking after completion
+      // Cleanup on normal completion
       // Note: This is safe because MainActor ensures sequential execution
-      // Even if a new task with the same ID was started, it would have
-      // already replaced this task in the dictionary before we reach here
-      _ = await MainActor.run { [weak self] in
-        self?.runningTasks.removeValue(forKey: id)
-      }
+      self?.runningTasks.removeValue(forKey: id)
     }
 
     runningTasks[id] = task
