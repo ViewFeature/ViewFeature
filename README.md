@@ -116,217 +116,55 @@ func handle() -> ActionHandler<Action, State> {
 }
 ```
 
-## 🧪 Testing
+## Testing
 
-ViewFeature provides comprehensive testing utilities using Swift Testing framework with flexible assertion patterns:
+ViewFeature supports flexible testing patterns using Swift Testing framework:
 
-### TestStore - Three Testing Patterns
+### Three Testing Patterns
 
-TestStore supports both Equatable and non-Equatable states with three assertion patterns:
-
-#### Pattern 1: Full State Comparison (Equatable Required)
+**1. Full State Comparison** (requires Equatable)
 ```swift
-import Testing
-@testable import ViewFeature
-
-struct CounterFeature: StoreFeature {
-  @Observable
-  final class State: Equatable {
-    var count = 0
-
-    init(count: Int = 0) {
-      self.count = count
-    }
-
-    static func == (lhs: State, rhs: State) -> Bool {
-      lhs.count == rhs.count
-    }
-  }
-
-  enum Action: Sendable {
-    case increment
-  }
-
-  func handle() -> ActionHandler<Action, State> {
-    ActionHandler { action, state in
-      switch action {
-      case .increment:
-        state.count += 1
-        return .none
-      }
-    }
-  }
-}
-
-@MainActor
-@Suite struct CounterTests {
-  @Test func increment() async {
-    let store = TestStore(
-      initialState: CounterFeature.State(count: 0),
-      feature: CounterFeature()
-    )
-
-    // Full state comparison - validates entire state equality
-    await store.send(.increment) { state in
-      state.count = 1
-    }
-  }
+await store.send(.increment) { state in
+  state.count = 1
 }
 ```
 
-#### Pattern 2: Custom Assertions (No Equatable Required)
+**2. Custom Assertions** (no Equatable required)
 ```swift
-struct AppFeature: StoreFeature {
-  @Observable
-  final class State {  // No Equatable conformance!
-    var user: User?
-    var isLoading = false
-    var metadata: [String: Any] = [:]
-  }
-
-  enum Action: Sendable {
-    case loadUser
-  }
-
-  func handle() -> ActionHandler<Action, State> {
-    ActionHandler { action, state in
-      switch action {
-      case .loadUser:
-        state.isLoading = true
-        state.user = User(name: "Alice")
-        return .none
-      }
-    }
-  }
-}
-
-@MainActor
-@Suite struct FlexibleTests {
-  @Test func complexState() async {
-    let store = TestStore(
-      initialState: AppFeature.State(),  // Non-Equatable state OK!
-      feature: AppFeature()
-    )
-
-    // Custom assertions - test only what matters
-    await store.send(.loadUser, assert: { state in
-      #expect(state.user?.name == "Alice")
-      #expect(state.isLoading)
-      #expect(!state.metadata.isEmpty)
-    })
-  }
-}
+await store.send(.loadUser, assert: { state in
+  #expect(state.user?.name == "Alice")
+  #expect(state.isLoading)
+})
 ```
 
-#### Pattern 3: KeyPath Assertions (Most Concise)
+**3. KeyPath Assertions** (most concise)
 ```swift
-@MainActor
-@Suite struct KeyPathTests {
-  @Test func singleProperty() async {
-    let store = TestStore(
-      initialState: CounterFeature.State(),
-      feature: CounterFeature()
-    )
-
-    // KeyPath-based - test single property
-    await store.send(.increment, expecting: \.count, toBe: 1)
-    await store.send(.increment, expecting: \.count, toBe: 2)
-  }
-}
+await store.send(.increment, expecting: \.count, toBe: 1)
 ```
 
-### Testing with Store (Production Environment)
+### Integration Testing
 
 ```swift
-@MainActor
-@Suite struct IntegrationTests {
-  @Test func realStore() async {
-    let store = Store(
-      initialState: CounterFeature.State(),
-      feature: CounterFeature()
-    )
-
-    // Wait for action to complete
-    await store.send(.increment).value
-
-    // Verify state
-    #expect(store.state.count == 1)
-  }
-
-  @Test func asyncTaskCompletion() async {
-    let store = Store(
-      initialState: DataFeature.State(),
-      feature: DataFeature()
-    )
-
-    // Store.send() waits for background tasks to complete
-    await store.send(.loadData).value
-
-    // Task is guaranteed to be complete - no Task.sleep needed!
-    #expect(!store.state.isLoading)
-    #expect(store.runningTaskCount == 0)
-  }
-}
+let store = Store(initialState: MyFeature.State(), feature: MyFeature())
+await store.send(.loadData).value
+#expect(!store.state.isLoading)
 ```
 
-## 📋 Requirements
+## Requirements
 
-- **iOS 18.0+** / **macOS 15.0+** / **watchOS 11.0+** / **tvOS 18.0+**
-- **Swift 6.2+**
-- **Xcode 16.0+**
+- iOS 18.0+ / macOS 15.0+ / watchOS 11.0+ / tvOS 18.0+
+- Swift 6.2+
+- Xcode 16.0+
 
-## 📚 Documentation
+## Documentation
 
-Full API documentation is available through Swift DocC:
-
+Generate API documentation:
 ```bash
 swift package generate-documentation
 ```
 
-## 🗺 Roadmap
+## License
 
-### Version 0.1.0 (Current)
-- ✅ Core state management
-- ✅ Async/await task support
-- ✅ Middleware system
-- ✅ Comprehensive testing utilities
-- ✅ Full documentation
+MIT License. See [LICENSE](LICENSE) for details.
 
-### Future Versions
-- 🔄 Enhanced debugging tools
-- 🔄 Time-travel debugging
-- 🔄 State persistence
-- 🔄 SwiftUI bindings helpers
-- 🔄 Performance profiling tools
-
-## 🤝 Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
-
-## 📄 License
-
-ViewFeature is available under the MIT license. See [LICENSE](LICENSE) for details.
-
-## 🙏 Acknowledgments
-
-- Inspired by [The Composable Architecture](https://github.com/pointfreeco/swift-composable-architecture)
-- Built with [swift-log](https://github.com/apple/swift-log) for structured logging
-- Designed for the Swift community
-
-## 📞 Support
-
-- 📖 **Documentation**: In-code documentation and this README
-- 🐛 **Issues**: [GitHub Issues](https://github.com/ViewFeature/ViewFeature/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/ViewFeature/ViewFeature/discussions)
-
----
-
-**Built with ❤️ using Swift 6 and modern concurrency**
-
-Version 0.1.0 | © 2025
+Inspired by [The Composable Architecture](https://github.com/pointfreeco/swift-composable-architecture)
