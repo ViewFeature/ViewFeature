@@ -18,10 +18,17 @@ import Testing
         case cancelOp(String)
     }
 
-    struct TestState: Equatable, Sendable {
+    @Observable
+    final class TestState {
         var count = 0
         var errorMessage: String?
         var isLoading = false
+
+        init(count: Int = 0, errorMessage: String? = nil, isLoading: Bool = false) {
+            self.count = count
+            self.errorMessage = errorMessage
+            self.isLoading = isLoading
+        }
     }
 
     struct TestFeature: StoreFeature, Sendable {
@@ -41,12 +48,12 @@ import Testing
 
                 case .asyncOp:
                     state.isLoading = true
-                    return .run(id: "async") {
+                    return .run(id: "async") { _ in
                         try await Task.sleep(for: .milliseconds(10))
                     }
 
                 case .throwingOp:
-                    return .run(id: "throwing") {
+                    return .run(id: "throwing") { _ in
                         throw NSError(domain: "Test", code: 1)
                     }
 
@@ -374,10 +381,10 @@ import Testing
                         return ActionTask(
                             storeTask: .run(
                                 id: "errorTest",
-                                operation: {
+                                operation: { _ in
                                     throw NSError(domain: "TestError", code: 999)
                                 },
-                                onError: { error, state in
+                                onError: { error, _ in
                                     state.errorMessage = "Error caught: \(error.localizedDescription)"
                                     state.isLoading = false
                                 }
@@ -417,7 +424,7 @@ import Testing
                         return ActionTask(
                             storeTask: .run(
                                 id: "noHandler",
-                                operation: {
+                                operation: { _ in
                                     throw NSError(domain: "TestError", code: 123)
                                 },
                                 onError: nil
@@ -456,7 +463,7 @@ import Testing
                         return ActionTask(
                             storeTask: .run(
                                 id: "stateModify",
-                                operation: {
+                                operation: { _ in
                                     throw NSError(domain: "Test", code: 1)
                                 },
                                 onError: { _, state in
@@ -639,16 +646,16 @@ import Testing
                 ActionHandler { action, state in
                     switch action {
                     case .increment:
-                        return .run(id: "task1") {
+                        return .run(id: "task1") { _ in
                             try await Task.sleep(for: .milliseconds(100))
                         }
                     case .decrement:
                         state.count = 99  // Mark that task2 started
-                        return .run(id: "task2") {
+                        return .run(id: "task2") { _ in
                             try await Task.sleep(for: .milliseconds(100))
                         }
                     case .asyncOp:
-                        return .run(id: "task3") {
+                        return .run(id: "task3") { _ in
                             try await Task.sleep(for: .milliseconds(100))
                         }
                     default:
@@ -709,7 +716,7 @@ import Testing
                 ActionHandler { action, _ in
                     switch action {
                     case .asyncOp:
-                        return .run(id: "quick") {
+                        return .run(id: "quick") { _ in
                             // Task completes immediately
                         }
                     default:
@@ -745,12 +752,12 @@ import Testing
                     switch action {
                     case .increment:
                         state.count += 1
-                        return .run(id: "download1") {
+                        return .run(id: "download1") { _ in
                             try await Task.sleep(for: .milliseconds(100))
                         }
                     case .decrement:
                         state.count += 1
-                        return .run(id: "download2") {
+                        return .run(id: "download2") { _ in
                             try await Task.sleep(for: .milliseconds(100))
                         }
                     case .cancelOp(let id):
@@ -803,7 +810,7 @@ import Testing
                         return ActionTask(
                             storeTask: .run(
                                 id: "download",
-                                operation: {
+                                operation: { _ in
                                     // Simulate download with progress
                                     for _ in 1...10 {
                                         try await Task.sleep(for: .milliseconds(10))
@@ -811,7 +818,7 @@ import Testing
                                         // In real scenario, would update progress
                                     }
                                 },
-                                onError: { error, state in
+                                onError: { error, _ in
                                     state.isDownloading = false
                                     state.errorMessage = "Download failed: \(error.localizedDescription)"
                                 }
@@ -831,10 +838,17 @@ import Testing
             }
         }
 
-        struct DownloadState: Sendable {
+        @Observable
+        final class DownloadState {
             var isDownloading = false
             var downloadProgress = 0.0
             var errorMessage: String?
+
+            init(isDownloading: Bool = false, downloadProgress: Double = 0.0, errorMessage: String? = nil) {
+                self.isDownloading = isDownloading
+                self.downloadProgress = downloadProgress
+                self.errorMessage = errorMessage
+            }
         }
 
         enum DownloadAction: Sendable {
@@ -869,15 +883,15 @@ import Testing
                 ActionHandler { action, _ in
                     switch action {
                     case .startWithString:
-                        return .run(id: "stringID") {
+                        return .run(id: "stringID") { _ in
                             try await Task.sleep(for: .milliseconds(100))
                         }
                     case .startWithInt:
-                        return .run(id: "42") {
+                        return .run(id: "42") { _ in
                             try await Task.sleep(for: .milliseconds(100))
                         }
                     case .startWithEnum:
-                        return .run(id: "upload") {
+                        return .run(id: "upload") { _ in
                             try await Task.sleep(for: .milliseconds(100))
                         }
                     }
@@ -930,7 +944,7 @@ import Testing
                     switch action {
                     case .onAppear:
                         state.isActive = true
-                        return .run(id: "backgroundTask") {
+                        return .run(id: "backgroundTask") { _ in
                             // Long-running background task
                             try await Task.sleep(for: .seconds(10))
                         }
@@ -943,8 +957,13 @@ import Testing
             }
         }
 
-        struct ViewState: Sendable {
+        @Observable
+        final class ViewState {
             var isActive = false
+
+            init(isActive: Bool = false) {
+                self.isActive = isActive
+            }
         }
 
         enum ViewAction: Sendable {
@@ -968,6 +987,144 @@ import Testing
         await appearTask.value
 
         #expect(!sut.state.isActive)
+        #expect(sut.runningTaskCount == 0)
+    }
+
+    @Test func cancelTask_triggersCancellationErrorInCatchHandler() async {
+        // GIVEN: Feature with .catch handler that verifies CancellationError
+        struct CancellationTestFeature: StoreFeature, Sendable {
+            typealias Action = CancelAction
+            typealias State = CancelState
+
+            func handle() -> ActionHandler<Action, State> {
+                ActionHandler { action, state in
+                    switch action {
+                    case .startLongTask:
+                        state.isRunning = true
+                        return .run(id: "long-task") { _ in
+                            try await Task.sleep(for: .seconds(10))
+                        }
+                        .catch { error, state in
+                            state.isRunning = false
+                            state.didCatchError = true
+                            state.caughtCancellationError = (error is CancellationError)
+                        }
+
+                    case .cancelTask:
+                        return .cancel(id: "long-task")
+                    }
+                }
+            }
+        }
+
+        @Observable
+        final class CancelState {
+            var isRunning = false
+            var didCatchError = false
+            var caughtCancellationError = false
+
+            init(isRunning: Bool = false, didCatchError: Bool = false, caughtCancellationError: Bool = false) {
+                self.isRunning = isRunning
+                self.didCatchError = didCatchError
+                self.caughtCancellationError = caughtCancellationError
+            }
+        }
+
+        enum CancelAction: Sendable {
+            case startLongTask
+            case cancelTask
+        }
+
+        let sut = Store(
+            initialState: CancelState(),
+            feature: CancellationTestFeature()
+        )
+
+        // Start long-running task
+        let taskHandle = sut.send(.startLongTask)
+
+        // Wait for task to start
+        try? await Task.sleep(for: .milliseconds(10))
+        #expect(sut.state.isRunning)
+
+        // WHEN: Cancel the task via action
+        await sut.send(.cancelTask).value
+
+        // Wait for cancellation to propagate
+        await taskHandle.value
+        try? await Task.sleep(for: .milliseconds(50))
+
+        // THEN: Verify CancellationError was caught
+        #expect(sut.state.didCatchError)
+        #expect(sut.state.caughtCancellationError)
+        #expect(!sut.state.isRunning)
+        #expect(sut.runningTaskCount == 0)
+    }
+
+    @Test func cancelTaskDirect_triggersCancellationErrorInCatchHandler() async {
+        // GIVEN: Feature with .catch handler
+        struct DirectCancelFeature: StoreFeature, Sendable {
+            typealias Action = SimpleAction
+            typealias State = CancelState
+
+            func handle() -> ActionHandler<Action, State> {
+                ActionHandler { action, state in
+                    switch action {
+                    case .start:
+                        state.isRunning = true
+                        return .run(id: "direct-cancel-task") { _ in
+                            try await Task.sleep(for: .seconds(10))
+                        }
+                        .catch { error, state in
+                            state.isRunning = false
+                            state.didCatchError = true
+                            state.caughtCancellationError = (error is CancellationError)
+                        }
+                    }
+                }
+            }
+        }
+
+        @Observable
+        final class CancelState {
+            var isRunning = false
+            var didCatchError = false
+            var caughtCancellationError = false
+
+            init(isRunning: Bool = false, didCatchError: Bool = false, caughtCancellationError: Bool = false) {
+                self.isRunning = isRunning
+                self.didCatchError = didCatchError
+                self.caughtCancellationError = caughtCancellationError
+            }
+        }
+
+        enum SimpleAction: Sendable {
+            case start
+        }
+
+        let sut = Store(
+            initialState: CancelState(),
+            feature: DirectCancelFeature()
+        )
+
+        // Start task
+        let taskHandle = sut.send(.start)
+
+        // Wait for task to start
+        try? await Task.sleep(for: .milliseconds(10))
+        #expect(sut.state.isRunning)
+
+        // WHEN: Cancel using direct store.cancelTask() method
+        sut.cancelTask(id: "direct-cancel-task")
+
+        // Wait for cancellation
+        await taskHandle.value
+        try? await Task.sleep(for: .milliseconds(50))
+
+        // THEN: Verify CancellationError was caught
+        #expect(sut.state.didCatchError)
+        #expect(sut.state.caughtCancellationError)
+        #expect(!sut.state.isRunning)
         #expect(sut.runningTaskCount == 0)
     }
 }

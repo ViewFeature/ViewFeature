@@ -36,8 +36,9 @@ Or in Xcode: **File → Add Package Dependencies**
 
 ```swift
 import ViewFeature
+import SwiftUI
 
-// 1. Define your feature with nested State and Action
+// 1. Define your feature
 struct CounterFeature: StoreFeature {
   @Observable
   final class State {
@@ -46,54 +47,56 @@ struct CounterFeature: StoreFeature {
     init(count: Int = 0) {
       self.count = count
     }
-}
+  }
 
-enum Action: Sendable {
-  case increment
-  case decrement
-  case asyncIncrement
-}
+  enum Action: Sendable {
+    case increment
+    case decrement
+    case asyncIncrement
+  }
 
-func handle() -> ActionHandler<Action, State> {
-  ActionHandler { action, state in
-    switch action {
+  func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+      switch action {
       case .increment:
-      state.count += 1
-      return .none
+        state.count += 1
+        return .none
 
       case .decrement:
-      state.count -= 1
-      return .none
+        state.count -= 1
+        return .none
 
       case .asyncIncrement:
-      return .run(id: "increment") {
-        try await Task.sleep(for: .seconds(1))
-        await store.send(.increment)
+        return .run(id: "async-increment") {
+          try await Task.sleep(for: .seconds(1))
+          // Send another action after delay
+        }
       }
+    }
   }
-}
-}
 }
 
 // 2. Use in SwiftUI
 struct CounterView: View {
   @State private var store = Store(
-  initialState: CounterFeature.State(),
-  feature: CounterFeature()
+    initialState: CounterFeature.State(),
+    feature: CounterFeature()
   )
 
   var body: some View {
-    VStack {
+    VStack(spacing: 20) {
       Text("\(store.state.count)")
-      .font(.largeTitle)
+        .font(.largeTitle)
 
-      HStack {
+      HStack(spacing: 15) {
         Button("−") { store.send(.decrement) }
         Button("+") { store.send(.increment) }
         Button("Async +") { store.send(.asyncIncrement) }
       }
+      .buttonStyle(.borderedProminent)
+    }
+    .padding()
   }
-}
 }
 ```
 
@@ -151,44 +154,60 @@ Manages concurrent task execution:
 ### Task Management & Cancellation
 
 ```swift
-struct DataFeature: StoreFeature {
+struct DownloadFeature: StoreFeature {
   @Observable
   final class State {
-    var isLoading = false
-    var data: [Item] = []
+    var isDownloading = false
+    var progress: Double = 0.0
+    var errorMessage: String?
+
+    init(isDownloading: Bool = false, progress: Double = 0.0, errorMessage: String? = nil) {
+      self.isDownloading = isDownloading
+      self.progress = progress
+      self.errorMessage = errorMessage
+    }
   }
 
-enum Action: Sendable {
-  case loadData
-  case cancelLoad
-  case dataLoaded([Item])
-}
+  enum Action: Sendable {
+    case startDownload
+    case cancelDownload
+    case updateProgress(Double)
+  }
 
-func handle() -> ActionHandler<Action, State> {
-  ActionHandler { action, state in
-    switch action {
-      case .loadData:
-      state.isLoading = true
-      return .run(id: "load-data") {
-        let data = try await apiClient.fetch()
-        await store.send(.dataLoaded(data))
+  func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+      switch action {
+      case .startDownload:
+        state.isDownloading = true
+        state.progress = 0.0
+        state.errorMessage = nil
+        return .run(id: "download") {
+          // Simulate long-running download
+          for i in 1...10 {
+            try await Task.sleep(for: .seconds(0.5))
+            // Update progress through state mutations in error handler
+            // or handle in View layer
+          }
+        }
+        .catch { error, state in
+          state.isDownloading = false
+          state.errorMessage = error.localizedDescription
+        }
+
+      case .cancelDownload:
+        state.isDownloading = false
+        state.progress = 0.0
+        return .cancel(id: "download")
+
+      case .updateProgress(let value):
+        state.progress = value
+        if value >= 1.0 {
+          state.isDownloading = false
+        }
+        return .none
       }
-    .catch { error, state in
-      state.isLoading = false
-      state.errorMessage = error.localizedDescription
     }
-
-  case .cancelLoad:
-  state.isLoading = false
-  return .cancel(id: "load-data")
-
-  case .dataLoaded(let items):
-  state.data = items
-  state.isLoading = false
-  return .none
-}
-}
-}
+  }
 }
 ```
 
@@ -199,29 +218,49 @@ struct NetworkFeature: StoreFeature {
   @Observable
   final class State {
     var isLoading = false
+    var data: String?
     var errorMessage: String?
+
+    init(isLoading: Bool = false, data: String? = nil, errorMessage: String? = nil) {
+      self.isLoading = isLoading
+      self.data = data
+      self.errorMessage = errorMessage
+    }
   }
 
-enum Action: Sendable {
-  case fetch
-}
+  enum Action: Sendable {
+    case fetch
+    case fetchSuccess(String)
+  }
 
-func handle() -> ActionHandler<Action, State> {
-  ActionHandler { action, state in
-    switch action {
+  func handle() -> ActionHandler<Action, State> {
+    ActionHandler { action, state in
+      switch action {
       case .fetch:
-      state.isLoading = true
-      state.errorMessage = nil
-      return .run(id: "fetch") {
-        try await networkCall()
+        state.isLoading = true
+        state.errorMessage = nil
+        return .run(id: "fetch") {
+          // Simulate network request that might fail
+          try await Task.sleep(for: .seconds(1))
+          // Simulate random failure
+          if Int.random(in: 0...1) == 0 {
+            throw NSError(domain: "NetworkError", code: -1, userInfo: [
+              NSLocalizedDescriptionKey: "Failed to fetch data"
+            ])
+          }
+        }
+        .catch { error, state in
+          state.errorMessage = error.localizedDescription
+          state.isLoading = false
+        }
+
+      case .fetchSuccess(let data):
+        state.data = data
+        state.isLoading = false
+        return .none
       }
-    .catch { error, state in
-      state.errorMessage = error.localizedDescription
-      state.isLoading = false
     }
-}
-}
-}
+  }
 }
 ```
 

@@ -94,7 +94,7 @@ struct UserFeature: StoreFeature {
                     User(name: "Bob", email: "bob@example.com", role: .member),
                     User(name: "Charlie", email: "charlie@example.com", role: .guest)
                 ]
-                return .run(id: "load-users") {
+                return .run(id: "load-users") { _ in
                     try await Task.sleep(for: .seconds(1.5))
                     // Task completes - View layer handles follow-up actions if needed
                 }

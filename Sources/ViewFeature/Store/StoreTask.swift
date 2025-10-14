@@ -14,10 +14,13 @@ public enum StoreTask<Action, State> {
     case none
 
     /// Execute an asynchronous operation
+    ///
+    /// The operation receives the current state, allowing
+    /// safe state mutation within the MainActor context.
     case run(
             id: String,
-            operation: () async throws -> Void,
-            onError: ((Error, inout State) -> Void)? = nil
+            operation: @MainActor (State) async throws -> Void,
+            onError: (@MainActor (Error, State) -> Void)?
          )
 
     /// Cancel a running task

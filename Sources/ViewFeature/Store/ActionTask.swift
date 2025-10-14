@@ -150,7 +150,7 @@ extension ActionTask {
     /// - Long-running operations
     /// - You need to cancel on navigation/lifecycle events
     public static func run(
-        operation: @escaping @Sendable () async throws -> Void
+        operation: @escaping @MainActor (State) async throws -> Void
     ) -> ActionTask {
         let taskId = TaskIdGenerator.generate()
         return ActionTask(storeTask: .run(id: taskId, operation: operation, onError: nil))
@@ -206,7 +206,7 @@ extension ActionTask {
     /// the same ID is automatically cancelled before starting the new one.
     public static func run<ID: TaskID>(
         id: ID,
-        operation: @escaping @Sendable () async throws -> Void
+        operation: @escaping @MainActor (State) async throws -> Void
     ) -> ActionTask {
         let stringId = String(describing: id)
         return ActionTask(storeTask: .run(id: stringId, operation: operation, onError: nil))
@@ -319,7 +319,7 @@ extension ActionTask {
     /// ```
     ///
     /// - Note: The error handler runs on the MainActor and can safely mutate state
-    public func `catch`(_ handler: @escaping (Error, inout State) -> Void) -> ActionTask {
+    public func `catch`(_ handler: @escaping @MainActor (Error, State) -> Void) -> ActionTask {
         switch storeTask {
         case .run(let id, let operation, _):
             return ActionTask(storeTask: .run(id: id, operation: operation, onError: handler))

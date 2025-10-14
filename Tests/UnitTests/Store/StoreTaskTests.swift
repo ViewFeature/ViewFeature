@@ -15,8 +15,13 @@ import Testing
         case decrement
     }
 
-    struct TestState: Equatable {
+    @Observable
+    final class TestState {
         var count = 0
+
+        init(count: Int = 0) {
+            self.count = count
+        }
     }
 
     // MARK: - noTask
@@ -60,7 +65,7 @@ import Testing
     @Test func run_withIdAndOperation() {
         // GIVEN: An ID and operation
         let taskId = "test-task"
-        let operation: () async throws -> Void = {}
+        let operation: (TestState) async throws -> Void = { _ in }
 
         // WHEN: Create a run task
         let sut: StoreTask<TestAction, TestState> = .run(
@@ -81,12 +86,13 @@ import Testing
 
     @Test func run_withOperationOnly() {
         // GIVEN: Only an operation (no error handler)
-        let operation: () async throws -> Void = {}
+        let operation: (TestState) async throws -> Void = { _ in }
 
         // WHEN: Create a run task with default onError
         let sut: StoreTask<TestAction, TestState> = .run(
             id: "task",
-            operation: operation
+            operation: operation,
+            onError: nil
         )
 
         // THEN: Should have nil error handler by default
@@ -100,8 +106,8 @@ import Testing
 
     @Test func run_withErrorHandler() {
         // GIVEN: Operation and error handler
-        let operation: () async throws -> Void = {}
-        let errorHandler: @MainActor (Error, inout TestState) -> Void = { _, _ in
+        let operation: (TestState) async throws -> Void = { _ in }
+        let errorHandler: @MainActor (Error, TestState) -> Void = { _, _ in
             // Error handler exists
         }
 
@@ -125,7 +131,7 @@ import Testing
     @Test func run_withLongId() {
         // GIVEN: A very long task ID
         let longId = String(repeating: "a", count: 1000)
-        let operation: () async throws -> Void = {}
+        let operation: (TestState) async throws -> Void = { _ in }
 
         // WHEN: Create a run task with long ID
         let sut: StoreTask<TestAction, TestState> = .run(
@@ -147,7 +153,7 @@ import Testing
     @Test func run_withSpecialCharactersInId() {
         // GIVEN: An ID with special characters
         let specialId = "task-🎉-日本語-123"
-        let operation: () async throws -> Void = {}
+        let operation: (TestState) async throws -> Void = { _ in }
 
         // WHEN: Create a run task
         let sut: StoreTask<TestAction, TestState> = .run(
@@ -167,7 +173,7 @@ import Testing
 
     @Test func run_withEmptyId() {
         // GIVEN: An empty string as ID
-        let operation: () async throws -> Void = {}
+        let operation: (TestState) async throws -> Void = { _ in }
 
         // WHEN: Create a run task with empty ID
         let sut: StoreTask<TestAction, TestState> = .run(
@@ -188,7 +194,7 @@ import Testing
     @Test func run_operationCanThrow() async {
         // GIVEN: A throwing operation
         struct TestError: Error {}
-        let operation: () async throws -> Void = {
+        let operation: (TestState) async throws -> Void = { _ in
             throw TestError()
         }
 
@@ -204,7 +210,7 @@ import Testing
         case .run(_, let storedOperation, _):
             // Verify operation throws
             do {
-                try await storedOperation()
+                try await storedOperation(TestState())
                 Issue.record("Operation should throw")
             } catch {
                 #expect(error is TestError)
@@ -217,7 +223,7 @@ import Testing
     @Test func run_operationCanExecuteSuccessfully() async {
         // GIVEN: A successful operation
         var didExecute = false
-        let operation: () async throws -> Void = {
+        let operation: (TestState) async throws -> Void = { _ in
             didExecute = true
         }
 
@@ -231,7 +237,7 @@ import Testing
         // THEN: Operation should execute successfully
         switch sut {
         case .run(_, let storedOperation, _):
-            try? await storedOperation()
+            try? await storedOperation(TestState())
             #expect(didExecute)
         default:
             Issue.record("Expected run case")
@@ -243,14 +249,14 @@ import Testing
         var capturedError: Error?
         let testError = NSError(domain: "Test", code: 42)
 
-        let errorHandler: @MainActor (Error, inout TestState) -> Void = { error, _ in
+        let errorHandler: @MainActor (Error, TestState) -> Void = { error, _ in
             capturedError = error as NSError
         }
 
         // WHEN: Create run task with error handler
         let sut: StoreTask<TestAction, TestState> = .run(
             id: "test",
-            operation: {},
+            operation: { _ in },
             onError: errorHandler
         )
 
@@ -261,7 +267,7 @@ import Testing
 
             // Execute handler
             var state = TestState()
-            handler?(testError, &state)
+            handler?(testError, state)
 
             // Verify error was captured
             #expect(capturedError != nil)
@@ -273,14 +279,14 @@ import Testing
 
     @Test func run_errorHandlerCanMutateState() {
         // GIVEN: Error handler that mutates state
-        let errorHandler: @MainActor (Error, inout TestState) -> Void = { _, state in
+        let errorHandler: @MainActor (Error, TestState) -> Void = { _, state in
             state.count = 999
         }
 
         // WHEN: Create run task and execute handler
         let sut: StoreTask<TestAction, TestState> = .run(
             id: "mutate",
-            operation: {},
+            operation: { _ in },
             onError: errorHandler
         )
 
@@ -289,7 +295,7 @@ import Testing
         case .run(_, _, let handler):
             var state = TestState(count: 0)
             let error = NSError(domain: "Test", code: 1)
-            handler?(error, &state)
+            handler?(error, state)
             #expect(state.count == 999)
         default:
             Issue.record("Expected run case")
@@ -370,7 +376,7 @@ import Testing
         let noTask: StoreTask<TestAction, TestState> = .none
         let runTask: StoreTask<TestAction, TestState> = .run(
             id: "run",
-            operation: {},
+            operation: { _ in },
             onError: nil
         )
         let cancelTask: StoreTask<TestAction, TestState> = .cancel(id: "cancel")
@@ -396,7 +402,7 @@ import Testing
         // GIVEN: Complex error handler with multiple operations
         var errorLog: [(error: String, count: Int)] = []
 
-        let complexHandler: @MainActor (Error, inout TestState) -> Void = { error, state in
+        let complexHandler: @MainActor (Error, TestState) -> Void = { error, state in
             state.count += 1
             errorLog.append((error: error.localizedDescription, count: state.count))
         }
@@ -404,7 +410,7 @@ import Testing
         // WHEN: Create run task and execute handler multiple times
         let sut: StoreTask<TestAction, TestState> = .run(
             id: "complex",
-            operation: {},
+            operation: { _ in },
             onError: complexHandler
         )
 
@@ -413,10 +419,10 @@ import Testing
         case .run(_, _, let handler):
             var state = TestState(count: 0)
 
-            handler?(NSError(domain: "E1", code: 1), &state)
+            handler?(NSError(domain: "E1", code: 1), state)
             #expect(state.count == 1)
 
-            handler?(NSError(domain: "E2", code: 2), &state)
+            handler?(NSError(domain: "E2", code: 2), state)
             #expect(state.count == 2)
 
             #expect(errorLog.count == 2)

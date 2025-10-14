@@ -137,7 +137,7 @@ public protocol StoreFeature: Sendable {
     /// ```
     ///
     /// - Note: @Observable requires class types for SwiftUI observation
-    associatedtype State
+    associatedtype State: AnyObject
 
     /// Creates an ActionHandler that processes actions for this feature.
     ///

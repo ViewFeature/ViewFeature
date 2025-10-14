@@ -6,6 +6,7 @@ struct CounterFeature: StoreFeature {
     // MARK: - State
 
     @Observable
+    @MainActor
     final class State {
         var count: Int = 0
         var isLoading: Bool = false
@@ -46,10 +47,12 @@ struct CounterFeature: StoreFeature {
 
             case .delayedIncrement:
                 state.isLoading = true
-                state.count += 1
-                return .run(id: "delayed-increment") {
+                return .run(id: "delayed-increment") { state in
                     try await Task.sleep(for: .seconds(3))
-                    // Task completes - View layer handles follow-up actions if needed
+                    // Check if task was cancelled during sleep
+                    try Task.checkCancellation()
+                    state.count += 1
+                    state.isLoading = false
                 }
                 .catch { _, state in
                     state.isLoading = false

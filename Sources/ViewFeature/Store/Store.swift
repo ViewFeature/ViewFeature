@@ -75,6 +75,7 @@ import Observation
 /// - ``runningTaskCount``
 /// - ``isTaskRunning(id:)``
 @Observable
+@MainActor
 public final class Store<Feature: StoreFeature> {
     private var _state: Feature.State
     private let taskManager: TaskManager
@@ -143,26 +144,32 @@ public final class Store<Feature: StoreFeature> {
             break
 
         case .run(let id, let operation, let onError):
-            let errorHandler = createErrorHandler(from: onError)
-            let backgroundTask = taskManager.executeTask(id: id, operation: operation, onError: errorHandler)
-            await backgroundTask.value
+            // Cancel existing task with same ID before starting new one
+            taskManager.cancelTaskInternal(id: id)
+
+            // Pass operation directly to TaskManager
+            // TaskManager will create and track the Task
+            let task = taskManager.executeTask(
+                id: id,
+                operation: { @MainActor [weak self] in
+                    guard let self else { return }
+                    try await operation(self._state)
+                },
+                onError: onError.map { handler in
+                    { @MainActor [weak self] (error: Error) in
+                        guard let self else { return }
+                        handler(error, self._state)
+                    }
+                }
+            )
+
+            await task.value
 
         case .cancel(let id):
             taskManager.cancelTaskInternal(id: id)
         }
     }
 
-    private func createErrorHandler(
-        from onError: ((Error, inout Feature.State) -> Void)?
-    ) -> ((Error) async -> Void)? {
-        onError.map { handler -> ((Error) async -> Void) in
-            { (error: Error) async in
-                var currentState = self._state
-                handler(error, &currentState)
-                self._state = currentState
-            }
-        }
-    }
 
     // MARK: - Task Management API
 

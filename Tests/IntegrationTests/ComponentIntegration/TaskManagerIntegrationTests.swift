@@ -19,10 +19,17 @@ import Testing
         case process(String)
     }
 
-    struct DataState: Equatable, Sendable {
+    @Observable
+    final class DataState {
         var data: [String: String] = [:]
         var isLoading: [String: Bool] = [:]
         var errors: [String: String] = [:]
+
+        init(data: [String: String] = [:], isLoading: [String: Bool] = [:], errors: [String: String] = [:]) {
+            self.data = data
+            self.isLoading = isLoading
+            self.errors = errors
+        }
     }
 
     struct DataFeature: StoreFeature, Sendable {

@@ -227,6 +227,39 @@ import Testing
         #expect(sut.runningTaskCount == 0)
     }
 
+    @Test func cancelTask_triggersCancellationError() async {
+        let sut = TaskManager()
+        // GIVEN: A flag to track error handling
+        var didCatchError = false
+        var caughtError: Error?
+
+        // Execute a task that sleeps
+        sut.executeTask(
+            id: "will-cancel",
+            operation: {
+                try await Task.sleep(for: .seconds(10))
+            },
+            onError: { error in
+                didCatchError = true
+                caughtError = error
+            }
+        )
+
+        // Wait for task to start
+        try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+
+        // WHEN: Cancel the task
+        sut.cancelTask(id: "will-cancel")
+
+        // Wait for error handler to execute
+        try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
+
+        // THEN: Error handler should have been called with CancellationError
+        #expect(didCatchError)
+        #expect(caughtError != nil)
+        #expect(caughtError is CancellationError)
+    }
+
     // MARK: - cancelAllTasks()
 
     @Test func cancelAllTasks_cancelsMultipleRunningTasks() async {

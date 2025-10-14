@@ -25,9 +25,15 @@ import Testing
         var isCompleted: Bool
     }
 
-    struct TodoState: Equatable, Sendable {
+    @Observable
+    final class TodoState {
         var todos: [Todo] = []
         var nextId: Int = 1
+
+        init(todos: [Todo] = [], nextId: Int = 1) {
+            self.todos = todos
+            self.nextId = nextId
+        }
     }
 
     struct TodoFeature: StoreFeature, Sendable {

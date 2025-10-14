@@ -17,9 +17,15 @@ import Testing
         case lightTask
     }
 
-    struct PerformanceState: Equatable, Sendable {
+    @Observable
+    final class PerformanceState {
         var counter: Int = 0
         var operations: Int = 0
+
+        init(counter: Int = 0, operations: Int = 0) {
+            self.counter = counter
+            self.operations = operations
+        }
     }
 
     struct PerformanceFeature: StoreFeature, Sendable {
@@ -41,7 +47,7 @@ import Testing
 
                 case .heavyComputation:
                     state.operations += 1
-                    return .run(id: "heavy") {
+                    return .run(id: "heavy") { _ in
                         // Simulate heavy work
                         try await Task.sleep(for: .milliseconds(5))
                     }
@@ -212,10 +218,17 @@ import Testing
 
     @Test func rapidStateUpdates() async {
         // GIVEN: Store with complex state
-        struct ComplexState: Equatable, Sendable {
+        @Observable
+        final class ComplexState {
             var array: [Int] = []
             var dict: [String: Int] = [:]
             var counter: Int = 0
+
+            init(array: [Int] = [], dict: [String: Int] = [:], counter: Int = 0) {
+                self.array = array
+                self.dict = dict
+                self.counter = counter
+            }
         }
 
         enum ComplexAction: Sendable {

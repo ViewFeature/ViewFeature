@@ -15,8 +15,13 @@ import Testing
         case decrement
     }
 
-    struct TestState: Equatable {
+    @Observable
+    final class TestState {
         var count = 0
+
+        init(count: Int = 0) {
+            self.count = count
+        }
     }
 
     // MARK: - noTask
@@ -62,7 +67,7 @@ import Testing
         let taskId = "my-custom-task"
 
         // WHEN: Create a run task with explicit ID
-        let sut: ActionTask<TestAction, TestState> = .run(id: taskId) {}
+        let sut: ActionTask<TestAction, TestState> = .run(id: taskId) { _ in }
 
         // THEN: Should have run storeTask with correct ID
         switch sut.storeTask {
@@ -75,7 +80,7 @@ import Testing
 
     @Test func run_withoutId_generatesAutomaticId() {
         // GIVEN & WHEN: Create a run task without explicit ID
-        let sut: ActionTask<TestAction, TestState> = .run {}
+        let sut: ActionTask<TestAction, TestState> = .run { _ in}
 
         // THEN: Should have run storeTask with auto-generated ID
         switch sut.storeTask {
@@ -89,8 +94,8 @@ import Testing
 
     @Test func run_withoutId_generatesDifferentIdsForConsecutiveCalls() {
         // GIVEN & WHEN: Create multiple run tasks without IDs
-        let task1: ActionTask<TestAction, TestState> = .run {}
-        let task2: ActionTask<TestAction, TestState> = .run {}
+        let task1: ActionTask<TestAction, TestState> = .run { _ in}
+        let task2: ActionTask<TestAction, TestState> = .run { _ in}
 
         // THEN: Should generate different IDs
         var id1: String?
@@ -114,7 +119,7 @@ import Testing
 
     @Test func run_storesOperation() {
         // GIVEN: An operation
-        let operation: @Sendable () async throws -> Void = {}
+        let operation: @Sendable (TestState) async throws -> Void = { _ in }
 
         // WHEN: Create a run task with operation
         let sut: ActionTask<TestAction, TestState> = .run(id: "test", operation: operation)
@@ -135,7 +140,7 @@ import Testing
         let longId = String(repeating: "a", count: 1000)
 
         // WHEN: Create a run task with long ID
-        let sut: ActionTask<TestAction, TestState> = .run(id: longId) {}
+        let sut: ActionTask<TestAction, TestState> = .run(id: longId) { _ in}
 
         // THEN: Should accept and store the long ID
         switch sut.storeTask {
@@ -152,7 +157,7 @@ import Testing
         let specialId = "task-🎉-日本語-123"
 
         // WHEN: Create a run task with special ID
-        let sut: ActionTask<TestAction, TestState> = .run(id: specialId) {}
+        let sut: ActionTask<TestAction, TestState> = .run(id: specialId) { _ in}
 
         // THEN: Should accept and store the ID with special characters
         switch sut.storeTask {
@@ -258,7 +263,7 @@ import Testing
     @Test func allTaskTypes_canBeCreatedWithSameActionAndStateTypes() {
         // GIVEN & WHEN: Create all three task types
         let noTask: ActionTask<TestAction, TestState> = .none
-        let runTask: ActionTask<TestAction, TestState> = .run(id: "test") {}
+        let runTask: ActionTask<TestAction, TestState> = .run(id: "test") { _ in}
         let cancelTask: ActionTask<TestAction, TestState> = .cancel(id: "test")
 
         // THEN: All should be valid tasks
@@ -314,7 +319,7 @@ import Testing
 
     @Test func catch_withRunTask_attachesErrorHandler() {
         // GIVEN: A run task without error handler
-        let sut: ActionTask<TestAction, TestState> = .run(id: "test") {}
+        let sut: ActionTask<TestAction, TestState> = .run(id: "test") { _ in}
 
         // WHEN: Attach error handler with catch
         let result = sut.catch { _, state in
@@ -333,7 +338,7 @@ import Testing
 
     @Test func catch_withRunTaskWithoutId_attachesErrorHandler() {
         // GIVEN: A run task with auto-generated ID
-        let sut: ActionTask<TestAction, TestState> = .run {}
+        let sut: ActionTask<TestAction, TestState> = .run { _ in}
 
         // WHEN: Attach error handler with catch
         let result = sut.catch { _, _ in }
@@ -350,7 +355,7 @@ import Testing
 
     @Test func catch_canChainMultipleTimes() {
         // GIVEN: A run task
-        let sut: ActionTask<TestAction, TestState> = .run(id: "test") {}
+        let sut: ActionTask<TestAction, TestState> = .run(id: "test") { _ in}
 
         // WHEN: Chain catch multiple times (last one wins)
         let result =
@@ -372,7 +377,7 @@ import Testing
     @Test func catch_preservesTaskId() {
         // GIVEN: A run task with specific ID
         let originalId = "my-important-task"
-        let sut: ActionTask<TestAction, TestState> = .run(id: originalId) {}
+        let sut: ActionTask<TestAction, TestState> = .run(id: originalId) { _ in}
 
         // WHEN: Attach error handler
         let result = sut.catch { _, _ in }
@@ -388,7 +393,7 @@ import Testing
 
     @Test func catch_withComplexErrorHandler() {
         // GIVEN: A run task
-        let sut: ActionTask<TestAction, TestState> = .run(id: "test") {}
+        let sut: ActionTask<TestAction, TestState> = .run(id: "test") { _ in}
 
         // WHEN: Attach complex error handler
         let result = sut.catch { error, state in

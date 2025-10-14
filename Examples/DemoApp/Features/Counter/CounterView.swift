@@ -47,10 +47,7 @@ struct CounterView: View {
                 // Action経由でタスクを開始（推奨パターン）
                 Button {
                     Task {
-                        store.send(.delayedIncrement)
-                        try? await Task.sleep(for: .seconds(3))
-                        store.send(.increment)
-                        store.send(.finishLoading)
+                        await store.send(.delayedIncrement).value
                     }
                 } label: {
                     HStack {

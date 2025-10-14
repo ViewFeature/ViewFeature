@@ -101,7 +101,7 @@ import Testing
         // GIVEN: Processor that returns run task
         let sut = ActionProcessor<TestAction, TestState> { _, state in
             state.isLoading = true
-            return .run(id: "test-task") {}
+            return .run(id: "test-task") { _ in}
         }
 
         // WHEN: Process action
@@ -393,12 +393,12 @@ import Testing
         // GIVEN: Processor with transform
         let sut = ActionProcessor<TestAction, TestState> { _, state in
             state.count += 1
-            return .run(id: "original") {}
+            return .run(id: "original") { _ in}
         }
         .transform { task in
             switch task.storeTask {
             case .run:
-                return .run(id: "transformed") {}
+                return .run(id: "transformed") { _ in}
             default:
                 return task
             }
@@ -420,7 +420,7 @@ import Testing
     @Test func transform_canConvertTaskTypes() async {
         // GIVEN: Processor that converts run to cancel
         let sut = ActionProcessor<TestAction, TestState> { _, _ in
-            .run(id: "will-cancel") {}
+            .run(id: "will-cancel") { _ in}
         }
         .transform { task in
             switch task.storeTask {
@@ -474,7 +474,7 @@ import Testing
         // GIVEN: Processor with middleware, error handler, and transform
         let sut = ActionProcessor<TestAction, TestState> { _, state in
             state.count += 1
-            return .run(id: "task") {}
+            return .run(id: "task") { _ in}
         }
         .use(LoggingMiddleware())
         .onError { _, state in
@@ -504,7 +504,7 @@ import Testing
         var middlewareExecuted = false
         let sut = ActionProcessor<TestAction, TestState> { _, state in
             state.count += 10
-            return .run(id: "main-task") {}
+            return .run(id: "main-task") { _ in}
         }
         .use(LoggingMiddleware(logLevel: .debug))
         .onError { _, state in
@@ -578,7 +578,7 @@ import Testing
 
         let asyncProcessor = ActionProcessor<TestAction, TestState> { _, state in
             state.isLoading = true
-            return .run(id: "async") {}
+            return .run(id: "async") { _ in}
         }
 
         struct ThrowingMiddleware: BeforeActionMiddleware {

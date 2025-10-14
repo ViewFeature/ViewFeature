@@ -199,7 +199,7 @@ public final class TaskManager {
         }
 
         // Create task with automatic cleanup on completion
-        let task = Task { [weak self] in
+        let task = Task { @MainActor [weak self] in
             defer {
                 // Automatically remove completed task from tracking
                 self?.runningTasks.removeValue(forKey: id)

@@ -407,10 +407,10 @@ public final class TestStore<Feature: StoreFeature> {
             return
         case .run(_, let operation, let onError):
             do {
-                try await operation()
+                try await operation(_state)
             } catch {
                 if let errorHandler = onError {
-                    errorHandler(error, &_state)
+                    errorHandler(error, _state)
                 }
             }
         case .cancel:

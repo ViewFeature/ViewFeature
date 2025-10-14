@@ -19,12 +19,21 @@ import Testing
         case reset
     }
 
-    struct NetworkState: Equatable, Sendable {
+    @Observable
+    final class NetworkState {
         var data: [String: String] = [:]
         var errors: [String: String] = [:]
         var retryCount: Int = 0
         var isRecovering: Bool = false
         var lastError: String?
+
+        init(data: [String: String] = [:], errors: [String: String] = [:], retryCount: Int = 0, isRecovering: Bool = false, lastError: String? = nil) {
+            self.data = data
+            self.errors = errors
+            self.retryCount = retryCount
+            self.isRecovering = isRecovering
+            self.lastError = lastError
+        }
     }
 
     enum NetworkError: Error, Equatable {
@@ -504,7 +513,11 @@ import Testing
                         return .none
 
                     case .reset:
-                        state = NetworkState()
+                        state.data.removeAll()
+                        state.errors.removeAll()
+                        state.retryCount = 0
+                        state.isRecovering = false
+                        state.lastError = nil
                         return .none
 
                     default:

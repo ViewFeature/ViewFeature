@@ -18,10 +18,17 @@ import Testing
         case clearCart
     }
 
-    struct ShoppingState: Equatable, Sendable {
+    @Observable
+    final class ShoppingState {
         var items: [String] = []
         var isCheckingOut: Bool = false
         var checkoutComplete: Bool = false
+
+        init(items: [String] = [], isCheckingOut: Bool = false, checkoutComplete: Bool = false) {
+            self.items = items
+            self.isCheckingOut = isCheckingOut
+            self.checkoutComplete = checkoutComplete
+        }
     }
 
     struct ShoppingFeature: StoreFeature, Sendable {
@@ -41,7 +48,7 @@ import Testing
 
                 case .checkout:
                     state.isCheckingOut = true
-                    return .run(id: "checkout") {
+                    return .run(id: "checkout") { _ in
                         try await Task.sleep(for: .milliseconds(50))
                     }
 

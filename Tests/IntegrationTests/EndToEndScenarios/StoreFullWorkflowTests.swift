@@ -19,7 +19,8 @@ import Testing
         case cancelLoad
     }
 
-    struct UserState: Equatable, Sendable {
+    @Observable
+    final class UserState {
         var userId: String?
         var userName: String?
         var userEmail: String?
@@ -27,6 +28,16 @@ import Testing
         var isLoggedIn: Bool = false
         var errorMessage: String?
         var refreshCount: Int = 0
+
+        init(userId: String? = nil, userName: String? = nil, userEmail: String? = nil, isLoading: Bool = false, isLoggedIn: Bool = false, errorMessage: String? = nil, refreshCount: Int = 0) {
+            self.userId = userId
+            self.userName = userName
+            self.userEmail = userEmail
+            self.isLoading = isLoading
+            self.isLoggedIn = isLoggedIn
+            self.errorMessage = errorMessage
+            self.refreshCount = refreshCount
+        }
     }
 
     struct UserFeature: StoreFeature, Sendable {
@@ -39,7 +50,7 @@ import Testing
                 case .loadUser(let id):
                     state.isLoading = true
                     state.userId = id
-                    return .run(id: "loadUser") {
+                    return .run(id: "loadUser") { _ in
                         // Simulate network request
                         try await Task.sleep(for: .milliseconds(50))
                     }
@@ -52,12 +63,18 @@ import Testing
                     return .none
 
                 case .logout:
-                    state = UserState()
+                    state.userId = nil
+                    state.userName = nil
+                    state.userEmail = nil
+                    state.isLoading = false
+                    state.isLoggedIn = false
+                    state.errorMessage = nil
+                    state.refreshCount = 0
                     return .cancel(id: "loadUser")
 
                 case .refreshData:
                     state.refreshCount += 1
-                    return .run(id: "refresh") {
+                    return .run(id: "refresh") { _ in
                         try await Task.sleep(for: .milliseconds(20))
                     }
 
