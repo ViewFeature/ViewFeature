@@ -1,7 +1,37 @@
 import Foundation
+import Synchronization
+
+/// Protocol for types that can be converted to task ID strings.
+public protocol TaskIDConvertible: Hashable, Sendable {
+  /// Converts the task ID to a string representation.
+  var taskIdString: String { get }
+}
+
+/// Default implementations for common types
+extension String: TaskIDConvertible {
+  public var taskIdString: String { self }
+}
+
+extension Int: TaskIDConvertible {
+  public var taskIdString: String { String(self) }
+}
+
+extension UUID: TaskIDConvertible {
+  public var taskIdString: String { uuidString }
+}
+
+/// Default implementation for CustomStringConvertible types
+extension TaskIDConvertible where Self: CustomStringConvertible {
+  public var taskIdString: String { description }
+}
+
+/// Default implementation for RawRepresentable types (enums with String raw value)
+extension TaskIDConvertible where Self: RawRepresentable, RawValue == String {
+  public var taskIdString: String { rawValue }
+}
 
 /// Task identifiers (String, Int, UUID, or custom enums).
-public typealias TaskID = Hashable & Sendable
+public typealias TaskID = TaskIDConvertible
 
 /// Represents asynchronous work returned from action processing.
 ///
@@ -21,11 +51,14 @@ public struct ActionTask<Action, State> {
   internal let storeTask: StoreTask<Action, State>
 }
 
-/// Generates unique task IDs using UUID
-/// UUID-based IDs eliminate global state and enable safe parallel test execution
+/// Generates unique task IDs using atomic counter
+/// Atomic counter-based IDs are faster than UUID and still enable safe parallel test execution
 private enum TaskIdGenerator {
+  private static let counter = Atomic<UInt64>(0)
+
   static func generate() -> String {
-    "auto-task-\(UUID().uuidString)"
+    let id = counter.wrappingAdd(1, ordering: .relaxed)
+    return "auto-task-\(id)"
   }
 }
 
@@ -59,13 +92,13 @@ extension ActionTask {
     id: ID,
     operation: @escaping @MainActor (State) async throws -> Void
   ) -> ActionTask {
-    let stringId = String(describing: id)
+    let stringId = id.taskIdString
     return ActionTask(storeTask: .run(id: stringId, operation: operation, onError: nil))
   }
 
   /// Cancels a running task by its ID. Does nothing if the task isn't running.
   public static func cancel<ID: TaskID>(id: ID) -> ActionTask {
-    let stringId = String(describing: id)
+    let stringId = id.taskIdString
     return ActionTask(storeTask: .cancel(id: stringId))
   }
 

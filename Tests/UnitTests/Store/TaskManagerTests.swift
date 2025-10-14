@@ -350,6 +350,103 @@ import Testing
     #expect(sut.runningTaskCount == 0)
   }
 
+  // MARK: - DoS Protection
+
+  @Test func executeTask_enforcesTaskLimit() async {
+    let sut = TaskManager()
+    // GIVEN: Create tasks up to the limit
+    var errorCount = 0
+
+    // Fill up to the limit
+    for i in 0..<TaskManager.maxConcurrentTasks {
+      sut.executeTask(
+        id: "task-\(i)",
+        operation: { try await Task.sleep(nanoseconds: 1_000_000_000) },  // 1 second
+        onError: nil
+      )
+    }
+
+    // Wait for tasks to start
+    try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
+
+    // WHEN: Try to exceed the limit
+    sut.executeTask(
+      id: "overflow",
+      operation: { /* should not execute */ },
+      onError: { error in
+        errorCount += 1
+      }
+    )
+
+    // Wait for error handler
+    try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
+
+    // THEN: Error handler should be called
+    #expect(errorCount == 1)
+    #expect(sut.runningTaskCount == TaskManager.maxConcurrentTasks)
+  }
+
+  @Test func executeTask_allowsTaskAfterCancellation() async {
+    let sut = TaskManager()
+    // GIVEN: Fill up to the limit
+    for i in 0..<TaskManager.maxConcurrentTasks {
+      sut.executeTask(
+        id: "task-\(i)",
+        operation: { try await Task.sleep(nanoseconds: 1_000_000_000) },
+        onError: nil
+      )
+    }
+
+    try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
+    #expect(sut.runningTaskCount == TaskManager.maxConcurrentTasks)
+
+    // WHEN: Cancel one task
+    sut.cancelTask(id: "task-0")
+
+    // Wait for cancellation
+    try? await Task.sleep(nanoseconds: 20_000_000)  // 20ms
+
+    // THEN: Should be able to create a new task
+    var didExecute = false
+    sut.executeTask(
+      id: "new-task",
+      operation: { didExecute = true },
+      onError: nil
+    )
+
+    try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
+    #expect(didExecute)
+  }
+
+  @Test func executeTask_replacementDoesNotCountAsOverflow() async {
+    let sut = TaskManager()
+    // GIVEN: Fill up to the limit
+    for i in 0..<TaskManager.maxConcurrentTasks {
+      sut.executeTask(
+        id: "task-\(i)",
+        operation: { try await Task.sleep(nanoseconds: 1_000_000_000) },
+        onError: nil
+      )
+    }
+
+    try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
+
+    // WHEN: Replace an existing task (same ID)
+    var didExecute = false
+    var errorCount = 0
+    sut.executeTask(
+      id: "task-0",  // Same ID as existing task
+      operation: { didExecute = true },
+      onError: { _ in errorCount += 1 }
+    )
+
+    try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
+
+    // THEN: Should succeed (replacement is allowed)
+    #expect(didExecute)
+    #expect(errorCount == 0)
+  }
+
   // MARK: - Edge Cases
 
   @Test func executeTask_withEmptyStringId() async {

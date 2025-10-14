@@ -1,5 +1,17 @@
 import Foundation
 
+/// Error thrown when task limit is exceeded
+public enum TaskManagerError: Error, LocalizedError {
+  case taskLimitExceeded(limit: Int)
+
+  public var errorDescription: String? {
+    switch self {
+    case .taskLimitExceeded(let limit):
+      return "Task limit exceeded: cannot create more than \(limit) concurrent tasks"
+    }
+  }
+}
+
 /// Manages asynchronous task execution and lifecycle within the Store.
 ///
 /// `TaskManager` provides robust task management with automatic cleanup and cancellation support.
@@ -11,6 +23,7 @@ import Foundation
 /// - Task identification and tracking by unique IDs
 /// - Concurrent task execution with individual cancellation
 /// - Error handling delegation to Store
+/// - DoS protection through task limit enforcement (max 1000 concurrent tasks)
 ///
 /// ## Architecture Role
 /// TaskManager is a core component of the Store's task execution system. It handles:
@@ -74,6 +87,9 @@ import Foundation
 /// - ``cancelTaskInternal(id:)``
 @MainActor
 public final class TaskManager {
+  /// Maximum number of concurrent tasks allowed (prevents DoS attacks)
+  public static let maxConcurrentTasks = 1000
+
   private var runningTasks: [String: Task<Void, Never>] = [:]
 
   /// Creates a new TaskManager instance.
@@ -115,7 +131,7 @@ public final class TaskManager {
   /// }
   /// ```
   public func isTaskRunning<ID: TaskID>(id: ID) -> Bool {
-    let stringId = String(describing: id)
+    let stringId = id.taskIdString
     return runningTasks[stringId] != nil
   }
 
@@ -135,7 +151,7 @@ public final class TaskManager {
   /// taskManager.cancelTask(id: "uploadFile")
   /// ```
   public func cancelTask<ID: TaskID>(id: ID) {
-    let stringId = String(describing: id)
+    let stringId = id.taskIdString
     cancelTaskInternal(id: stringId)
   }
 
@@ -198,6 +214,16 @@ public final class TaskManager {
       runningTasks.removeValue(forKey: id)
     }
 
+    // Check task limit before creating new task (unless replacing existing one)
+    guard runningTasks.count < Self.maxConcurrentTasks else {
+      let task = Task { @MainActor in
+        if let errorHandler = onError {
+          await errorHandler(TaskManagerError.taskLimitExceeded(limit: Self.maxConcurrentTasks))
+        }
+      }
+      return task
+    }
+
     // Create task with structured cleanup using withTaskCancellationHandler
     let task = Task { @MainActor [weak self] in
       // Capture self for onCancel handler (required by Sendable closure)
@@ -211,12 +237,12 @@ public final class TaskManager {
             await errorHandler(error)
           }
         }
-      } onCancel: { @Sendable [taskManager] in
+      } onCancel: { @Sendable [weak taskManager] in
         // Cleanup on cancellation - executed immediately when task is cancelled
         // Note: This runs synchronously on the cancelling thread, so we schedule
-        // the actual cleanup on MainActor
+        // the actual cleanup on MainActor. Using weak reference to prevent retain cycle.
         Task { @MainActor in
-          taskManager.runningTasks.removeValue(forKey: id)
+          taskManager?.runningTasks.removeValue(forKey: id)
         }
       }
 

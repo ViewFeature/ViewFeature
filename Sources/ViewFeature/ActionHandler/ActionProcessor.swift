@@ -48,7 +48,7 @@ public final class ActionProcessor<Action, State> {
   ///
   /// Executes before-action middleware, action logic, after-action middleware, and error handling if needed.
   public func process(action: Action, state: inout State) async -> ActionTask<Action, State> {
-    let startTime = Date()
+    let startTime = ContinuousClock.now
 
     do {
       let result = try await executeWithMiddleware(
@@ -63,11 +63,12 @@ public final class ActionProcessor<Action, State> {
   private func executeWithMiddleware(
     action: Action,
     state: inout State,
-    startTime: Date
+    startTime: ContinuousClock.Instant
   ) async throws -> ActionTask<Action, State> {
     try await middlewareManager.executeBeforeAction(action: action, state: state)
     let result = await baseExecution(action, &state)
-    let duration = Date().timeIntervalSince(startTime)
+    let durationNanoseconds = startTime.duration(to: ContinuousClock.now).components.attoseconds / 1_000_000_000
+    let duration = TimeInterval(durationNanoseconds) / 1_000_000_000.0  // Convert to seconds
     try await middlewareManager.executeAfterAction(
       action: action, state: state, result: result, duration: duration)
     return result

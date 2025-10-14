@@ -204,7 +204,7 @@ import Testing
 
   @Test func cancel_withEnumId() {
     // GIVEN: An enum as task ID
-    enum TaskId: String {
+    enum TaskId: String, TaskIDConvertible {
       case fetchData
       case saveData
     }
@@ -223,7 +223,7 @@ import Testing
 
   @Test func cancel_withCustomHashableType() {
     // GIVEN: A custom hashable type
-    struct CustomTaskId: Hashable, Sendable, CustomStringConvertible {
+    struct CustomTaskId: TaskIDConvertible, CustomStringConvertible {
       let value: String
       var description: String { value }
     }
