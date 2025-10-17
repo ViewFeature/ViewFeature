@@ -82,11 +82,9 @@ struct CounterView: View {
       .padding(.horizontal, 40)
     }
     .navigationTitle("Counter")
-    // 直接キャンセル（代替パターン）: View離脱時の自動クリーンアップ
-    .onDisappear {
-      // ユーザーが画面を離れた時に実行中のタスクをキャンセル
-      store.cancelTask(id: "delayed-increment")
-    }
+    // Note: タスクは自動的にクリーンアップされます
+    // View が破棄されると Store も解放され、TaskManager.deinit により
+    // 実行中のすべてのタスクが自動的にキャンセルされます
   }
 }
 

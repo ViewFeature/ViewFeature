@@ -19,7 +19,8 @@ import Foundation
 /// - Memory safety through weak references
 ///
 /// ## Usage
-/// TaskManager is typically used internally by ``Store`` but can be used independently:
+/// TaskManager is typically used internally by ``Store``. Tasks are automatically
+/// cancelled when the TaskManager is deallocated (e.g., when Store is released).
 /// ```swift
 /// let taskManager = TaskManager()
 ///
@@ -40,11 +41,7 @@ import Foundation
 ///   print("Task is still running")
 /// }
 ///
-/// // Cancel specific task
-/// taskManager.cancelTask(id: "fetchData")
-///
-/// // Cancel all running tasks
-/// taskManager.cancelAllTasks()
+/// // Tasks are automatically cancelled when taskManager is deallocated
 /// ```
 ///
 /// ## Task Lifecycle
@@ -68,13 +65,11 @@ import Foundation
 /// - ``isTaskRunning(id:)``
 /// - ``runningTaskCount``
 ///
-/// ### Task Cancellation
-/// - ``cancelTask(id:)``
-/// - ``cancelAllTasks()``
+/// ### Internal Task Management
 /// - ``cancelTaskInternal(id:)``
 @MainActor
 public final class TaskManager {
-  private var runningTasks: [String: Task<Void, Never>] = [:]
+  nonisolated(unsafe) private var runningTasks: [String: Task<Void, Never>] = [:]
 
   /// Creates a new TaskManager instance.
   ///
@@ -85,6 +80,27 @@ public final class TaskManager {
   /// let taskManager = TaskManager()
   /// ```
   public init() {}
+
+  /// Automatically cancels all running tasks when TaskManager is deallocated.
+  ///
+  /// This ensures proper resource cleanup when the Store (and its TaskManager)
+  /// is released, such as when a View is dismissed or a feature scope ends.
+  ///
+  /// ## Design Rationale
+  /// - **Automatic cleanup**: No manual cleanup required in View lifecycle
+  /// - **Memory safety**: Prevents orphaned tasks from consuming resources
+  /// - **Predictable behavior**: Task lifetime tied to Store lifetime
+  ///
+  /// ## Implementation Note
+  /// Uses `nonisolated(unsafe)` on `runningTasks` to allow safe access during
+  /// deinitialization. This is safe because:
+  /// - `deinit` runs when the last reference is released
+  /// - No other threads can access the instance at this point
+  /// - Dictionary operations are isolated to this deinit block
+  deinit {
+    runningTasks.values.forEach { $0.cancel() }
+    runningTasks.removeAll()
+  }
 
   /// The number of currently running tasks.
   ///
@@ -117,44 +133,6 @@ public final class TaskManager {
   public func isTaskRunning<ID: TaskID>(id: ID) -> Bool {
     let stringId = id.taskIdString
     return runningTasks[stringId] != nil
-  }
-
-  /// Cancels a specific running task by its identifier.
-  ///
-  /// If the task is found, it will be cancelled and removed from tracking.
-  /// If the task doesn't exist or has already completed, this method does nothing.
-  ///
-  /// - Parameter id: The unique identifier for the task to cancel
-  ///
-  /// ## Example
-  /// ```swift
-  /// // Start a long-running task
-  /// taskManager.executeTask(id: "uploadFile", operation: { /* ... */ })
-  ///
-  /// // Cancel it if user navigates away
-  /// taskManager.cancelTask(id: "uploadFile")
-  /// ```
-  public func cancelTask<ID: TaskID>(id: ID) {
-    let stringId = id.taskIdString
-    cancelTaskInternal(id: stringId)
-  }
-
-  /// Cancels all currently running tasks.
-  ///
-  /// This method iterates through all tracked tasks, cancels them, and clears
-  /// the tracking dictionary. Useful for cleanup when a feature is dismissed or
-  /// the app enters the background.
-  ///
-  /// ## Example
-  /// ```swift
-  /// // Cancel all tasks when view disappears
-  /// func viewDidDisappear() {
-  ///   taskManager.cancelAllTasks()
-  /// }
-  /// ```
-  public func cancelAllTasks() {
-    runningTasks.values.forEach { $0.cancel() }
-    runningTasks.removeAll()
   }
 
   /// Executes an asynchronous operation as a tracked task and returns the Task.
@@ -224,11 +202,13 @@ public final class TaskManager {
   /// Internal method to cancel a task by string identifier.
   ///
   /// This method provides low-level task cancellation without generic type conversion.
-  /// Used internally by ``cancelTask(id:)`` and by ``Store`` for direct task management.
+  /// Used internally by ``Store`` when processing `.cancel(id:)` action tasks.
   ///
   /// - Parameter id: The string identifier of the task to cancel
   ///
-  /// - Note: This is public for Store's internal use but typically shouldn't be called directly
+  /// - Note: This is public for Store's internal use. Task cancellation should
+  ///   be done through Actions (e.g., `return .cancel(id: "taskId")`), not by
+  ///   calling this method directly.
   public func cancelTaskInternal(id: String) {
     runningTasks[id]?.cancel()
     runningTasks.removeValue(forKey: id)

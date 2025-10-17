@@ -370,37 +370,6 @@ import Testing
     #expect(sut.runningTaskCount == 0)
   }
 
-  @Test func cancelAllTasks_cancelsRunningTasks() async {
-    // GIVEN: Store with running tasks
-    let sut = Store(
-      initialState: TestState(),
-      feature: TestFeature()
-    )
-
-    // Start multiple tasks (fire-and-forget)
-    let task = sut.send(.asyncOp)
-
-    // WHEN: Cancel all tasks
-    sut.cancelAllTasks()
-
-    // THEN: Wait for task cleanup
-    await task.value
-    #expect(sut.runningTaskCount == 0)
-  }
-
-  @Test func cancelAllTasks_canBeCalledWhenNoTasks() async {
-    // GIVEN: Store with no tasks
-    let sut = Store(
-      initialState: TestState(),
-      feature: TestFeature()
-    )
-
-    // WHEN: Cancel all tasks
-    sut.cancelAllTasks()
-
-    // THEN: Should not crash
-    #expect(sut.runningTaskCount == 0)
-  }
 
   // MARK: - Error Handling
 
@@ -662,18 +631,18 @@ import Testing
       feature: TestFeature()
     )
 
-    // WHEN: Start multiple tasks and cancel all
+    // WHEN: Start task and cancel via action
     let asyncTask = sut.send(.asyncOp)
-    sut.cancelAllTasks()
+    await sut.send(.cancelOp("async")).value
 
     // THEN: Wait for task cleanup
     await asyncTask.value
     #expect(sut.runningTaskCount == 0)
   }
 
-  // MARK: - cancelTask(id:) Tests
+  // MARK: - Automatic Task Cleanup Tests
 
-  @Test func cancelTask_cancelsRunningTask() async {
+  @Test func storeDeinit_automaticallyCancelsRunningTasks() async {
     // GIVEN: Store with a running task
     let sut = Store(
       initialState: TestState(),

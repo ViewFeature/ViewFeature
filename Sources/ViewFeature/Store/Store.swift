@@ -69,9 +69,7 @@ import Observation
 /// ### Dispatching Actions
 /// - ``send(_:)``
 ///
-/// ### Task Management
-/// - ``cancelTask(id:)``
-/// - ``cancelAllTasks()``
+/// ### Task Inspection
 /// - ``runningTaskCount``
 /// - ``isTaskRunning(id:)``
 @Observable
@@ -205,53 +203,33 @@ public final class Store<F: Feature> {
     }
   }
 
-  // MARK: - Task Management API
+  // MARK: - Task Inspection API
 
-  /// Cancels a running task by its ID.
+  /// Returns the number of currently running tasks.
   ///
-  /// This method provides direct task cancellation from the View layer.
-  ///
-  /// ## Recommended Approach: Action-Based Cancellation
-  /// For better testability and state consistency, prefer using Actions:
-  /// ```swift
-  /// enum Action {
-  ///   case startDownload
-  ///   case cancelDownload
-  /// }
-  ///
-  /// case .startDownload:
-  ///   return .run(id: "download") { ... }
-  ///
-  /// case .cancelDownload:
-  ///   return .cancel(id: "download")
-  /// ```
-  ///
-  /// ## Direct Cancellation Use Cases
-  /// Use this method for:
-  /// - Emergency stops
-  /// - User-initiated cancellations outside normal flow
-  /// - Cleanup in View lifecycle (`.onDisappear`)
+  /// Use this property to monitor task activity for debugging or UI purposes.
   ///
   /// ## Example
   /// ```swift
-  /// Button("Cancel Download") {
-  ///   store.cancelTask(id: "download")
-  /// }
+  /// Text("Active tasks: \(store.runningTaskCount)")
   /// ```
-  ///
-  /// - Parameter id: The task identifier (see ``TaskID`` for supported types)
-  public func cancelTask<ID: TaskID>(id: ID) {
-    taskManager.cancelTask(id: id)
-  }
-
-  public func cancelAllTasks() {
-    taskManager.cancelAllTasks()
-  }
-
   public var runningTaskCount: Int {
     taskManager.runningTaskCount
   }
 
+  /// Checks if a specific task is currently running.
+  ///
+  /// Use this method to query task status for UI updates or conditional logic.
+  ///
+  /// ## Example
+  /// ```swift
+  /// if store.isTaskRunning(id: "download") {
+  ///   ProgressView()
+  /// }
+  /// ```
+  ///
+  /// - Parameter id: The task identifier to check
+  /// - Returns: `true` if the task is currently running, `false` otherwise
   public func isTaskRunning<ID: TaskID>(id: ID) -> Bool {
     taskManager.isTaskRunning(id: id)
   }
