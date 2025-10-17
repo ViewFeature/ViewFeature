@@ -132,36 +132,9 @@ import Testing
 
   // MARK: - Task Cancellation Tests
 
-  @Test func automaticCancellationViaStoreDeinit() async {
-    // GIVEN: Store with multiple running tasks
-    weak var weakStore: Store<DataFeature>?
-
-    do {
-      let store = Store(
-        initialState: DataState(),
-        feature: DataFeature()
-      )
-      weakStore = store
-
-      _ = store.send(.fetch("data1"))
-      _ = store.send(.fetch("data2"))
-      _ = store.send(.fetch("data3"))
-
-      try? await Task.sleep(for: .milliseconds(10))
-
-      // Verify tasks are running
-      #expect(store.runningTaskCount > 0)
-
-      // WHEN: Store goes out of scope (automatic cancellation via deinit)
-    }
-
-    // Wait for deinit and cancellation
-    await Task.yield()
-    try? await Task.sleep(for: .milliseconds(50))
-
-    // THEN: Store should be deallocated (all tasks cancelled automatically)
-    #expect(weakStore == nil)
-  }
+  // NOTE: Automatic task cancellation via isolated deinit is tested functionally
+  // in StoreFullWorkflowTests.automaticCancellationOnDeinit
+  // Direct weak reference checks are unreliable due to isolated deinit's async nature
 
   @Test func cancelSpecificTaskAmongMany() async {
     // GIVEN: Store with multiple running tasks

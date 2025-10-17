@@ -69,7 +69,7 @@ import Foundation
 /// - ``cancelTaskInternal(id:)``
 @MainActor
 public final class TaskManager {
-  nonisolated(unsafe) private var runningTasks: [String: Task<Void, Never>] = [:]
+  private var runningTasks: [String: Task<Void, Never>] = [:]
 
   /// Creates a new TaskManager instance.
   ///
@@ -87,17 +87,15 @@ public final class TaskManager {
   /// is released, such as when a View is dismissed or a feature scope ends.
   ///
   /// ## Design Rationale
-  /// - **Automatic cleanup**: No manual cleanup required in View lifecycle
-  /// - **Memory safety**: Prevents orphaned tasks from consuming resources
-  /// - **Predictable behavior**: Task lifetime tied to Store lifetime
+  /// - **Automatic cleanup**: Prevents orphaned tasks from consuming resources
+  /// - **Memory safety**: Task lifetime tied to TaskManager lifetime
+  /// - **Predictable behavior**: No manual cleanup needed
   ///
   /// ## Implementation Note
-  /// Uses `nonisolated(unsafe)` on `runningTasks` to allow safe access during
-  /// deinitialization. This is safe because:
-  /// - `deinit` runs when the last reference is released
-  /// - No other threads can access the instance at this point
-  /// - Dictionary operations are isolated to this deinit block
-  deinit {
+  /// Uses `isolated deinit` (SE-0371) to safely access MainActor-isolated state.
+  /// The runtime automatically hops onto the MainActor's executor before running
+  /// this deinit, ensuring thread-safe access to `runningTasks`.
+  isolated deinit {
     runningTasks.values.forEach { $0.cancel() }
     runningTasks.removeAll()
   }
