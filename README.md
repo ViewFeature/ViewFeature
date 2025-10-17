@@ -17,7 +17,6 @@ Modern state management for Swift 6.2 with async/await, automatic MainActor isol
 - **Error Handling** - Built-in `.catch` for graceful error recovery
 - **Middleware System** - Extensible hooks for logging, analytics, and validation
 - **SwiftUI @Observable Integration** - Native observation without manual @Published
-- **Dependency Injection** - Protocol-based dependencies via initializers
 
 ### Built on Swift 6.2
 
