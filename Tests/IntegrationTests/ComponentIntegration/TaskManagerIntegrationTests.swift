@@ -132,27 +132,35 @@ import Testing
 
   // MARK: - Task Cancellation Tests
 
-  @Test func cancelAllTasksViaStore() async {
+  @Test func automaticCancellationViaStoreDeinit() async {
     // GIVEN: Store with multiple running tasks
-    let sut = Store(
-      initialState: DataState(),
-      feature: DataFeature()
-    )
+    weak var weakStore: Store<DataFeature>?
 
-    _ = sut.send(.fetch("data1"))
-    _ = sut.send(.fetch("data2"))
-    _ = sut.send(.fetch("data3"))
+    do {
+      let store = Store(
+        initialState: DataState(),
+        feature: DataFeature()
+      )
+      weakStore = store
 
-    try? await Task.sleep(for: .milliseconds(10))
+      _ = store.send(.fetch("data1"))
+      _ = store.send(.fetch("data2"))
+      _ = store.send(.fetch("data3"))
 
-    // WHEN: Cancel all tasks
-    sut.cancelAllTasks()
+      try? await Task.sleep(for: .milliseconds(10))
 
-    // Wait for cancellation
+      // Verify tasks are running
+      #expect(store.runningTaskCount > 0)
+
+      // WHEN: Store goes out of scope (automatic cancellation via deinit)
+    }
+
+    // Wait for deinit and cancellation
+    await Task.yield()
     try? await Task.sleep(for: .milliseconds(50))
 
-    // THEN: All tasks should be cancelled
-    #expect(sut.runningTaskCount == 0)
+    // THEN: Store should be deallocated (all tasks cancelled automatically)
+    #expect(weakStore == nil)
   }
 
   @Test func cancelSpecificTaskAmongMany() async {

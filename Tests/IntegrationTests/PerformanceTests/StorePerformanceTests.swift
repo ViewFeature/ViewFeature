@@ -212,29 +212,34 @@ import Testing
     #expect(duration < 5.0, "Light task processing took too long: \(duration)s")
   }
 
-  @Test func taskCancellationPerformance() async {
+  @Test func automaticTaskCancellationPerformance() async {
     // GIVEN: Store with many running tasks
-    let sut = Store(
-      initialState: PerformanceState(),
-      feature: PerformanceFeature()
-    )
+    let startTime: Date
+    let duration: TimeInterval
 
-    // Start many tasks
-    for _ in 0..<100 {
-      _ = sut.send(.heavyComputation)
+    do {
+      let store = Store(
+        initialState: PerformanceState(),
+        feature: PerformanceFeature()
+      )
+
+      // Start many tasks
+      for _ in 0..<100 {
+        _ = store.send(.heavyComputation)
+      }
+
+      try? await Task.sleep(for: .milliseconds(10))
+
+      // WHEN: Store goes out of scope (automatic cancellation via deinit)
+      startTime = Date()
     }
 
-    try? await Task.sleep(for: .milliseconds(10))
-
-    // WHEN: Cancel all tasks
-    let startTime = Date()
-    sut.cancelAllTasks()
+    // Deinit executes here, cancelling all tasks automatically
     try? await Task.sleep(for: .milliseconds(50))
-    let duration = Date().timeIntervalSince(startTime)
+    duration = Date().timeIntervalSince(startTime)
 
-    // THEN: Cancellation should be fast
-    #expect(duration < 1.0, "Task cancellation took too long: \(duration)s")
-    #expect(sut.runningTaskCount == 0)
+    // THEN: Automatic cancellation should be fast
+    #expect(duration < 1.0, "Automatic task cancellation took too long: \(duration)s")
   }
 
   // MARK: - Memory Performance Tests

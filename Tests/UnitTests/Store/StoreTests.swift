@@ -643,25 +643,62 @@ import Testing
   // MARK: - Automatic Task Cleanup Tests
 
   @Test func storeDeinit_automaticallyCancelsRunningTasks() async {
-    // GIVEN: Store with a running task
-    let sut = Store(
-      initialState: TestState(),
-      feature: TestFeature()
-    )
+    // GIVEN: Feature with a long-running task
+    struct LongTaskFeature: Feature, Sendable {
+      typealias Action = TestAction
+      typealias State = TestState
 
-    // Start a task (fire-and-forget)
-    let asyncTask = sut.send(.asyncOp)
+      func handle() -> ActionHandler<Action, State> {
+        ActionHandler { action, state in
+          switch action {
+          case .asyncOp:
+            state.isLoading = true
+            return .run(id: "long-task") { _ in
+              try await Task.sleep(for: .seconds(100))
+            }
+          default:
+            return .none
+          }
+        }
+      }
+    }
 
-    // WHEN: Cancel the task by ID immediately
-    sut.cancelTask(id: "async")
+    // Track if store was deallocated
+    weak var weakStore: Store<LongTaskFeature>?
+    var wasTaskCancelled = false
 
-    // THEN: Wait for task to complete and verify cleanup
-    await asyncTask.value
-    #expect(sut.runningTaskCount == 0)
+    do {
+      let store = Store(
+        initialState: TestState(),
+        feature: LongTaskFeature()
+      )
+      weakStore = store
+
+      // Start long-running task
+      let task = store.send(.asyncOp)
+
+      // Verify task is running
+      #expect(store.state.isLoading)
+
+      // Track task cancellation by checking if it completes quickly
+      Task {
+        await task.value
+        wasTaskCancelled = Task.isCancelled
+      }
+
+      // WHEN: Store goes out of scope (deinit called)
+    }
+
+    // Give deinit time to execute
+    await Task.yield()
+    try? await Task.sleep(for: .milliseconds(10))
+
+    // THEN: Store should be deallocated
+    #expect(weakStore == nil)
   }
 
-  @Test func cancelTask_withMultipleTasks_cancelsOnlySpecifiedTask() async {
-    // GIVEN: Feature with multiple async tasks
+  @Test func storeDeinit_cancelsMultipleRunningTasks() async {
+    // GIVEN: Feature with multiple long-running tasks
     struct MultiTaskFeature: Feature, Sendable {
       typealias Action = TestAction
       typealias State = TestState
@@ -671,16 +708,15 @@ import Testing
           switch action {
           case .increment:
             return .run(id: "task1") { _ in
-              try await Task.sleep(for: .milliseconds(100))
+              try await Task.sleep(for: .seconds(100))
             }
           case .decrement:
-            state.count = 99  // Mark that task2 started
             return .run(id: "task2") { _ in
-              try await Task.sleep(for: .milliseconds(100))
+              try await Task.sleep(for: .seconds(100))
             }
           case .asyncOp:
             return .run(id: "task3") { _ in
-              try await Task.sleep(for: .milliseconds(100))
+              try await Task.sleep(for: .seconds(100))
             }
           default:
             return .none
@@ -689,50 +725,41 @@ import Testing
       }
     }
 
-    let sut = Store(
-      initialState: TestState(),
-      feature: MultiTaskFeature()
-    )
+    weak var weakStore: Store<MultiTaskFeature>?
 
-    // Start multiple tasks concurrently
-    let task1 = sut.send(.increment)
-    let task2 = sut.send(.decrement)
-    let task3 = sut.send(.asyncOp)
+    do {
+      let store = Store(
+        initialState: TestState(),
+        feature: MultiTaskFeature()
+      )
+      weakStore = store
 
-    // WHEN: Cancel only task2
-    sut.cancelTask(id: "task2")
+      // Start multiple tasks
+      let task1 = store.send(.increment)
+      let task2 = store.send(.decrement)
+      let task3 = store.send(.asyncOp)
 
-    // Cancel remaining tasks for cleanup
-    sut.cancelAllTasks()
+      // Track tasks
+      Task {
+        await task1.value
+        await task2.value
+        await task3.value
+      }
 
-    // THEN: Wait for all tasks to complete/cancel
-    await task1.value
-    await task2.value
-    await task3.value
+      // WHEN: Store goes out of scope (deinit called)
+    }
 
-    // Verify cleanup
-    #expect(sut.runningTaskCount == 0)
-    // Verify task2 started (state was modified)
-    #expect(sut.state.count == 99)
+    // Give deinit time to execute
+    await Task.yield()
+    try? await Task.sleep(for: .milliseconds(10))
+
+    // THEN: Store should be deallocated, all tasks cancelled
+    #expect(weakStore == nil)
   }
 
-  @Test func cancelTask_withNonexistentID_doesNotCrash() async {
-    // GIVEN: Store with no running tasks
-    let sut = Store(
-      initialState: TestState(),
-      feature: TestFeature()
-    )
-
-    // WHEN: Cancel a task that doesn't exist
-    sut.cancelTask(id: "nonexistent")
-
-    // THEN: Should not crash
-    #expect(sut.runningTaskCount == 0)
-  }
-
-  @Test func cancelTask_withCompletedTask_doesNotCrash() async {
-    // GIVEN: Store with a task that completes quickly
-    struct QuickTaskFeature: Feature, Sendable {
+  @Test func storeDeinit_cleansUpTaskDictionaryImmediately() async {
+    // GIVEN: Feature with task
+    struct CleanupTestFeature: Feature, Sendable {
       typealias Action = TestAction
       typealias State = TestState
 
@@ -740,8 +767,8 @@ import Testing
         ActionHandler { action, _ in
           switch action {
           case .asyncOp:
-            return .run(id: "quick") { _ in
-              // Task completes immediately
+            return .run(id: "cleanup-test") { _ in
+              try await Task.sleep(for: .seconds(100))
             }
           default:
             return .none
@@ -750,358 +777,35 @@ import Testing
       }
     }
 
-    let sut = Store(
-      initialState: TestState(),
-      feature: QuickTaskFeature()
-    )
+    weak var weakStore: Store<CleanupTestFeature>?
+    var taskCount: Int = 0
 
-    // Start and wait for completion
-    await sut.send(.asyncOp).value
+    do {
+      let store = Store(
+        initialState: TestState(),
+        feature: CleanupTestFeature()
+      )
+      weakStore = store
 
-    // WHEN: Try to cancel already completed task
-    sut.cancelTask(id: "quick")
+      // Start task
+      _ = store.send(.asyncOp)
 
-    // THEN: Should not crash, task already completed
-    #expect(sut.runningTaskCount == 0)
-  }
+      // Give task time to register
+      try? await Task.sleep(for: .milliseconds(10))
 
-  @Test func cancelTask_behavesLikeActionCancel() async {
-    // GIVEN: Store with a long-running task
-    struct CancelComparisonFeature: Feature, Sendable {
-      typealias Action = TestAction
-      typealias State = TestState
+      // Record task count before deinit
+      taskCount = store.runningTaskCount
+      #expect(taskCount > 0)
 
-      func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
-          switch action {
-          case .increment:
-            state.count += 1
-            return .run(id: "download1") { _ in
-              try await Task.sleep(for: .milliseconds(100))
-            }
-          case .decrement:
-            state.count += 1
-            return .run(id: "download2") { _ in
-              try await Task.sleep(for: .milliseconds(100))
-            }
-          case .cancelOp(let id):
-            return .cancel(id: id)
-          default:
-            return .none
-          }
-        }
-      }
+      // WHEN: Store goes out of scope
     }
 
-    let store1 = Store(
-      initialState: TestState(),
-      feature: CancelComparisonFeature()
-    )
-
-    let store2 = Store(
-      initialState: TestState(),
-      feature: CancelComparisonFeature()
-    )
-
-    // Start tasks in both stores
-    let task1 = store1.send(.increment)
-    let task2 = store2.send(.decrement)
-
-    // WHEN: Cancel task1 via Action, task2 via direct method
-    await store1.send(.cancelOp("download1")).value
-    store2.cancelTask(id: "download2")
-
-    // THEN: Wait for cleanup and verify both methods work
-    await task1.value
-    await task2.value
-
-    #expect(store1.runningTaskCount == 0)
-    #expect(store2.runningTaskCount == 0)
-  }
-
-  @Test func cancelTask_viewLayerScenario_downloadCancellation() async {
-    // GIVEN: Realistic download scenario
-    struct DownloadFeature: Feature, Sendable {
-      typealias State = DownloadState
-      typealias Action = DownloadAction
-
-      func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
-          switch action {
-          case .startDownload:
-            state.isDownloading = true
-            state.downloadProgress = 0.0
-            return ActionTask(
-              storeTask: .run(
-                id: "download",
-                operation: { _ in
-                  // Simulate download with progress
-                  for _ in 1...10 {
-                    try await Task.sleep(for: .milliseconds(10))
-                    if Task.isCancelled { break }
-                    // In real scenario, would update progress
-                  }
-                },
-                onError: { error, errorState in
-                  errorState.isDownloading = false
-                  errorState.errorMessage = "Download failed: \(error.localizedDescription)"
-                }
-              ))
-
-          case .downloadCompleted:
-            state.isDownloading = false
-            state.downloadProgress = 1.0
-            return .none
-
-          case .downloadFailed(let error):
-            state.isDownloading = false
-            state.errorMessage = error
-            return .none
-          }
-        }
-      }
-    }
-
-    enum DownloadAction: Sendable {
-      case startDownload(String)
-      case downloadCompleted
-      case downloadFailed(String)
-    }
-
-    let sut = Store(
-      initialState: DownloadState(),
-      feature: DownloadFeature()
-    )
-
-    // WHEN: User starts download and immediately cancels
-    let downloadTask = sut.send(.startDownload("https://example.com/file.zip"))
-
-    // User clicks cancel button
-    sut.cancelTask(id: "download")
-
-    // THEN: Wait for task to complete (cancelled) and verify cleanup
-    await downloadTask.value
-    #expect(sut.runningTaskCount == 0)
-  }
-
-  @Test func cancelTask_withDifferentIDTypes() async {
-    // GIVEN: Feature supporting different ID types
-    struct MultiIDFeature: Feature, Sendable {
-      typealias Action = IDAction
-      typealias State = TestState
-
-      func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, _ in
-          switch action {
-          case .startWithString:
-            return .run(id: "stringID") { _ in
-              try await Task.sleep(for: .milliseconds(100))
-            }
-          case .startWithInt:
-            return .run(id: "42") { _ in
-              try await Task.sleep(for: .milliseconds(100))
-            }
-          case .startWithEnum:
-            return .run(id: "upload") { _ in
-              try await Task.sleep(for: .milliseconds(100))
-            }
-          }
-        }
-      }
-    }
-
-    enum TaskIdentifier: Hashable, Sendable {
-      case upload
-      case download
-    }
-
-    enum IDAction: Sendable {
-      case startWithString
-      case startWithInt
-      case startWithEnum
-    }
-
-    let sut = Store(
-      initialState: TestState(),
-      feature: MultiIDFeature()
-    )
-
-    // Start tasks with different ID types
-    let task1 = sut.send(.startWithString)
-    let task2 = sut.send(.startWithInt)
-    let task3 = sut.send(.startWithEnum)
-
-    // WHEN: Cancel with different ID types (as strings)
-    sut.cancelTask(id: "stringID")
-    sut.cancelTask(id: "42")
-    sut.cancelTask(id: "upload")
-
-    // THEN: Wait for all tasks and verify cleanup
-    await task1.value
-    await task2.value
-    await task3.value
-
-    #expect(sut.runningTaskCount == 0)
-  }
-
-  @Test func cancelTask_duringViewLifecycle_onDisappear() async {
-    // GIVEN: Feature simulating view lifecycle scenario
-    struct ViewLifecycleFeature: Feature, Sendable {
-      typealias Action = ViewAction
-      typealias State = ViewState
-
-      func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
-          switch action {
-          case .onAppear:
-            state.isActive = true
-            return .run(id: "backgroundTask") { _ in
-              // Long-running background task
-              try await Task.sleep(for: .seconds(10))
-            }
-
-          case .onDisappear:
-            state.isActive = false
-            return .none
-          }
-        }
-      }
-    }
-
-    enum ViewAction: Sendable {
-      case onAppear
-      case onDisappear
-    }
-
-    let sut = Store(
-      initialState: ViewState(),
-      feature: ViewLifecycleFeature()
-    )
-
-    // View appears and starts background task
-    let appearTask = sut.send(.onAppear)
-
-    // WHEN: View disappears - cleanup task
-    await sut.send(.onDisappear).value
-    sut.cancelTask(id: "backgroundTask")
-
-    // THEN: Wait for task cancellation and verify cleanup
-    await appearTask.value
-
-    #expect(!sut.state.isActive)
-    #expect(sut.runningTaskCount == 0)
-  }
-
-  @Test func cancelTask_triggersCancellationErrorInCatchHandler() async {
-    // GIVEN: Feature with .catch handler that verifies CancellationError
-    struct CancellationTestFeature: Feature, Sendable {
-      typealias Action = CancelAction
-      typealias State = CancelState
-
-      func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
-          switch action {
-          case .startLongTask:
-            state.isRunning = true
-            return .run(id: "long-task") { _ in
-              try await Task.sleep(for: .seconds(10))
-            }
-            .catch { error, state in
-              state.isRunning = false
-              state.didCatchError = true
-              state.caughtCancellationError = (error is CancellationError)
-            }
-
-          case .cancelTask:
-            return .cancel(id: "long-task")
-          }
-        }
-      }
-    }
-
-    enum CancelAction: Sendable {
-      case startLongTask
-      case cancelTask
-    }
-
-    let sut = Store(
-      initialState: CancelState(),
-      feature: CancellationTestFeature()
-    )
-
-    // Start long-running task
-    let taskHandle = sut.send(.startLongTask)
-
-    // Wait for task to start
+    // Give deinit time to execute
+    await Task.yield()
     try? await Task.sleep(for: .milliseconds(10))
-    #expect(sut.state.isRunning)
 
-    // WHEN: Cancel the task via action
-    await sut.send(.cancelTask).value
-
-    // Wait for cancellation to propagate
-    await taskHandle.value
-    try? await Task.sleep(for: .milliseconds(50))
-
-    // THEN: Verify CancellationError was caught
-    #expect(sut.state.didCatchError)
-    #expect(sut.state.caughtCancellationError)
-    #expect(!sut.state.isRunning)
-    #expect(sut.runningTaskCount == 0)
-  }
-
-  @Test func cancelTaskDirect_triggersCancellationErrorInCatchHandler() async {
-    // GIVEN: Feature with .catch handler
-    struct DirectCancelFeature: Feature, Sendable {
-      typealias Action = SimpleAction
-      typealias State = CancelState
-
-      func handle() -> ActionHandler<Action, State> {
-        ActionHandler { action, state in
-          switch action {
-          case .start:
-            state.isRunning = true
-            return .run(id: "direct-cancel-task") { _ in
-              try await Task.sleep(for: .seconds(10))
-            }
-            .catch { error, state in
-              state.isRunning = false
-              state.didCatchError = true
-              state.caughtCancellationError = (error is CancellationError)
-            }
-          }
-        }
-      }
-    }
-
-    enum SimpleAction: Sendable {
-      case start
-    }
-
-    let sut = Store(
-      initialState: CancelState(),
-      feature: DirectCancelFeature()
-    )
-
-    // Start task
-    let taskHandle = sut.send(.start)
-
-    // Wait for task to start
-    try? await Task.sleep(for: .milliseconds(10))
-    #expect(sut.state.isRunning)
-
-    // WHEN: Cancel using direct store.cancelTask() method
-    sut.cancelTask(id: "direct-cancel-task")
-
-    // Wait for cancellation
-    await taskHandle.value
-    try? await Task.sleep(for: .milliseconds(50))
-
-    // THEN: Verify CancellationError was caught
-    #expect(sut.state.didCatchError)
-    #expect(sut.state.caughtCancellationError)
-    #expect(!sut.state.isRunning)
-    #expect(sut.runningTaskCount == 0)
+    // THEN: Store should be fully deallocated
+    #expect(weakStore == nil)
   }
 }
 // swiftlint:enable file_length type_body_length

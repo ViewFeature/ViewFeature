@@ -754,22 +754,29 @@ struct DownloadFeature: Feature {
         #expect(!store.state.isDownloading)
     }
 
-    @Test func viewDisappearCancelsTask() async {
-        let store = Store(
-            initialState: DownloadFeature.State(),
-            feature: DownloadFeature()
-        )
+    @Test func automaticTaskCancellationOnStoreDeinit() async {
+        // Track store lifecycle
+        weak var weakStore: Store<DownloadFeature>?
 
-        // View appears, start download
-        store.send(.startDownload)
-        #expect(store.isTaskRunning(id: "download"))
+        do {
+            let store = Store(
+                initialState: DownloadFeature.State(),
+                feature: DownloadFeature()
+            )
+            weakStore = store
 
-        // View disappears - cancel task
-        store.cancelTask(id: "download")
+            // View appears, start download
+            store.send(.startDownload)
+            #expect(store.isTaskRunning(id: "download"))
 
-        // Verify cleanup
-        #expect(!store.isTaskRunning(id: "download"))
-        #expect(store.runningTaskCount == 0)
+            // Store goes out of scope here - automatic cancellation via deinit
+        }
+
+        // Wait for deinit
+        await Task.yield()
+
+        // Verify automatic cleanup
+        #expect(weakStore == nil)  // Store was deallocated, all tasks cancelled
     }
 }
 ```

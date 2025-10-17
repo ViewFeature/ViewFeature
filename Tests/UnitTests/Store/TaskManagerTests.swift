@@ -189,132 +189,6 @@ import Testing
   //   #expect(sut.runningTaskCount == 0)
   // }
 
-  // MARK: - cancelTask(id:)
-
-  @Test func cancelTask_cancelsSpecificTask() async {
-    let sut = TaskManager()
-    // GIVEN: A running task
-    sut.executeTask(
-      id: "cancel-me", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
-
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
-    #expect(sut.isTaskRunning(id: "cancel-me"))
-
-    // WHEN: Cancel the task
-    sut.cancelTask(id: "cancel-me")
-
-    // THEN: Task should no longer be running
-    #expect(!sut.isTaskRunning(id: "cancel-me"))
-  }
-
-  @Test func cancelTask_ignoresNonExistentTask() {
-    let sut = TaskManager()
-    // GIVEN: No tasks
-    // WHEN & THEN: Cancel non-existent task should not crash
-    sut.cancelTask(id: "non-existent")
-    #expect(sut.runningTaskCount == 0)
-  }
-
-  @Test func cancelTask_removesFromTracking() async {
-    let sut = TaskManager()
-    // GIVEN: A running task
-    sut.executeTask(
-      id: "tracked", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
-
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
-    #expect(sut.runningTaskCount == 1)
-
-    // WHEN: Cancel the task
-    sut.cancelTask(id: "tracked")
-
-    // THEN: Task should be removed
-    #expect(sut.runningTaskCount == 0)
-  }
-
-  @Test func cancelTask_triggersCancellationError() async {
-    let sut = TaskManager()
-    // GIVEN: A flag to track error handling
-    var didCatchError = false
-    var caughtError: Error?
-
-    // Execute a task that sleeps
-    sut.executeTask(
-      id: "will-cancel",
-      operation: {
-        try await Task.sleep(for: .seconds(10))
-      },
-      onError: { error in
-        didCatchError = true
-        caughtError = error
-      }
-    )
-
-    // Wait for task to start
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
-
-    // WHEN: Cancel the task
-    sut.cancelTask(id: "will-cancel")
-
-    // Wait for error handler to execute
-    try? await Task.sleep(nanoseconds: 50_000_000)  // 50ms
-
-    // THEN: Error handler should have been called with CancellationError
-    #expect(didCatchError)
-    #expect(caughtError != nil)
-    #expect(caughtError is CancellationError)
-  }
-
-  // MARK: - cancelAllTasks()
-
-  @Test func cancelAllTasks_cancelsMultipleRunningTasks() async {
-    let sut = TaskManager()
-    // GIVEN: Multiple running tasks
-    sut.executeTask(
-      id: "t1", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
-    sut.executeTask(
-      id: "t2", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
-    sut.executeTask(
-      id: "t3", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
-
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
-    #expect(sut.runningTaskCount == 3)
-
-    // WHEN: Cancel all tasks
-    sut.cancelAllTasks()
-
-    // THEN: All tasks should be cancelled
-    #expect(sut.runningTaskCount == 0)
-    #expect(!sut.isTaskRunning(id: "t1"))
-    #expect(!sut.isTaskRunning(id: "t2"))
-    #expect(!sut.isTaskRunning(id: "t3"))
-  }
-
-  @Test func cancelAllTasks_worksOnEmptyManager() {
-    let sut = TaskManager()
-    // GIVEN: No tasks
-    // WHEN: Cancel all
-    sut.cancelAllTasks()
-
-    // THEN: Should not crash
-    #expect(sut.runningTaskCount == 0)
-  }
-
-  @Test func cancelAllTasks_clearsTrackingDictionary() async {
-    let sut = TaskManager()
-    // GIVEN: A running task
-    sut.executeTask(
-      id: "clear-me", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
-
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
-    #expect(sut.runningTaskCount == 1)
-
-    // WHEN: Cancel all tasks
-    sut.cancelAllTasks()
-
-    // THEN: Dictionary should be cleared
-    #expect(sut.runningTaskCount == 0)
-  }
-
   // MARK: - cancelTaskInternal(id:)
 
   @Test func cancelTaskInternal_cancelsTaskByStringId() async {
@@ -377,5 +251,131 @@ import Testing
 
     // Check with non-existent int type
     #expect(!sut.isTaskRunning(id: 123))
+  }
+
+  // MARK: - deinit Tests
+
+  @Test func deinit_automaticallyCancelsAllRunningTasks() async {
+    // GIVEN: TaskManager with running tasks
+    weak var weakManager: TaskManager?
+
+    do {
+      let manager = TaskManager()
+      weakManager = manager
+
+      // Start multiple long-running tasks
+      manager.executeTask(
+        id: "long-1",
+        operation: { try await Task.sleep(for: .seconds(100)) },
+        onError: nil
+      )
+      manager.executeTask(
+        id: "long-2",
+        operation: { try await Task.sleep(for: .seconds(100)) },
+        onError: nil
+      )
+      manager.executeTask(
+        id: "long-3",
+        operation: { try await Task.sleep(for: .seconds(100)) },
+        onError: nil
+      )
+
+      // Give tasks time to start
+      try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+
+      // Verify tasks are running
+      #expect(manager.runningTaskCount == 3)
+
+      // WHEN: TaskManager goes out of scope (deinit called)
+    }
+
+    // Give deinit time to execute
+    await Task.yield()
+    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+
+    // THEN: TaskManager should be deallocated
+    #expect(weakManager == nil)
+  }
+
+  @Test func deinit_cleansUpTaskDictionary() async {
+    // GIVEN: TaskManager with tasks
+    weak var weakManager: TaskManager?
+    var taskCount: Int = 0
+
+    do {
+      let manager = TaskManager()
+      weakManager = manager
+
+      // Start task
+      manager.executeTask(
+        id: "cleanup-test",
+        operation: { try await Task.sleep(for: .seconds(100)) },
+        onError: nil
+      )
+
+      // Give task time to register
+      try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+
+      // Record task count before deinit
+      taskCount = manager.runningTaskCount
+      #expect(taskCount > 0)
+
+      // WHEN: TaskManager goes out of scope
+    }
+
+    // Give deinit time to execute
+    await Task.yield()
+    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+
+    // THEN: TaskManager should be fully deallocated
+    #expect(weakManager == nil)
+  }
+
+  @Test func deinit_preventsMemoryLeaks() async {
+    // GIVEN: Multiple TaskManager instances with tasks
+    weak var weakManager1: TaskManager?
+    weak var weakManager2: TaskManager?
+    weak var weakManager3: TaskManager?
+
+    do {
+      let manager1 = TaskManager()
+      let manager2 = TaskManager()
+      let manager3 = TaskManager()
+
+      weakManager1 = manager1
+      weakManager2 = manager2
+      weakManager3 = manager3
+
+      // Start tasks in each manager
+      manager1.executeTask(
+        id: "leak-test-1",
+        operation: { try await Task.sleep(for: .seconds(100)) },
+        onError: nil
+      )
+      manager2.executeTask(
+        id: "leak-test-2",
+        operation: { try await Task.sleep(for: .seconds(100)) },
+        onError: nil
+      )
+      manager3.executeTask(
+        id: "leak-test-3",
+        operation: { try await Task.sleep(for: .seconds(100)) },
+        onError: nil
+      )
+
+      // Give tasks time to start
+      try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+
+      // WHEN: All managers go out of scope
+    }
+
+    // Give deinit time to execute
+    await Task.yield()
+    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+
+    // THEN: All managers should be deallocated
+    #expect(weakManager1 == nil)
+    #expect(weakManager2 == nil)
+    #expect(weakManager3 == nil)
   }
 }

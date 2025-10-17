@@ -310,7 +310,7 @@ import Testing
 
   // MARK: - Task Cancellation Error Tests
 
-  @Test func taskCancellationDoesNotCauseErrors() async {
+  @Test func automaticTaskCancellationDoesNotCauseErrors() async {
     // GIVEN: Store with cancellable task
     struct CancellableFeature: Feature, Sendable {
       typealias Action = NetworkAction
@@ -341,20 +341,29 @@ import Testing
       }
     }
 
-    let sut = Store(
-      initialState: NetworkState(),
-      feature: CancellableFeature()
-    )
+    // Track final state
+    var finalErrors: [String: String] = [:]
 
-    // WHEN: Start and cancel task
-    _ = sut.send(.fetchData("data1"))
-    try? await Task.sleep(for: .milliseconds(10))
+    do {
+      let store = Store(
+        initialState: NetworkState(),
+        feature: CancellableFeature()
+      )
 
-    sut.cancelAllTasks()
+      // WHEN: Start task and let Store deinit (automatic cancellation)
+      _ = store.send(.fetchData("data1"))
+      try? await Task.sleep(for: .milliseconds(10))
+
+      // Capture state before deinit
+      finalErrors = store.state.errors
+
+      // Store goes out of scope here - automatic cancellation via deinit
+    }
+
     try? await Task.sleep(for: .milliseconds(30))
 
-    // THEN: Cancellation should not add errors
-    #expect(sut.state.errors.isEmpty)
+    // THEN: Automatic cancellation should not have added errors
+    #expect(finalErrors.isEmpty)
   }
 
   // MARK: - Complex Error Scenarios

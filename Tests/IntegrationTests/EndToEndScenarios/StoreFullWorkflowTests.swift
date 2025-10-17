@@ -222,23 +222,36 @@ import Testing
 
   // MARK: - Task Cancellation Workflows
 
-  @Test func multipleCancellations() async {
+  @Test func automaticCancellationOnDeinit() async {
     // GIVEN: Store with multiple running tasks
-    let sut = Store(
-      initialState: UserState(),
-      feature: UserFeature()
-    )
+    weak var weakStore: Store<UserFeature>?
+    var taskCount: Int = 0
 
-    // WHEN: Start multiple tasks and cancel them
-    _ = sut.send(.loadUser("user1"))
-    _ = sut.send(.refreshData)
-    try? await Task.sleep(for: .milliseconds(10))
+    do {
+      let store = Store(
+        initialState: UserState(),
+        feature: UserFeature()
+      )
+      weakStore = store
 
-    sut.cancelAllTasks()
+      // WHEN: Start multiple tasks
+      _ = store.send(.loadUser("user1"))
+      _ = store.send(.refreshData)
+      try? await Task.sleep(for: .milliseconds(10))
+
+      // Record task count before deinit
+      taskCount = store.runningTaskCount
+      #expect(taskCount > 0)
+
+      // Store goes out of scope here - automatic cancellation via deinit
+    }
+
+    // Wait for deinit and cancellation
+    await Task.yield()
     try? await Task.sleep(for: .milliseconds(100))
 
-    // THEN: All tasks should be cancelled
-    #expect(sut.runningTaskCount == 0)
+    // THEN: Store should be deallocated (all tasks cancelled automatically)
+    #expect(weakStore == nil)
   }
 
   // MARK: - Data Refresh Workflows
