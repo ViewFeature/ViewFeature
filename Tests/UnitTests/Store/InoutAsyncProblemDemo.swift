@@ -4,195 +4,195 @@ import Testing
 /// Demonstrates why inout + async is problematic
 @MainActor
 final class InoutAsyncProblemDemo {
-  // MARK: - The Problem with inout + async
+    // MARK: - The Problem with inout + async
 
-  /// ⏱️ CASE 1: Understanding suspension points
-  @Test func suspensionPointBasics() async {
-    var message = "Start"
+    /// ⏱️ CASE 1: Understanding suspension points
+    @Test func suspensionPointBasics() async {
+        var message = "Start"
 
-    func asyncOperation(_ msg: inout String) async {
-      msg = "Step 1"
-      print("Before suspension: \(msg)")
+        func asyncOperation(_ msg: inout String) async {
+            msg = "Step 1"
+            print("Before suspension: \(msg)")
 
-      // 🔄 SUSPENSION POINT: 実行が中断される可能性
-      try? await Task.sleep(nanoseconds: 1000)
+            // 🔄 SUSPENSION POINT: 実行が中断される可能性
+            try? await Task.sleep(nanoseconds: 1000)
 
-      // ⚠️ ここに戻ってきたとき、msg は変更されているかも？
-      print("After suspension: \(msg)")
-      msg = "Step 2"
-    }
-
-    await asyncOperation(&message)
-    #expect(message == "Step 2")
-  }
-
-  /// 💥 CASE 2: The race condition scenario (conceptual)
-  @Test func conceptualRaceCondition() async {
-    // このテストは「なぜ禁止されているか」を説明するための概念的なもの
-
-    /*
-    想定されるシナリオ（もし許可されていたら）:
-
-    @MainActor
-    class Store {
-        private var state = State()
-
-        func process() async {
-            await asyncModify(&state)  // ❌ 実際は禁止されている
+            // ⚠️ ここに戻ってきたとき、msg は変更されているかも？
+            print("After suspension: \(msg)")
+            msg = "Step 2"
         }
 
-        func asyncModify(_ s: inout State) async {
-            s.count = 1
-            // 👇 SUSPENSION POINT
-            await Task.sleep(...)
-            // 👆 この間に MainActor の他のタスクが実行される可能性
-
-            // 問題:
-            // 1. 他のタスクが state を読む → inout の排他性違反
-            // 2. 他のタスクが state を変更 → データ競合
-            // 3. 予測不可能な動作 → バグ
-
-            s.count = 2  // どの state を変更している？
-        }
-
-        func anotherTask() {
-            // もし asyncModify が suspension 中なら？
-            print(state.count)  // ⚠️ 不定な値が読まれる可能性
-        }
-    }
-    */
-
-    #expect(true)  // Conceptual test
-  }
-
-  // MARK: - Synchronous inout is fine
-
-  /// ✅ CASE 3: Synchronous functions with inout - OK!
-  @Test func synchronousInoutOK() {
-    var count = 0
-
-    // ✅ 同期関数なら inout は問題なし
-    func syncModify(_ value: inout Int) {
-      value += 1
-      value += 2
-      value += 3
-      // 中断なし = 排他的アクセスが保証される
+        await asyncOperation(&message)
+        #expect(message == "Step 2")
     }
 
-    syncModify(&count)
-    #expect(count == 6)
-  }
+    /// 💥 CASE 2: The race condition scenario (conceptual)
+    @Test func conceptualRaceCondition() async {
+        // このテストは「なぜ禁止されているか」を説明するための概念的なもの
 
-  // MARK: - Actor isolation makes it worse
+        /*
+         想定されるシナリオ（もし許可されていたら）:
 
-  /// 🎭 CASE 4: Why actor-isolated + inout + async is especially bad
-  @Test func actorIsolatedProblem() async {
-    // Actor は re-entrant（再入可能）
-    // つまり、await 中に別のタスクが同じ actor で実行できる
+         @MainActor
+         class Store {
+         private var state = State()
 
-    @MainActor
-    class Counter {
-      var count = 0
+         func process() async {
+         await asyncModify(&state)  // ❌ 実際は禁止されている
+         }
 
-      // これが許可されていたら...（実際は禁止）
-      /*
-      func badAsyncIncrement() async {
-          await asyncModify(&count)  // ❌ 禁止
-      }
+         func asyncModify(_ s: inout State) async {
+         s.count = 1
+         // 👇 SUSPENSION POINT
+         await Task.sleep(...)
+         // 👆 この間に MainActor の他のタスクが実行される可能性
 
-      func asyncModify(_ value: inout Int) async {
-          value += 1
-          await Task.sleep(...)  // 👈 ここで他のタスクが実行可能
-          // ↓ もし別のタスクが count を読んだら？
-          value += 1
-      }
-      */
+         // 問題:
+         // 1. 他のタスクが state を読む → inout の排他性違反
+         // 2. 他のタスクが state を変更 → データ競合
+         // 3. 予測不可能な動作 → バグ
 
-      // ✅ 正しい方法
-      func goodAsyncIncrement() async {
-        count += 1  // 直接変更
-        try? await Task.sleep(nanoseconds: 1000)
-        count += 1  // OK: actor が同期を保証
-      }
+         s.count = 2  // どの state を変更している？
+         }
+
+         func anotherTask() {
+         // もし asyncModify が suspension 中なら？
+         print(state.count)  // ⚠️ 不定な値が読まれる可能性
+         }
+         }
+         */
+
+        #expect(true)  // Conceptual test
     }
 
-    let counter = Counter()
-    await counter.goodAsyncIncrement()
-    #expect(counter.count == 2)
-  }
+    // MARK: - Synchronous inout is fine
 
-  // MARK: - The workaround: Local variables
-
-  /// ✅ CASE 5: Safe pattern with local variables
-  @Test func localVariableWorkaround() async {
-    @MainActor
-    class Store {
-      var state = State()  // internal for testing
-
-      struct State {
+    /// ✅ CASE 3: Synchronous functions with inout - OK!
+    @Test func synchronousInoutOK() {
         var count = 0
-      }
 
-      // ❌ これは不可能
-      /*
-      func badPattern() async {
-          await asyncModify(&state)  // Error!
-      }
-      */
+        // ✅ 同期関数なら inout は問題なし
+        func syncModify(_ value: inout Int) {
+            value += 1
+            value += 2
+            value += 3
+            // 中断なし = 排他的アクセスが保証される
+        }
 
-      // ✅ これが正しいパターン
-      func goodPattern() async {
-        var localState = state  // 値型ならコピー
-        await asyncModify(&localState)  // OK: actor-isolated ではない
-        state = localState  // 結果を戻す
-      }
-
-      func asyncModify(_ stateParam: inout State) async {
-        stateParam.count += 1
-        try? await Task.sleep(nanoseconds: 1000)
-        stateParam.count += 1
-      }
+        syncModify(&count)
+        #expect(count == 6)
     }
 
-    let store = Store()
-    await store.goodPattern()
-    #expect(store.state.count == 2)
-  }
+    // MARK: - Actor isolation makes it worse
 
-  /// ✅ CASE 6: Reference type pattern (ViewFeature's approach)
-  @Test func referenceTypeWorkaround() async {
-    @MainActor
-    class Store {
-      var state = State()  // internal for testing
+    /// 🎭 CASE 4: Why actor-isolated + inout + async is especially bad
+    @Test func actorIsolatedProblem() async {
+        // Actor は re-entrant（再入可能）
+        // つまり、await 中に別のタスクが同じ actor で実行できる
 
-      class State {
-        var count = 0
-      }
+        @MainActor
+        class Counter {
+            var count = 0
 
-      // ✅ ViewFeature のパターン（参照型）
-      func goodPattern() async {
-        var localState = state  // 参照のコピー（同じオブジェクト）
-        await asyncModify(&localState)  // OK: localState は actor-isolated ではない
-        // state も自動的に更新されている（参照型なので）
-      }
+            // これが許可されていたら...（実際は禁止）
+            /*
+             func badAsyncIncrement() async {
+             await asyncModify(&count)  // ❌ 禁止
+             }
 
-      func asyncModify(_ stateParam: inout State) async {
-        stateParam.count += 1
-        try? await Task.sleep(nanoseconds: 1000)
-        stateParam.count += 1
-      }
+             func asyncModify(_ value: inout Int) async {
+             value += 1
+             await Task.sleep(...)  // 👈 ここで他のタスクが実行可能
+             // ↓ もし別のタスクが count を読んだら？
+             value += 1
+             }
+             */
+
+            // ✅ 正しい方法
+            func goodAsyncIncrement() async {
+                count += 1  // 直接変更
+                try? await Task.sleep(nanoseconds: 1000)
+                count += 1  // OK: actor が同期を保証
+            }
+        }
+
+        let counter = Counter()
+        await counter.goodAsyncIncrement()
+        #expect(counter.count == 2)
     }
 
-    let store = Store()
-    await store.goodPattern()
-    #expect(store.state.count == 2)
-  }
+    // MARK: - The workaround: Local variables
 
-  // MARK: - Visual timeline
+    /// ✅ CASE 5: Safe pattern with local variables
+    @Test func localVariableWorkaround() async {
+        @MainActor
+        class Store {
+            var state = State()  // internal for testing
 
-  /// 📊 CASE 7: Timeline visualization
-  @Test func timelineVisualization() async {
-    print("""
+            struct State {
+                var count = 0
+            }
+
+            // ❌ これは不可能
+            /*
+             func badPattern() async {
+             await asyncModify(&state)  // Error!
+             }
+             */
+
+            // ✅ これが正しいパターン
+            func goodPattern() async {
+                var localState = state  // 値型ならコピー
+                await asyncModify(&localState)  // OK: actor-isolated ではない
+                state = localState  // 結果を戻す
+            }
+
+            func asyncModify(_ stateParam: inout State) async {
+                stateParam.count += 1
+                try? await Task.sleep(nanoseconds: 1000)
+                stateParam.count += 1
+            }
+        }
+
+        let store = Store()
+        await store.goodPattern()
+        #expect(store.state.count == 2)
+    }
+
+    /// ✅ CASE 6: Reference type pattern (ViewFeature's approach)
+    @Test func referenceTypeWorkaround() async {
+        @MainActor
+        class Store {
+            var state = State()  // internal for testing
+
+            class State {
+                var count = 0
+            }
+
+            // ✅ ViewFeature のパターン（参照型）
+            func goodPattern() async {
+                var localState = state  // 参照のコピー（同じオブジェクト）
+                await asyncModify(&localState)  // OK: localState は actor-isolated ではない
+                // state も自動的に更新されている（参照型なので）
+            }
+
+            func asyncModify(_ stateParam: inout State) async {
+                stateParam.count += 1
+                try? await Task.sleep(nanoseconds: 1000)
+                stateParam.count += 1
+            }
+        }
+
+        let store = Store()
+        await store.goodPattern()
+        #expect(store.state.count == 2)
+    }
+
+    // MARK: - Visual timeline
+
+    /// 📊 CASE 7: Timeline visualization
+    @Test func timelineVisualization() async {
+        print("""
 
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     もし actor-isolated property を inout + async に渡せたら...
@@ -217,14 +217,14 @@ final class InoutAsyncProblemDemo {
     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     """)
 
-    #expect(true)
-  }
+        #expect(true)
+    }
 
-  // MARK: - Key takeaways
+    // MARK: - Key takeaways
 
-  /// 📝 CASE 8: Summary
-  @Test func summary() {
-    print("""
+    /// 📝 CASE 8: Summary
+    @Test func summary() {
+        print("""
 
     ╔═══════════════════════════════════════════════════════════════╗
     ║  inout の排他的アクセス - まとめ                                ║
@@ -258,6 +258,6 @@ final class InoutAsyncProblemDemo {
 
     """)
 
-    #expect(true)
-  }
+        #expect(true)
+    }
 }

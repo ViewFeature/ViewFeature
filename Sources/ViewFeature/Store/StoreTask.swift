@@ -12,26 +12,28 @@
 /// - ``run(id:operation:onError:cancelInFlight:)``
 /// - ``cancels(ids:)``
 public enum StoreTask<Action, State> {
-  /// No task to execute
-  case none
+    /// No task to execute
+    case none
 
-  /// Execute an asynchronous operation
-  ///
-  /// The operation receives the current state, allowing
-  /// safe state mutation within the MainActor context.
-  ///
-  /// - Parameters:
-  ///   - id: Unique identifier for this task
-  ///   - operation: The async operation to execute
-  ///   - onError: Optional error handler
-  ///   - cancelInFlight: If true, cancels any running task with the same id before starting this one
-  case run(
-    id: String,
-    operation: @MainActor (State) async throws -> Void,
-    onError: (@MainActor (Error, State) -> Void)?,
-    cancelInFlight: Bool
-  )
+    /// Execute an asynchronous operation
+    ///
+    /// The operation receives the current state, allowing
+    /// safe state mutation within the MainActor context.
+    ///
+    /// - Parameters:
+    ///   - id: Unique identifier for this task
+    ///   - operation: The async operation to execute
+    ///   - onError: Optional error handler
+    ///   - cancelInFlight: If true, cancels any running task with the same id before starting this one
+    ///   - priority: Optional task priority (defaults to nil, using system default)
+    case run(
+            id: String,
+            operation: @MainActor (State) async throws -> Void,
+            onError: (@MainActor (Error, State) -> Void)?,
+            cancelInFlight: Bool,
+            priority: TaskPriority?
+         )
 
-  /// Cancel running tasks by their IDs
-  case cancels(ids: [String])
+    /// Cancel running tasks by their IDs
+    case cancels(ids: [String])
 }

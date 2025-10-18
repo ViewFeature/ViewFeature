@@ -617,6 +617,133 @@ return .run { state in
   - Perfect for: downloads, parallel operations, independent tasks
   - Ensures: all tasks complete unless explicitly cancelled
 
+### Task Priority with `.priority(_:)`
+
+Control the execution priority of asynchronous tasks to optimize responsiveness and resource usage. Task priority helps the system schedule work efficiently, ensuring user-facing operations get preferential treatment over background work.
+
+#### Priority Levels
+
+ViewFeature supports all Swift `TaskPriority` levels:
+
+- **`.high`** - Critical user-facing operations
+- **`.userInitiated`** - User-requested actions (default for UI events)
+- **`.medium`** - Standard priority (system default when unspecified)
+- **`.low`** - Deferrable work
+- **`.background`** - Maintenance tasks, prefetching
+
+#### User-Facing Operations (High Priority)
+
+Use `.high` or `.userInitiated` priority for operations that directly respond to user actions:
+
+```swift
+struct DataFeature: Feature {
+    @Observable
+    final class State {
+        var criticalData: String?
+        var isLoading = false
+    }
+
+    enum Action: Sendable {
+        case loadCriticalData
+    }
+
+    func handle() -> ActionHandler<Action, State> {
+        ActionHandler { action, state in
+            switch action {
+            case .loadCriticalData:
+                state.isLoading = true
+
+                // High priority for user-facing operation
+                return .run { state in
+                    let data = try await apiClient.fetchCritical()
+                    state.criticalData = data
+                    state.isLoading = false
+                }
+                .priority(.high)
+                .cancellable(id: "critical-fetch", cancelInFlight: true)
+                .catch { _, state in
+                    state.isLoading = false
+                }
+            }
+        }
+    }
+}
+```
+
+#### Background Operations (Low Priority)
+
+Use `.background` or `.low` priority for non-urgent work:
+
+```swift
+struct AnalyticsFeature: Feature {
+    @Observable
+    final class State {
+        var sessionData: [String] = []
+    }
+
+    enum Action: Sendable {
+        case uploadAnalytics
+        case prefetchContent
+    }
+
+    func handle() -> ActionHandler<Action, State> {
+        ActionHandler { action, state in
+            switch action {
+            case .uploadAnalytics:
+                // Background priority for analytics
+                return .run { state in
+                    try await analyticsService.upload(state.sessionData)
+                }
+                .priority(.background)
+                .catch { error, _ in
+                    print("Analytics upload failed: \(error)")
+                }
+
+            case .prefetchContent:
+                // Low priority for prefetching
+                return .run { state in
+                    try await contentService.prefetch()
+                }
+                .priority(.low)
+            }
+        }
+    }
+}
+```
+
+#### Method Chaining
+
+Priority works seamlessly with other ActionTask methods:
+
+```swift
+return .run { state in
+    let user = try await apiClient.fetchUser()
+    state.user = user
+}
+.priority(.userInitiated)           // Set priority
+.cancellable(id: "loadUser", cancelInFlight: true)  // Add cancellation
+.catch { error, state in            // Add error handling
+    state.errorMessage = "\(error)"
+}
+```
+
+#### Key Behaviors
+
+- **Default Priority**: When `.priority()` is not specified, tasks use the system's default priority (typically `.medium`)
+- **Priority Inheritance**: Tasks inherit priority from their parent context unless explicitly overridden
+- **Method Chaining Order**: `.priority()` can be called in any order with `.cancellable()` and `.catch()`
+- **Task Scheduling**: Higher priority tasks may be scheduled before lower priority tasks, but this is managed by the Swift runtime
+
+#### Use Cases by Priority
+
+| Priority | Use Cases | Examples |
+|----------|-----------|----------|
+| `.high` | Critical UI updates, user-initiated saves | Submitting forms, saving documents |
+| `.userInitiated` | Direct user actions, content loading | Fetching data on button tap, search |
+| `.medium` | Standard operations (default) | General network requests |
+| `.low` | Deferrable updates | Refreshing cached data |
+| `.background` | Non-urgent maintenance | Analytics, logging, prefetching |
+
 ## Middleware
 
 ViewFeature supports middleware for cross-cutting concerns like logging, analytics, and validation.

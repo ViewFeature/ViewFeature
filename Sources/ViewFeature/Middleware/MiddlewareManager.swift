@@ -45,96 +45,96 @@ import Logging
 /// ```
 @MainActor
 public final class MiddlewareManager<Action, State> {
-  private var middlewares: [any BaseActionMiddleware] = []
+    private var middlewares: [any BaseActionMiddleware] = []
 
-  // Cached middleware lists for performance (computed at initialization and when middleware is added)
-  private var beforeMiddlewares: [any BeforeActionMiddleware] = []
-  private var afterMiddlewares: [any AfterActionMiddleware] = []
-  private var errorMiddlewares: [any ErrorHandlingMiddleware] = []
+    // Cached middleware lists for performance (computed at initialization and when middleware is added)
+    private var beforeMiddlewares: [any BeforeActionMiddleware] = []
+    private var afterMiddlewares: [any AfterActionMiddleware] = []
+    private var errorMiddlewares: [any ErrorHandlingMiddleware] = []
 
-  private let logger: Logger
+    private let logger: Logger
 
-  /// Creates a new MiddlewareManager with optional initial middleware.
-  public init(middlewares: [any BaseActionMiddleware] = []) {
-    self.middlewares = middlewares
-    let subsystem = Bundle.main.bundleIdentifier ?? "com.viewfeature.library"
-    self.logger = Logger(label: "\(subsystem).MiddlewareManager")
+    /// Creates a new MiddlewareManager with optional initial middleware.
+    public init(middlewares: [any BaseActionMiddleware] = []) {
+        self.middlewares = middlewares
+        let subsystem = Bundle.main.bundleIdentifier ?? "com.viewfeature.library"
+        self.logger = Logger(label: "\(subsystem).MiddlewareManager")
 
-    // Cache filtered middleware lists for performance
-    self.beforeMiddlewares = middlewares.compactMap { $0 as? any BeforeActionMiddleware }
-    self.afterMiddlewares = middlewares.compactMap { $0 as? any AfterActionMiddleware }
-    self.errorMiddlewares = middlewares.compactMap { $0 as? any ErrorHandlingMiddleware }
-  }
-
-  /// Returns all currently registered middleware.
-  public var allMiddlewares: [any BaseActionMiddleware] {
-    middlewares
-  }
-
-  /// Adds middleware to the execution pipeline (appended to end).
-  public func addMiddleware(_ middleware: some BaseActionMiddleware) {
-    middlewares.append(middleware)
-
-    // Update cached middleware lists
-    if let before = middleware as? any BeforeActionMiddleware {
-      beforeMiddlewares.append(before)
+        // Cache filtered middleware lists for performance
+        self.beforeMiddlewares = middlewares.compactMap { $0 as? any BeforeActionMiddleware }
+        self.afterMiddlewares = middlewares.compactMap { $0 as? any AfterActionMiddleware }
+        self.errorMiddlewares = middlewares.compactMap { $0 as? any ErrorHandlingMiddleware }
     }
-    if let after = middleware as? any AfterActionMiddleware {
-      afterMiddlewares.append(after)
-    }
-    if let error = middleware as? any ErrorHandlingMiddleware {
-      errorMiddlewares.append(error)
-    }
-  }
 
-  /// Adds multiple middleware to the execution pipeline.
-  ///
-  /// Equivalent to calling ``addMiddleware(_:)`` for each middleware in the array.
-  /// Order is preserved.
-  ///
-  /// - Parameter newMiddlewares: Array of middleware to add
-  public func addMiddlewares(_ newMiddlewares: [any BaseActionMiddleware]) {
-    for middleware in newMiddlewares {
-      addMiddleware(middleware)
+    /// Returns all currently registered middleware.
+    public var allMiddlewares: [any BaseActionMiddleware] {
+        middlewares
     }
-  }
 
-  /// Executes all before-action middleware in registration order.
-  ///
-  /// **Fail-Fast Semantics**: If any middleware throws, execution stops immediately and the error propagates.
-  /// Use for critical pre-conditions (authentication, rate limiting, feature flags).
-  ///
-  /// - Throws: The first error thrown by any middleware
-  public func executeBeforeAction(action: Action, state: State) async throws {
-    for middleware in beforeMiddlewares {
-      try await middleware.beforeAction(action, state: state)
-    }
-  }
+    /// Adds middleware to the execution pipeline (appended to end).
+    public func addMiddleware(_ middleware: some BaseActionMiddleware) {
+        middlewares.append(middleware)
 
-  /// Executes all after-action middleware with timing information.
-  ///
-  /// **Fail-Fast Semantics**: If any middleware throws, execution stops immediately and the error propagates.
-  /// Use for critical post-processing (transaction commits, cache invalidation).
-  ///
-  /// - Parameter duration: Execution duration in seconds (from start of action processing)
-  /// - Throws: The first error thrown by any middleware
-  public func executeAfterAction(
-    action: Action, state: State, result: ActionTask<Action, State>, duration: TimeInterval
-  ) async throws {
-    for middleware in afterMiddlewares {
-      try await middleware.afterAction(action, state: state, result: result, duration: duration)
+        // Update cached middleware lists
+        if let before = middleware as? any BeforeActionMiddleware {
+            beforeMiddlewares.append(before)
+        }
+        if let after = middleware as? any AfterActionMiddleware {
+            afterMiddlewares.append(after)
+        }
+        if let error = middleware as? any ErrorHandlingMiddleware {
+            errorMiddlewares.append(error)
+        }
     }
-  }
 
-  /// Executes all error-handling middleware in registration order.
-  ///
-  /// **Resilient Semantics**: All error handlers are guaranteed to execute.
-  /// Error handlers cannot throw and must handle errors internally using `do-catch` or `try?`.
-  ///
-  /// - Note: This method never throws. All error handlers will execute to completion.
-  public func executeErrorHandling(error: Error, action: Action, state: State) async {
-    for middleware in errorMiddlewares {
-      await middleware.onError(error, action: action, state: state)
+    /// Adds multiple middleware to the execution pipeline.
+    ///
+    /// Equivalent to calling ``addMiddleware(_:)`` for each middleware in the array.
+    /// Order is preserved.
+    ///
+    /// - Parameter newMiddlewares: Array of middleware to add
+    public func addMiddlewares(_ newMiddlewares: [any BaseActionMiddleware]) {
+        for middleware in newMiddlewares {
+            addMiddleware(middleware)
+        }
     }
-  }
+
+    /// Executes all before-action middleware in registration order.
+    ///
+    /// **Fail-Fast Semantics**: If any middleware throws, execution stops immediately and the error propagates.
+    /// Use for critical pre-conditions (authentication, rate limiting, feature flags).
+    ///
+    /// - Throws: The first error thrown by any middleware
+    public func executeBeforeAction(action: Action, state: State) async throws {
+        for middleware in beforeMiddlewares {
+            try await middleware.beforeAction(action, state: state)
+        }
+    }
+
+    /// Executes all after-action middleware with timing information.
+    ///
+    /// **Fail-Fast Semantics**: If any middleware throws, execution stops immediately and the error propagates.
+    /// Use for critical post-processing (transaction commits, cache invalidation).
+    ///
+    /// - Parameter duration: Execution duration in seconds (from start of action processing)
+    /// - Throws: The first error thrown by any middleware
+    public func executeAfterAction(
+        action: Action, state: State, result: ActionTask<Action, State>, duration: TimeInterval
+    ) async throws {
+        for middleware in afterMiddlewares {
+            try await middleware.afterAction(action, state: state, result: result, duration: duration)
+        }
+    }
+
+    /// Executes all error-handling middleware in registration order.
+    ///
+    /// **Resilient Semantics**: All error handlers are guaranteed to execute.
+    /// Error handlers cannot throw and must handle errors internally using `do-catch` or `try?`.
+    ///
+    /// - Note: This method never throws. All error handlers will execute to completion.
+    public func executeErrorHandling(error: Error, action: Action, state: State) async {
+        for middleware in errorMiddlewares {
+            await middleware.onError(error, action: action, state: state)
+        }
+    }
 }
