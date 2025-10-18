@@ -606,3 +606,65 @@ extension ActionTask {
         }
     }
 }
+
+// MARK: - Internal Optimization Helpers
+
+extension ActionTask {
+    /// Flattens a merged task tree into an array of leaf tasks.
+    ///
+    /// This optimization converts a left-biased merge tree:
+    /// ```
+    /// merged(merged(merged(a, b), c), d)  // depth: 3
+    /// ```
+    ///
+    /// Into a flat array for parallel execution:
+    /// ```
+    /// [a, b, c, d]  // executed in single TaskGroup
+    /// ```
+    ///
+    /// ## Performance Benefits
+    /// - Reduces TaskGroup nesting from O(n) to O(1)
+    /// - Single TaskGroup for all parallel tasks
+    /// - More efficient for large task counts
+    ///
+    /// - Returns: Array of tasks to execute in parallel
+    internal func flattenMerged() -> [ActionTask] {
+        switch operation {
+        case .merged(let left, let right):
+            // Recursively flatten both sides
+            return left.flattenMerged() + right.flattenMerged()
+        default:
+            // Leaf task (run, cancel, none, or concatenated)
+            return [self]
+        }
+    }
+
+    /// Flattens a concatenated task tree into an array of tasks to execute sequentially.
+    ///
+    /// This optimization converts a left-biased concatenate tree:
+    /// ```
+    /// concatenated(concatenated(concatenated(a, b), c), d)
+    /// ```
+    ///
+    /// Into a flat array for sequential execution:
+    /// ```
+    /// [a, b, c, d]  // executed one by one
+    /// ```
+    ///
+    /// ## Performance Benefits
+    /// - Reduces function call depth from O(n) to O(1)
+    /// - Direct iteration instead of nested recursion
+    /// - More efficient for long sequential workflows
+    ///
+    /// - Returns: Array of tasks to execute sequentially
+    internal func flattenConcatenated() -> [ActionTask] {
+        switch operation {
+        case .concatenated(let left, let right):
+            // Recursively flatten both sides
+            return left.flattenConcatenated() + right.flattenConcatenated()
+        default:
+            // Leaf task (run, cancel, none, or merged)
+            return [self]
+        }
+    }
+}

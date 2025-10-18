@@ -262,13 +262,19 @@ public final class Store<F: Feature> {
         case .cancels(let ids):
             taskManager.cancelTasksInternal(ids: ids)
 
-        case .merged(let left, let right):
+        case .merged:
             // ========================================
-            // Parallel Execution (merge)
+            // Parallel Execution (merge) - Optimized
             // ========================================
-            // Execute both tasks concurrently using withTaskGroup.
-            // This allows multiple async operations to run in parallel while still
-            // maintaining structured concurrency guarantees.
+            // Flatten the merge tree to execute all tasks in a single TaskGroup.
+            //
+            // Before optimization:
+            //   merge([a, b, c, d]) → merged(merged(merged(a, b), c), d)
+            //   Depth: 3 nested TaskGroups
+            //
+            // After optimization:
+            //   Flatten to [a, b, c, d] → Single TaskGroup with 4 tasks
+            //   Depth: 1 TaskGroup
             //
             // Example:
             //   .merge(
@@ -276,22 +282,29 @@ public final class Store<F: Feature> {
             //     .run { state in state.posts = try await api.fetchPosts() }
             //   )
             //
-            // Both API calls execute simultaneously, reducing total wait time.
+            // All tasks execute simultaneously in a single TaskGroup, reducing overhead.
+            let tasks = task.flattenMerged()
             await withTaskGroup(of: Void.self) { group in
-                group.addTask {
-                    await self.executeTask(left)
-                }
-                group.addTask {
-                    await self.executeTask(right)
+                for task in tasks {
+                    group.addTask {
+                        await self.executeTask(task)
+                    }
                 }
             }
 
-        case .concatenated(let left, let right):
+        case .concatenated:
             // ========================================
-            // Sequential Execution (concatenate)
+            // Sequential Execution (concatenate) - Optimized
             // ========================================
-            // Execute tasks one after another. The right task only starts
-            // after the left task completes.
+            // Flatten the concatenate tree to execute tasks iteratively.
+            //
+            // Before optimization:
+            //   concatenate([a, b, c, d]) → concatenated(concatenated(concatenated(a, b), c), d)
+            //   Call depth: 3 recursive calls
+            //
+            // After optimization:
+            //   Flatten to [a, b, c, d] → Simple for-loop
+            //   Call depth: 1
             //
             // Example:
             //   .concatenate(
@@ -299,9 +312,11 @@ public final class Store<F: Feature> {
             //     .run { state in state.step = 2 }
             //   )
             //
-            // Step 2 only executes after step 1 completes.
-            await self.executeTask(left)
-            await self.executeTask(right)
+            // Each task executes one after another in order.
+            let tasks = task.flattenConcatenated()
+            for task in tasks {
+                await self.executeTask(task)
+            }
         }
     }
 
