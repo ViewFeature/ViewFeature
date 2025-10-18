@@ -91,7 +91,9 @@ import Testing
     let fetchTask = sut.send(.fetch("data1"))
 
     // Give task time to start
-    try? await Task.sleep(for: .milliseconds(5))
+    await Task.yield()
+    await Task.yield()
+    await Task.yield()
 
     await sut.send(.cancelFetch("data1")).value
 
@@ -99,7 +101,8 @@ import Testing
     await fetchTask.value
 
     // Give time for cleanup
-    try? await Task.sleep(for: .milliseconds(10))
+    await Task.yield()
+    await Task.yield()
 
     // THEN: Task should be cancelled and cleaned up
     #expect(!sut.isTaskRunning(id: "fetch-data1"))

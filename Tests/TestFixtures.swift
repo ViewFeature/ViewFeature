@@ -218,7 +218,10 @@ extension XCTestCase {
         XCTFail("Condition not met within timeout", file: file, line: line)
         return
       }
-      try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+      // Yield multiple times before sleeping to improve responsiveness
+      await Task.yield()
+      await Task.yield()
+      await Task.yield()
     }
   }
 

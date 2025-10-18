@@ -1,10 +1,9 @@
-import Testing
 import Foundation
+import Testing
 
 /// Demonstrates why inout + async is problematic
 @MainActor
 final class InoutAsyncProblemDemo {
-
   // MARK: - The Problem with inout + async
 
   /// ⏱️ CASE 1: Understanding suspension points
@@ -148,10 +147,10 @@ final class InoutAsyncProblemDemo {
         state = localState  // 結果を戻す
       }
 
-      func asyncModify(_ s: inout State) async {
-        s.count += 1
+      func asyncModify(_ stateParam: inout State) async {
+        stateParam.count += 1
         try? await Task.sleep(nanoseconds: 1000)
-        s.count += 1
+        stateParam.count += 1
       }
     }
 
@@ -177,10 +176,10 @@ final class InoutAsyncProblemDemo {
         // state も自動的に更新されている（参照型なので）
       }
 
-      func asyncModify(_ s: inout State) async {
-        s.count += 1
+      func asyncModify(_ stateParam: inout State) async {
+        stateParam.count += 1
         try? await Task.sleep(nanoseconds: 1000)
-        s.count += 1
+        stateParam.count += 1
       }
     }
 

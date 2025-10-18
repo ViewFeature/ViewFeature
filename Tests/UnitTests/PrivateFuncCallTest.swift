@@ -1,12 +1,11 @@
 import Foundation
+import Observation
 import Testing
 import ViewFeature
-import Observation
 
 /// Test: Can we call private functions from run blocks?
 @MainActor
 @Suite struct PrivateFuncCallTests {
-
     // MARK: - Test Feature with Private Helper
 
     struct TestFeature: Feature {
@@ -22,7 +21,7 @@ import Observation
 
         // Private helper function
         private func formatValue(_ input: String) -> String {
-            return "Formatted: \(input.uppercased())"
+            "Formatted: \(input.uppercased())"
         }
 
         func handle() -> ActionHandler<Action, State> {

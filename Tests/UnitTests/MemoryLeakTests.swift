@@ -1,12 +1,11 @@
 import Foundation
+import Observation
 import Testing
 import ViewFeature
-import Observation
 
 /// Test: Memory leak scenarios with [self] capture
 @MainActor
 @Suite struct MemoryLeakTests {
-
     // MARK: - Feature with Private Functions
 
     struct LeakTestFeature: Feature {
@@ -22,7 +21,7 @@ import Observation
         }
 
         private func expensiveOperation(_ input: String) -> String {
-            return "Processed: \(input)"
+            "Processed: \(input)"
         }
 
         func handle() -> ActionHandler<Action, State> {
@@ -145,8 +144,8 @@ import Observation
             weakStore = store
 
             // Execute multiple operations
-            for i in 0..<10 {
-                await store.send(.process("iteration \(i)")).value
+            for iteration in 0..<10 {
+                await store.send(.process("iteration \(iteration)")).value
             }
 
             #expect(store.runningTaskCount == 0)

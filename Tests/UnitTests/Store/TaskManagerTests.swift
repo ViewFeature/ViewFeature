@@ -35,7 +35,9 @@ import Testing
       id: "task-2", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
 
     // Wait for tasks to start
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    await Task.yield()
+    await Task.yield()
+    await Task.yield()
 
     // THEN: Count should reflect active tasks
     #expect(sut.runningTaskCount == 2)
@@ -61,7 +63,9 @@ import Testing
     // GIVEN: A running task
     sut.executeTask(
       id: "running", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    await Task.yield()
+    await Task.yield()
+    await Task.yield()
 
     // WHEN & THEN: Check if task is running
     #expect(sut.isTaskRunning(id: "running"))
@@ -98,7 +102,7 @@ import Testing
     sut.executeTask(id: "test", operation: { didExecute = true }, onError: nil)
 
     // Wait for execution
-    try? await Task.sleep(nanoseconds: 20_000_000)  // 20ms
+    try? await Task.sleep(nanoseconds: 5_000_000)  // 5ms
 
     // THEN: Operation should have executed
     #expect(didExecute)
@@ -118,7 +122,7 @@ import Testing
     )
 
     // Wait for error handling
-    try? await Task.sleep(nanoseconds: 20_000_000)  // 20ms
+    try? await Task.sleep(nanoseconds: 5_000_000)  // 5ms
 
     // THEN: Error handler should have been called
     #expect(capturedError != nil)
@@ -131,7 +135,7 @@ import Testing
       id: "no-handler", operation: { throw NSError(domain: "Test", code: 1) }, onError: nil)
 
     // Wait
-    try? await Task.sleep(nanoseconds: 20_000_000)  // 20ms
+    try? await Task.sleep(nanoseconds: 5_000_000)  // 5ms
 
     // THEN: Should not crash
     #expect(Bool(true))
@@ -151,12 +155,14 @@ import Testing
       onError: nil
     )
 
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    await Task.yield()
+    await Task.yield()
+    await Task.yield()
 
     // WHEN: Execute second task with same ID
     sut.executeTask(id: "dup", operation: {}, onError: nil)
 
-    try? await Task.sleep(nanoseconds: 30_000_000)  // 30ms
+    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
 
     // THEN: First task should not have completed
     #expect(!firstCompleted)
@@ -197,7 +203,9 @@ import Testing
     sut.executeTask(
       id: "internal", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
 
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    await Task.yield()
+    await Task.yield()
+    await Task.yield()
     #expect(sut.isTaskRunning(id: "internal"))
 
     // WHEN: Cancel using internal method with single ID in array
@@ -214,7 +222,9 @@ import Testing
       id: "internal-tracking", operation: { try await Task.sleep(nanoseconds: 100_000_000) },
       onError: nil)
 
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    await Task.yield()
+    await Task.yield()
+    await Task.yield()
     #expect(sut.runningTaskCount == 1)
 
     // WHEN: Cancel using internal method
@@ -234,13 +244,16 @@ import Testing
     sut.executeTask(
       id: "task-3", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
 
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    await Task.yield()
+    await Task.yield()
+    await Task.yield()
     #expect(sut.runningTaskCount == 3)
 
     // WHEN: Cancel multiple tasks at once
     sut.cancelTasksInternal(ids: ["task-1", "task-3"])
 
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    await Task.yield()
+    await Task.yield()
 
     // THEN: Two tasks should be cancelled, one should remain
     #expect(!sut.isTaskRunning(id: "task-1"))
@@ -255,7 +268,9 @@ import Testing
     sut.executeTask(
       id: "task", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
 
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    await Task.yield()
+    await Task.yield()
+    await Task.yield()
     #expect(sut.runningTaskCount == 1)
 
     // WHEN: Cancel with empty array
@@ -272,7 +287,9 @@ import Testing
     sut.executeTask(
       id: "existing", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
 
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    await Task.yield()
+    await Task.yield()
+    await Task.yield()
 
     // WHEN: Cancel with non-existent IDs
     sut.cancelTasksInternal(ids: ["non-existent-1", "non-existent-2"])
@@ -290,13 +307,16 @@ import Testing
     sut.executeTask(
       id: "task-2", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
 
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    await Task.yield()
+    await Task.yield()
+    await Task.yield()
     #expect(sut.runningTaskCount == 2)
 
     // WHEN: Cancel with mix of existing and non-existent IDs
     sut.cancelTasksInternal(ids: ["task-1", "non-existent", "task-2"])
 
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    await Task.yield()
+    await Task.yield()
 
     // THEN: Only existing tasks should be cancelled
     #expect(!sut.isTaskRunning(id: "task-1"))
@@ -310,7 +330,9 @@ import Testing
     sut.executeTask(
       id: "dup", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
 
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    await Task.yield()
+    await Task.yield()
+    await Task.yield()
     #expect(sut.isTaskRunning(id: "dup"))
 
     // WHEN: Cancel with duplicate IDs in array
@@ -329,7 +351,7 @@ import Testing
     var didExecute = false
     sut.executeTask(id: "", operation: { didExecute = true }, onError: nil)
 
-    try? await Task.sleep(nanoseconds: 20_000_000)  // 20ms
+    try? await Task.sleep(nanoseconds: 5_000_000)  // 5ms
 
     // THEN: Should work normally
     #expect(didExecute)
@@ -341,7 +363,9 @@ import Testing
     sut.executeTask(
       id: "string-id", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
 
-    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    await Task.yield()
+    await Task.yield()
+    await Task.yield()
 
     // WHEN & THEN: Check with string type
     #expect(sut.isTaskRunning(id: "string-id"))
