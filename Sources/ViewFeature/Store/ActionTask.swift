@@ -71,6 +71,10 @@ private enum TaskIdGenerator {
   private static let counter = Atomic<UInt64>(0)
 
   static func generate() -> String {
+    // .relaxed is safe: only atomicity (uniqueness) required, no memory ordering needed.
+    // ID generation is independent of other memory operations, and TaskManager uses @MainActor
+    // for synchronization. Stronger orderings (.acquiring, .sequentiallyConsistent) would add
+    // unnecessary performance cost without providing useful guarantees.
     let id = counter.wrappingAdd(1, ordering: .relaxed)
     return "auto-task-\(id)"
   }
