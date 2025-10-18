@@ -10,7 +10,6 @@ import Testing
 /// traditional stack-based recursion.
 @MainActor
 @Suite struct DeepRecursionTests {
-
     enum TestAction: Sendable {
         case runDeep(Int)
     }
@@ -31,7 +30,7 @@ import Testing
         typealias State = TestState
 
         func handle() -> ActionHandler<Action, State> {
-            ActionHandler { action, state in
+            ActionHandler { action, _ in
                 switch action {
                 case .runDeep(let targetDepth):
                     // Build deeply nested concatenation
@@ -99,10 +98,10 @@ import Testing
                     switch action {
                     case .runDeep(let count):
                         // Build array of tasks and merge
-                        let tasks = (0..<count).map { i in
+                        let tasks = (0..<count).map { index in
                             ActionTask<Action, State>.run { state in
-                                state.depth = i
-                                state.maxDepth = max(state.maxDepth, i)
+                                state.depth = index
+                                state.maxDepth = max(state.maxDepth, index)
                             }
                         }
                         return .merge(tasks)
@@ -130,7 +129,7 @@ import Testing
             typealias State = TestState
 
             func handle() -> ActionHandler<Action, State> {
-                ActionHandler { action, state in
+                ActionHandler { action, _ in
                     switch action {
                     case .runDeep(let levels):
                         return buildNested(level: 0, maxLevel: levels)
@@ -183,9 +182,9 @@ import Testing
                 ActionHandler { action, state in
                     switch action {
                     case .runDeep(let count):
-                        let tasks = (0..<count).map { i in
+                        let tasks = (0..<count).map { index in
                             ActionTask<Action, State>.run { state in
-                                state.maxDepth = max(state.maxDepth, i)
+                                state.maxDepth = max(state.maxDepth, index)
                             }
                         }
                         return .merge(tasks)
