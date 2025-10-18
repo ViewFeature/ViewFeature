@@ -144,7 +144,7 @@ public struct LoggingMiddleware: ActionMiddleware {
     /// ```
     public func beforeAction<Action, State>(
         _ action: Action,
-        state: State
+        state _: State
     ) async throws {
         guard shouldLog(.debug) else { return }
 
@@ -174,8 +174,8 @@ public struct LoggingMiddleware: ActionMiddleware {
     /// ```
     public func afterAction<Action, State>(
         _ action: Action,
-        state: State,
-        result: ActionTask<Action, State>,
+        state _: State,
+        result _: ActionTask<Action, State>,
         duration: TimeInterval
     ) async throws {
         guard shouldLog(.info) else { return }
@@ -209,7 +209,7 @@ public struct LoggingMiddleware: ActionMiddleware {
     public func onError<Action, State>(
         _ error: Error,
         action: Action,
-        state: State
+        state _: State
     ) async {
         logger.error(
             """

@@ -1,5 +1,4 @@
 import Foundation
-import Logging
 
 /// Manages and executes middleware in an action processing pipeline.
 ///
@@ -52,13 +51,9 @@ public final class MiddlewareManager<Action, State> {
     private var afterMiddlewares: [any AfterActionMiddleware] = []
     private var errorMiddlewares: [any ErrorHandlingMiddleware] = []
 
-    private let logger: Logger
-
     /// Creates a new MiddlewareManager with optional initial middleware.
     public init(middlewares: [any BaseActionMiddleware] = []) {
         self.middlewares = middlewares
-        let subsystem = Bundle.main.bundleIdentifier ?? "com.viewfeature.library"
-        self.logger = Logger(label: "\(subsystem).MiddlewareManager")
 
         // Cache filtered middleware lists for performance
         self.beforeMiddlewares = middlewares.compactMap { $0 as? any BeforeActionMiddleware }

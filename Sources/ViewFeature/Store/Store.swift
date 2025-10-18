@@ -1,5 +1,4 @@
 import Foundation
-import Logging
 import Observation
 
 /// The main store for managing application state and dispatching actions.
@@ -85,8 +84,6 @@ public final class Store<F: Feature> {
     private var _state: F.State
     private let taskManager: TaskManager
     private let handler: ActionHandler<F.Action, F.State>
-    private let feature: F
-    private let logger: Logger
 
     /// The current state of the feature.
     ///
@@ -105,14 +102,9 @@ public final class Store<F: Feature> {
         feature: F,
         taskManager: TaskManager = TaskManager()
     ) {
-        self.feature = feature
         self._state = initialState
         self.taskManager = taskManager
         self.handler = feature.handle()
-
-        let subsystem = Bundle.main.bundleIdentifier ?? "com.viewfeature.library"
-        let featureName = String(describing: F.self)
-        self.logger = Logger(label: "\(subsystem).Store.\(featureName)")
     }
 
     // MARK: - Action Dispatch API

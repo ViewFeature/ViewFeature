@@ -63,7 +63,7 @@ import Testing
     }
 
     /// Custom test middleware to track actions
-    struct TestMiddleware: ActionMiddleware {
+    struct TestMiddleware: BeforeActionMiddleware {
         let id: String = "TestMiddleware"
         let tracker: ActionTracker
 

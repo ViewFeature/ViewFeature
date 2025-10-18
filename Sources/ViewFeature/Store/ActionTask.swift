@@ -181,6 +181,10 @@ private enum TaskIdGenerator {
 /// - ``catch(_:)``
 /// - ``cancellable(id:cancelInFlight:)``
 /// - ``priority(_:)``
+///
+/// - Note: The `Action` type parameter is required for type system consistency
+///   with `ActionHandler<Action, State>` and middleware protocols, even though
+///   it's not directly used in the internal `Operation` enum.
 public struct ActionTask<Action, State> {
     // MARK: - Internal Operation Type
 
