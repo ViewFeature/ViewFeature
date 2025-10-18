@@ -4,8 +4,15 @@ import Observation
 
 /// The main store for managing application state and dispatching actions.
 ///
-/// `Store` provides a Redux-like unidirectional data flow architecture for SwiftUI apps.
-/// It coordinates between state management, action processing, and task execution while
+/// `Store` provides a Redux-like unidirectional data flow architecture for SwiftUI apps
+/// with fire-and-forget action dispatching and MainActor-isolated state management.
+///
+/// ## Key Characteristics
+/// - **MainActor Isolation**: All state mutations occur on the MainActor for thread-safe UI updates
+/// - **Fire-and-Forget API**: Actions can be dispatched without awaiting, or awaited when needed
+/// - **Sequential Processing**: Actions are processed sequentially to ensure state consistency
+///
+/// The Store coordinates between state management, action processing, and task execution while
 /// maintaining the Single Responsibility Principle by delegating to specialized components.
 ///
 /// ## Example Usage
@@ -110,41 +117,58 @@ public final class Store<F: Feature> {
 
   // MARK: - Action Dispatch API
 
-  /// Dispatches an action and processes it through the handler
+  /// Dispatches an action and processes it through the handler using a fire-and-forget pattern.
+  ///
+  /// This method provides flexible action dispatching:
+  /// - **Fire-and-forget**: Call without awaiting for non-blocking UI operations
+  /// - **Await completion**: Use `await store.send(...).value` when you need to wait
+  ///
+  /// All action processing occurs on the **MainActor**, ensuring thread-safe state mutations
+  /// and seamless integration with SwiftUI.
   ///
   /// - Parameter action: The action to dispatch
   /// - Returns: A Task that completes when the action processing finishes.
   ///   You can await this task if you need to ensure the action is fully processed.
   ///
-  /// ## Example
+  /// ## Fire-and-Forget Pattern
   /// ```swift
-  /// // Fire and forget
-  /// store.send(.increment)
+  /// // Fire-and-forget: Non-blocking, perfect for UI interactions
+  /// Button("Increment") {
+  ///   store.send(.increment)  // Returns immediately
+  /// }
   ///
-  /// // Wait for completion
-  /// await store.send(.loadData).value
+  /// // Wait for completion: Useful for testing or ensuring side effects complete
+  /// await store.send(.loadData).value  // Waits until data is loaded
   /// ```
   ///
-  /// ## Important: Sequential Execution Behavior
+  /// ## MainActor Execution
+  /// All actions and state mutations execute on the **MainActor**:
+  /// ```swift
+  /// // This action handler runs on MainActor
+  /// ActionHandler { action, state in
+  ///   switch action {
+  ///   case .increment:
+  ///     state.count += 1  // ✅ Safe MainActor mutation
+  ///     return .none
+  ///   }
+  /// }
+  /// ```
+  ///
+  /// ## Sequential Processing
   /// Actions are processed **sequentially** on the MainActor. If an action returns
   /// a `.run` task, the Store will await its completion before processing the next action.
   ///
-  /// This means:
   /// ```swift
   /// store.send(.longRunningTask)  // Takes 5 seconds
-  /// store.send(.quickTask)        // Will wait until longRunningTask completes
+  /// store.send(.quickTask)        // Waits until longRunningTask completes
   /// ```
   ///
-  /// **Why this design?**
+  /// **Why sequential?**
   /// - Ensures state consistency (no concurrent mutations)
   /// - Simplifies reasoning about action order
   /// - Prevents race conditions
   ///
-  /// **Note:** Even with task IDs, the Store awaits task completion in `executeTask`.
-  /// This is intentional to maintain state consistency and simplify the mental model.
-  ///
-  /// If you need truly concurrent background work, dispatch it inside the `.run` block
-  /// without making the outer operation wait:
+  /// If you need truly concurrent background work, dispatch it inside the `.run` block:
   /// ```swift
   /// return .run { state in
   ///   // Fire-and-forget background work

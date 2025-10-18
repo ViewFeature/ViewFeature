@@ -6,10 +6,15 @@ import Foundation
 /// Each feature encapsulates its own state, actions, and business logic, following the
 /// single responsibility principle.
 ///
+/// ## MainActor Execution
+/// All action processing and state mutations occur on the **MainActor**, ensuring thread-safe
+/// UI updates and seamless SwiftUI integration. You don't need to manually add `@MainActor`
+/// annotations - the framework handles this automatically.
+///
 /// ## Overview
 /// Features provide a clean separation of concerns by:
 /// - Defining their own state and action types
-/// - Implementing domain-specific logic in a testable manner
+/// - Implementing domain-specific logic in a testable manner (all on MainActor)
 /// - Supporting asynchronous operations through task management
 /// - Enabling composition with middleware and error handling
 ///
@@ -134,10 +139,11 @@ public protocol Feature: Sendable {
   /// - Note: @Observable requires class types for SwiftUI observation
   associatedtype State: AnyObject
 
-  /// Creates an ActionHandler that processes actions for this feature.
+  /// Creates an ActionHandler that processes actions for this feature on the MainActor.
   ///
   /// The handler receives actions and a state parameter (reference type), allowing direct
-  /// mutation for optimal performance. It returns an ``ActionTask`` to handle
+  /// mutation for optimal performance. All state mutations occur on the **MainActor**,
+  /// ensuring thread-safe UI updates. It returns an ``ActionTask`` to handle
   /// any asynchronous side effects.
   ///
   /// ## Example
@@ -146,13 +152,13 @@ public protocol Feature: Sendable {
   ///   ActionHandler { action, state in
   ///     switch action {
   ///     case .increment:
-  ///       state.count += 1
+  ///       state.count += 1  // ✅ Safe MainActor mutation
   ///       return .none
   ///     }
   ///   }
   /// }
   /// ```
   ///
-  /// - Returns: An ActionHandler configured for this feature's action handling
+  /// - Returns: An ActionHandler configured for this feature's action handling (runs on MainActor)
   func handle() -> ActionHandler<Action, State>
 }

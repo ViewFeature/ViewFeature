@@ -2,11 +2,12 @@ import Foundation
 
 /// Manages asynchronous task execution and lifecycle within the Store.
 ///
-/// `TaskManager` provides robust task management with automatic cleanup and cancellation support.
-/// It tracks running tasks by unique identifiers and ensures proper resource management through
-/// automatic deallocation when tasks complete.
+/// `TaskManager` is a **MainActor-isolated** class that provides robust task management
+/// with automatic cleanup and cancellation support. All task operations execute on the
+/// MainActor, ensuring thread-safe state access and seamless SwiftUI integration.
 ///
 /// ## Key Features
+/// - **MainActor Isolation**: All operations run on MainActor for thread-safe execution
 /// - Automatic task cleanup on completion or cancellation
 /// - Task identification and tracking by unique IDs
 /// - Concurrent task execution with individual cancellation

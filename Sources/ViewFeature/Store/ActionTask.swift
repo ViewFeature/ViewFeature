@@ -35,11 +35,15 @@ public typealias TaskID = TaskIDConvertible
 
 /// Represents asynchronous work returned from action processing.
 ///
+/// All task operations execute on the **MainActor**, ensuring thread-safe state access
+/// and seamless SwiftUI integration. State mutations within task operations are guaranteed
+/// to be safe and properly isolated.
+///
 /// ```swift
-/// // Simple task
+/// // Simple task (executes on MainActor)
 /// return .run { state in
 ///   let data = try await api.fetch()
-///   state.data = data
+///   state.data = data  // ✅ Safe MainActor mutation
 /// }
 ///
 /// // Cancellable task

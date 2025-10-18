@@ -10,7 +10,10 @@ public typealias StateErrorHandler<State> = (Error, State) -> Void
 
 /// Core action processing engine with integrated middleware pipeline.
 ///
-/// Orchestrates action processing lifecycle: middleware execution, timing, error handling, and task transformation.
+/// `ActionProcessor` orchestrates the complete action processing lifecycle on the **MainActor**:
+/// middleware execution, timing, error handling, and task transformation. All action processing
+/// occurs on MainActor, ensuring thread-safe state mutations and seamless SwiftUI integration.
+///
 /// Supports immutable method chaining via `use()`, `onError()`, and `transform()`.
 ///
 /// ```swift

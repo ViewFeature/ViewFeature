@@ -10,6 +10,8 @@ Modern state management for Swift 6.2 with async/await, automatic MainActor isol
 
 ### Core Features
 
+- **Fire-and-Forget API** - Call `store.send()` without awaiting, or await when you need confirmation
+- **MainActor Isolation** - All state operations run on MainActor for thread-safe UI updates
 - **Unidirectional Data Flow** - Predictable state updates via explicit actions
 - **Action-Based State Mutations** - All changes go through typed, Sendable actions
 - **Async Task Management** - ID-based task tracking with automatic lifecycle management

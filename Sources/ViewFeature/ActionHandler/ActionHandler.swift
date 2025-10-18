@@ -3,8 +3,11 @@ import Foundation
 /// A facade for action processing with fluent method chaining capabilities.
 ///
 /// `ActionHandler` provides a clean, composable API for defining how your feature
-/// processes actions and updates state. It supports:
-/// - Direct state mutation through `inout` parameters
+/// processes actions and updates state on the **MainActor**. All action processing
+/// occurs on MainActor, ensuring thread-safe state mutations and seamless SwiftUI integration.
+///
+/// It supports:
+/// - Direct state mutation (all mutations occur on MainActor)
 /// - Asynchronous task execution
 /// - Error handling
 /// - Debug logging
