@@ -112,8 +112,8 @@ import Testing
 
     #expect(id1 != nil)
     #expect(id2 != nil)
-    // Note: IDs might be the same if created within same millisecond
-    // but both should be valid auto-task IDs
+    // Note: IDs are guaranteed unique via atomic counter
+    // and both should be valid auto-task IDs
     #expect(id1!.hasPrefix("auto-task-"))
     #expect(id2!.hasPrefix("auto-task-"))
   }
