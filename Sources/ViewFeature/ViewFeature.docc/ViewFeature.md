@@ -24,7 +24,6 @@ ViewFeature is a lightweight, type-safe state management library built specifica
 
 - ``TaskManager``
 - ``TaskID``
-- ``StoreTask``
 
 ### Middleware
 

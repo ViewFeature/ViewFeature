@@ -389,7 +389,7 @@ import Testing
     }
 
     @Test func createErrorHandler_withNonNilHandler() async {
-        // GIVEN: Feature with StoreTask-level error handler
+        // GIVEN: Feature with ActionTask-level error handler
         struct ErrorHandlingFeature: Feature, Sendable {
             typealias Action = TestAction
             typealias State = TestState
@@ -430,7 +430,7 @@ import Testing
     }
 
     @Test func createErrorHandler_withNilHandler() async {
-        // GIVEN: Feature returning StoreTask with nil onError
+        // GIVEN: Feature returning ActionTask with nil onError
         struct NoErrorHandlerFeature: Feature, Sendable {
             typealias Action = TestAction
             typealias State = TestState

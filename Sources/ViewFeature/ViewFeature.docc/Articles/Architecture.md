@@ -21,7 +21,7 @@ ViewFeature implements a unidirectional data flow pattern inspired by Redux and 
                               └──────────────┘
                                      │
                               ┌──────▼──────┐
-                              │ StoreTask   │
+                              │ ActionTask  │
                               │(Side Effects)│
                               └─────────────┘
 ```

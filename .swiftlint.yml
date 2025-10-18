@@ -24,8 +24,7 @@ excluded:
 # Configure specific rules
 disabled_rules:
   - todo # We manage TODOs through Claude Code workflow
-  - line_length # ViewFeature uses comprehensive documentation requiring flexibility
-  - discouraged_none_name # .none is a valid pattern for ActionTask and StoreTask
+  - discouraged_none_name # .none is a valid pattern for ActionTask
   - orphaned_doc_comment # Allow flexible doc comment placement
   - multiline_arguments # Allow flexible argument formatting in tests
   - multiline_parameters # Allow flexible parameter formatting
@@ -99,14 +98,6 @@ custom_rules:
   #   name: "MainActor for UI Classes"
   #   regex: 'class\s+\w*(?:View|Store|Feature|Handler)\w*(?:\s*:\s*[^{]*)?\s*\{'
   #   message: "Consider annotating UI-related classes with @MainActor for thread safety"
-  #   severity: warning
-
-  # ViewFeature-specific: Prefer ActionTask over StoreTask in public APIs
-  # Temporarily disabled due to regex false positives with StoreFeature
-  # prefer_actiontask:
-  #   name: "Prefer ActionTask"
-  #   regex: 'public.*\bStoreTask\b'
-  #   message: "Use ActionTask instead of StoreTask in public APIs for better abstraction"
   #   severity: warning
 
   # ViewFeature-specific: Ensure proper ultra-think naming
