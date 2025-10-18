@@ -43,12 +43,16 @@ public typealias TaskID = TaskIDConvertible
 /// }
 ///
 /// // Cancellable task
-/// return .run(id: "fetch") { state in
+/// return .run { state in
 ///   let data = try await api.fetch()
 ///   state.data = data
 ///   state.isLoading = false
 /// }
+/// .cancellable(id: "fetch")
+///
+/// // Cancel task(s)
 /// return .cancel(id: "fetch")
+/// return .cancel(ids: ["fetch-1", "fetch-2"])
 ///
 /// // With error handling
 /// return .run { state in
@@ -106,9 +110,32 @@ extension ActionTask {
   }
 
   /// Cancels a running task by its ID. Does nothing if the task isn't running.
+  ///
+  /// ```swift
+  /// return .cancel(id: "fetch")
+  /// ```
   public static func cancel<ID: TaskID>(id: ID) -> ActionTask {
     let stringId = id.taskIdString
-    return ActionTask(storeTask: .cancel(id: stringId))
+    return ActionTask(storeTask: .cancels(ids: [stringId]))
+  }
+
+  /// Cancels multiple running tasks by their IDs. Does nothing for tasks that aren't running.
+  ///
+  /// This is useful when you need to cancel a group of related tasks at once:
+  ///
+  /// ```swift
+  /// // Cancel all download tasks
+  /// return .cancel(ids: ["download-1", "download-2", "download-3"])
+  ///
+  /// // Cancel all tasks with IDs from an array
+  /// let taskIds = ["task-a", "task-b", "task-c"]
+  /// return .cancel(ids: taskIds)
+  /// ```
+  ///
+  /// - Parameter ids: An array of task identifiers to cancel
+  public static func cancel<ID: TaskID>(ids: [ID]) -> ActionTask {
+    let stringIds = ids.map { $0.taskIdString }
+    return ActionTask(storeTask: .cancels(ids: stringIds))
   }
 
   // MARK: - Method Chaining

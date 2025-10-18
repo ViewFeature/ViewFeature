@@ -115,11 +115,11 @@ import Testing
     var state = TestState()
     let task = await sut.handle(action: .increment, state: &state)
 
-    // THEN: Should return cancel task
-    if case .cancel(let id) = task.storeTask {
-      #expect(id == "cancel-me")
+    // THEN: Should return cancels task
+    if case .cancels(let ids) = task.storeTask {
+      #expect(ids == ["cancel-me"])
     } else {
-      Issue.record("Expected cancel task")
+      Issue.record("Expected cancels task")
     }
   }
 
@@ -301,11 +301,11 @@ import Testing
     var state = TestState()
     let task = await sut.handle(action: .asyncOp, state: &state)
 
-    // THEN: Should convert to cancel
-    if case .cancel(let id) = task.storeTask {
-      #expect(id == "convert")
+    // THEN: Should convert to cancels
+    if case .cancels(let ids) = task.storeTask {
+      #expect(ids == ["convert"])
     } else {
-      Issue.record("Expected cancel task")
+      Issue.record("Expected cancels task")
     }
   }
 

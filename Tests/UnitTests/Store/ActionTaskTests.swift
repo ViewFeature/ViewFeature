@@ -34,7 +34,7 @@ import Testing
     switch sut.storeTask {
     case .none:
       #expect(true, "noTask created successfully")
-    case .run, .cancel:
+    case .run, .cancels:
       Issue.record("Expected noTask, got different task type")
     }
   }
@@ -74,7 +74,7 @@ import Testing
     switch sut.storeTask {
     case .run(let id, _, _, _):
       #expect(id == taskId)
-    case .none, .cancel:
+    case .none, .cancels:
       Issue.record("Expected run task, got different type")
     }
   }
@@ -88,7 +88,7 @@ import Testing
     case .run(let id, _, _, _):
       #expect(id.hasPrefix("auto-task-"), "ID should have auto-task prefix")
       #expect(id.count > "auto-task-".count, "ID should have unique suffix")
-    case .none, .cancel:
+    case .none, .cancels:
       Issue.record("Expected run task, got different type")
     }
   }
@@ -132,7 +132,7 @@ import Testing
       // Operation is stored - we can't easily test it's the same closure
       // but we verify it's a run task with an operation
       #expect(Bool(true))  // Verified it's a run task
-    case .none, .cancel:
+    case .none, .cancels:
       Issue.record("Expected run task")
     }
   }
@@ -178,15 +178,15 @@ import Testing
     // GIVEN: A string task ID
     let taskId = "task-to-cancel"
 
-    // WHEN: Create a cancel task
+    // WHEN: Create a cancel task with single ID
     let sut: ActionTask<TestAction, TestState> = .cancel(id: taskId)
 
-    // THEN: Should have cancel storeTask with correct ID
+    // THEN: Should have cancels storeTask with single ID in array
     switch sut.storeTask {
-    case .cancel(let id):
-      #expect(id == taskId)
+    case .cancels(let ids):
+      #expect(ids == [taskId])
     case .none, .run:
-      Issue.record("Expected cancel task, got different type")
+      Issue.record("Expected cancels task, got different type")
     }
   }
 
@@ -194,15 +194,15 @@ import Testing
     // GIVEN: An integer task ID
     let taskId = 42
 
-    // WHEN: Create a cancel task
+    // WHEN: Create a cancel task with single ID
     let sut: ActionTask<TestAction, TestState> = .cancel(id: taskId)
 
-    // THEN: Should convert to string and store
+    // THEN: Should convert to string and store in array
     switch sut.storeTask {
-    case .cancel(let id):
-      #expect(id == "42")
+    case .cancels(let ids):
+      #expect(ids == ["42"])
     case .none, .run:
-      Issue.record("Expected cancel task")
+      Issue.record("Expected cancels task")
     }
   }
 
@@ -216,12 +216,12 @@ import Testing
     // WHEN: Create a cancel task with enum ID
     let sut: ActionTask<TestAction, TestState> = .cancel(id: TaskId.fetchData)
 
-    // THEN: Should convert enum to string
+    // THEN: Should convert enum to string and store in array
     switch sut.storeTask {
-    case .cancel(let id):
-      #expect(id == "fetchData")
+    case .cancels(let ids):
+      #expect(ids == ["fetchData"])
     case .none, .run:
-      Issue.record("Expected cancel task")
+      Issue.record("Expected cancels task")
     }
   }
 
@@ -237,12 +237,12 @@ import Testing
     // WHEN: Create a cancel task
     let sut: ActionTask<TestAction, TestState> = .cancel(id: taskId)
 
-    // THEN: Should use CustomStringConvertible
+    // THEN: Should use CustomStringConvertible and store in array
     switch sut.storeTask {
-    case .cancel(let id):
-      #expect(id == "custom-123")
+    case .cancels(let ids):
+      #expect(ids == ["custom-123"])
     case .none, .run:
-      Issue.record("Expected cancel task")
+      Issue.record("Expected cancels task")
     }
   }
 
@@ -253,12 +253,12 @@ import Testing
     // WHEN: Create a cancel task
     let sut: ActionTask<TestAction, TestState> = .cancel(id: uuid)
 
-    // THEN: Should convert UUID to string
+    // THEN: Should convert UUID to string and store in array
     switch sut.storeTask {
-    case .cancel(let id):
-      #expect(id == uuid.uuidString)
+    case .cancels(let ids):
+      #expect(ids == [uuid.uuidString])
     case .none, .run:
-      Issue.record("Expected cancel task")
+      Issue.record("Expected cancels task")
     }
   }
 
@@ -282,7 +282,7 @@ import Testing
     }
 
     switch cancelTask.storeTask {
-    case .cancel: #expect(Bool(true))
+    case .cancels: #expect(Bool(true))
     default: Issue.record("cancelTask failed")
     }
   }
@@ -312,12 +312,12 @@ import Testing
     // WHEN: Attach error handler with catch
     let result = sut.catch { _, _ in }
 
-    // THEN: Should return unchanged cancel task
+    // THEN: Should return unchanged cancels task
     switch result.storeTask {
-    case .cancel(let id):
-      #expect(id == "test", "Task should remain as cancel with same ID")
+    case .cancels(let ids):
+      #expect(ids == ["test"], "Task should remain as cancels with same IDs")
     default:
-      Issue.record("Expected cancel task, got different type")
+      Issue.record("Expected cancels task, got different type")
     }
   }
 
@@ -416,6 +416,129 @@ import Testing
       #expect(onError != nil)
     default:
       Issue.record("Expected run task")
+    }
+  }
+
+  // MARK: - cancel(ids:) - Multiple IDs
+
+  @Test func cancel_withMultipleStringIds() {
+    // GIVEN: Multiple string task IDs
+    let taskIds = ["task-1", "task-2", "task-3"]
+
+    // WHEN: Create a cancel task with multiple IDs
+    let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
+
+    // THEN: Should have cancels storeTask with all IDs
+    switch sut.storeTask {
+    case .cancels(let ids):
+      #expect(ids == taskIds)
+    case .none, .run:
+      Issue.record("Expected cancels task, got different type")
+    }
+  }
+
+  @Test func cancel_withMultipleIntIds() {
+    // GIVEN: Multiple integer task IDs
+    let taskIds = [1, 2, 3]
+
+    // WHEN: Create a cancel task with multiple IDs
+    let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
+
+    // THEN: Should convert to strings and store
+    switch sut.storeTask {
+    case .cancels(let ids):
+      #expect(ids == ["1", "2", "3"])
+    case .none, .run:
+      Issue.record("Expected cancels task")
+    }
+  }
+
+  @Test func cancel_withMultipleEnumIds() {
+    // GIVEN: Multiple enum task IDs
+    enum TaskId: String, TaskIDConvertible {
+      case fetchData
+      case saveData
+      case deleteData
+    }
+
+    let taskIds: [TaskId] = [.fetchData, .saveData, .deleteData]
+
+    // WHEN: Create a cancel task with multiple enum IDs
+    let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
+
+    // THEN: Should convert enums to strings
+    switch sut.storeTask {
+    case .cancels(let ids):
+      #expect(ids == ["fetchData", "saveData", "deleteData"])
+    case .none, .run:
+      Issue.record("Expected cancels task")
+    }
+  }
+
+  @Test func cancel_withEmptyArray() {
+    // GIVEN: Empty array of task IDs
+    let taskIds: [String] = []
+
+    // WHEN: Create a cancel task with empty array
+    let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
+
+    // THEN: Should have cancels storeTask with empty array
+    switch sut.storeTask {
+    case .cancels(let ids):
+      #expect(ids.isEmpty)
+    case .none, .run:
+      Issue.record("Expected cancels task, got different type")
+    }
+  }
+
+  @Test func cancel_withSingleIdInArray() {
+    // GIVEN: Array with single task ID
+    let taskIds = ["single-task"]
+
+    // WHEN: Create a cancel task with single ID in array
+    let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
+
+    // THEN: Should have cancels storeTask with single ID
+    switch sut.storeTask {
+    case .cancels(let ids):
+      #expect(ids == ["single-task"])
+    case .none, .run:
+      Issue.record("Expected cancels task, got different type")
+    }
+  }
+
+  @Test func cancel_withMixedUUIDIds() {
+    // GIVEN: Multiple UUID task IDs
+    let uuid1 = UUID()
+    let uuid2 = UUID()
+    let uuid3 = UUID()
+    let taskIds = [uuid1, uuid2, uuid3]
+
+    // WHEN: Create a cancel task with multiple UUIDs
+    let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
+
+    // THEN: Should convert UUIDs to strings
+    switch sut.storeTask {
+    case .cancels(let ids):
+      #expect(ids == [uuid1.uuidString, uuid2.uuidString, uuid3.uuidString])
+    case .none, .run:
+      Issue.record("Expected cancels task")
+    }
+  }
+
+  @Test func cancel_withDuplicateIds() {
+    // GIVEN: Array with duplicate task IDs
+    let taskIds = ["task-1", "task-2", "task-1", "task-3"]
+
+    // WHEN: Create a cancel task with duplicates
+    let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
+
+    // THEN: Should preserve duplicates (TaskManager will handle them)
+    switch sut.storeTask {
+    case .cancels(let ids):
+      #expect(ids == ["task-1", "task-2", "task-1", "task-3"])
+    case .none, .run:
+      Issue.record("Expected cancels task, got different type")
     }
   }
 }

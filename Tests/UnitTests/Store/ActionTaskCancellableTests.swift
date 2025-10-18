@@ -88,10 +88,10 @@ import Testing
     let sut: ActionTask<TestAction, TestState> = .cancel(id: "test")
       .cancellable(id: "new-id", cancelInFlight: true)
 
-    // THEN: Should remain cancel task with original ID
+    // THEN: Should remain cancels task with original IDs
     switch sut.storeTask {
-    case .cancel(let id):
-      #expect(id == "test")
+    case .cancels(let ids):
+      #expect(ids == ["test"])
     default:
       Issue.record("Expected cancel task")
     }

@@ -179,7 +179,7 @@ public final class Store<F: Feature> {
     case .run(let id, let operation, let onError, let cancelInFlight):
       // Cancel existing task with same ID if cancelInFlight is true
       if cancelInFlight {
-        taskManager.cancelTaskInternal(id: id)
+        taskManager.cancelTasksInternal(ids: [id])
       }
 
       // Pass operation directly to TaskManager
@@ -200,8 +200,8 @@ public final class Store<F: Feature> {
 
       await task.value
 
-    case .cancel(let id):
-      taskManager.cancelTaskInternal(id: id)
+    case .cancels(let ids):
+      taskManager.cancelTasksInternal(ids: ids)
     }
   }
 

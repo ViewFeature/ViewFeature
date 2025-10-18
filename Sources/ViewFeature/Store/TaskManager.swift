@@ -66,7 +66,7 @@ import Foundation
 /// - ``runningTaskCount``
 ///
 /// ### Internal Task Management
-/// - ``cancelTaskInternal(id:)``
+/// - ``cancelTasksInternal(ids:)``
 @MainActor
 public final class TaskManager {
   private var runningTasks: [String: Task<Void, Never>] = [:]
@@ -197,18 +197,20 @@ public final class TaskManager {
     return task
   }
 
-  /// Internal method to cancel a task by string identifier.
+  /// Internal method to cancel tasks by their string identifiers.
   ///
   /// This method provides low-level task cancellation without generic type conversion.
-  /// Used internally by ``Store`` when processing `.cancel(id:)` action tasks.
+  /// Used internally by ``Store`` when processing `.cancels(ids:)` action tasks.
   ///
-  /// - Parameter id: The string identifier of the task to cancel
+  /// - Parameter ids: The string identifiers of the tasks to cancel
   ///
   /// - Note: This is public for Store's internal use. Task cancellation should
-  ///   be done through Actions (e.g., `return .cancel(id: "taskId")`), not by
-  ///   calling this method directly.
-  public func cancelTaskInternal(id: String) {
-    runningTasks[id]?.cancel()
-    runningTasks.removeValue(forKey: id)
+  ///   be done through Actions (e.g., `return .cancel(id: "taskId")` or
+  ///   `return .cancel(ids: ["task1", "task2"])`), not by calling this method directly.
+  public func cancelTasksInternal(ids: [String]) {
+    for id in ids {
+      runningTasks[id]?.cancel()
+      runningTasks.removeValue(forKey: id)
+    }
   }
 }

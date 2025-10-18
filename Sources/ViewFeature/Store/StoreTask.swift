@@ -8,7 +8,7 @@
 /// ### Task Cases
 /// - ``none``
 /// - ``run(id:operation:onError:cancelInFlight:)``
-/// - ``cancel(id:)``
+/// - ``cancels(ids:)``
 public enum StoreTask<Action, State> {
   /// No task to execute
   case none
@@ -30,6 +30,6 @@ public enum StoreTask<Action, State> {
     cancelInFlight: Bool
   )
 
-  /// Cancel a running task
-  case cancel(id: String)
+  /// Cancel running tasks by their IDs
+  case cancels(ids: [String])
 }

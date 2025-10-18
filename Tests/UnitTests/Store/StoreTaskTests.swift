@@ -34,7 +34,7 @@ import Testing
     switch sut {
     case .none:
       #expect(true, "noTask created successfully")
-    case .run, .cancel:
+    case .run, .cancels:
       Issue.record("Expected noTask, got different case")
     }
   }
@@ -80,7 +80,7 @@ import Testing
     case .run(let id, _, let errorHandler, _):
       #expect(id == taskId)
       #expect(errorHandler == nil)
-    case .none, .cancel:
+    case .none, .cancels:
       Issue.record("Expected run case")
     }
   }
@@ -325,70 +325,105 @@ import Testing
     }
   }
 
-  // MARK: - cancel(id:)
+  // MARK: - cancels(ids:)
 
-  @Test func cancel_withStringId() {
-    // GIVEN: A task ID
-    let taskId = "task-to-cancel"
+  @Test func cancels_withStringIds() {
+    // GIVEN: Task IDs
+    let taskIds = ["task-to-cancel"]
 
-    // WHEN: Create a cancel task
-    let sut: StoreTask<TestAction, TestState> = .cancel(id: taskId)
+    // WHEN: Create a cancels task
+    let sut: StoreTask<TestAction, TestState> = .cancels(ids: taskIds)
 
-    // THEN: Should be cancel case with correct ID
+    // THEN: Should be cancels case with correct IDs
     switch sut {
-    case .cancel(let id):
-      #expect(id == taskId)
+    case .cancels(let ids):
+      #expect(ids == taskIds)
     case .none, .run:
-      Issue.record("Expected cancel case")
+      Issue.record("Expected cancels case")
     }
   }
 
-  @Test func cancel_withEmptyId() {
+  @Test func cancels_withEmptyId() {
     // GIVEN: An empty string ID
-    let emptyId = ""
+    let emptyIds = [""]
 
-    // WHEN: Create a cancel task
-    let sut: StoreTask<TestAction, TestState> = .cancel(id: emptyId)
+    // WHEN: Create a cancels task
+    let sut: StoreTask<TestAction, TestState> = .cancels(ids: emptyIds)
 
     // THEN: Should accept empty string
     switch sut {
-    case .cancel(let id):
-      #expect(id == "")
+    case .cancels(let ids):
+      #expect(ids == [""])
     default:
-      Issue.record("Expected cancel case")
+      Issue.record("Expected cancels case")
     }
   }
 
-  @Test func cancel_withLongId() {
+  @Test func cancels_withLongId() {
     // GIVEN: A very long ID
     let longId = String(repeating: "x", count: 2000)
+    let longIds = [longId]
 
-    // WHEN: Create a cancel task
-    let sut: StoreTask<TestAction, TestState> = .cancel(id: longId)
+    // WHEN: Create a cancels task
+    let sut: StoreTask<TestAction, TestState> = .cancels(ids: longIds)
 
     // THEN: Should accept long ID
     switch sut {
-    case .cancel(let id):
-      #expect(id == longId)
-      #expect(id.count == 2000)
+    case .cancels(let ids):
+      #expect(ids == [longId])
+      #expect(ids.first?.count == 2000)
     default:
-      Issue.record("Expected cancel case")
+      Issue.record("Expected cancels case")
     }
   }
 
-  @Test func cancel_withSpecialCharacters() {
+  @Test func cancels_withSpecialCharacters() {
     // GIVEN: ID with special characters
     let specialId = "cancel-🔥-テスト-456"
+    let specialIds = [specialId]
 
-    // WHEN: Create a cancel task
-    let sut: StoreTask<TestAction, TestState> = .cancel(id: specialId)
+    // WHEN: Create a cancels task
+    let sut: StoreTask<TestAction, TestState> = .cancels(ids: specialIds)
 
     // THEN: Should accept special characters
     switch sut {
-    case .cancel(let id):
-      #expect(id == specialId)
+    case .cancels(let ids):
+      #expect(ids == [specialId])
     default:
-      Issue.record("Expected cancel case")
+      Issue.record("Expected cancels case")
+    }
+  }
+
+  @Test func cancels_withMultipleIds() {
+    // GIVEN: Multiple task IDs
+    let taskIds = ["task-1", "task-2", "task-3"]
+
+    // WHEN: Create a cancels task with multiple IDs
+    let sut: StoreTask<TestAction, TestState> = .cancels(ids: taskIds)
+
+    // THEN: Should store all IDs
+    switch sut {
+    case .cancels(let ids):
+      #expect(ids == taskIds)
+      #expect(ids.count == 3)
+    default:
+      Issue.record("Expected cancels case")
+    }
+  }
+
+  @Test func cancels_withEmptyArray() {
+    // GIVEN: Empty array
+    let emptyIds: [String] = []
+
+    // WHEN: Create a cancels task with empty array
+    let sut: StoreTask<TestAction, TestState> = .cancels(ids: emptyIds)
+
+    // THEN: Should accept empty array
+    switch sut {
+    case .cancels(let ids):
+      #expect(ids.isEmpty)
+    default:
+      Issue.record("Expected cancels case")
     }
   }
 
@@ -403,7 +438,7 @@ import Testing
       onError: nil,
       cancelInFlight: false
     )
-    let cancelTask: StoreTask<TestAction, TestState> = .cancel(id: "cancel")
+    let cancelsTask: StoreTask<TestAction, TestState> = .cancels(ids: ["cancel"])
 
     // THEN: All should be valid cases
     switch noTask {
@@ -416,9 +451,9 @@ import Testing
     default: Issue.record("runTask failed")
     }
 
-    switch cancelTask {
-    case .cancel: #expect(Bool(true))
-    default: Issue.record("cancelTask failed")
+    switch cancelsTask {
+    case .cancels: #expect(Bool(true))
+    default: Issue.record("cancelsTask failed")
     }
   }
 

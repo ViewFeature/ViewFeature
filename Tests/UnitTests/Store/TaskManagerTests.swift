@@ -189,9 +189,9 @@ import Testing
   //   #expect(sut.runningTaskCount == 0)
   // }
 
-  // MARK: - cancelTaskInternal(id:)
+  // MARK: - cancelTasksInternal(ids:)
 
-  @Test func cancelTaskInternal_cancelsTaskByStringId() async {
+  @Test func cancelTasksInternal_cancelsSingleTask() async {
     let sut = TaskManager()
     // GIVEN: A running task
     sut.executeTask(
@@ -200,14 +200,14 @@ import Testing
     try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
     #expect(sut.isTaskRunning(id: "internal"))
 
-    // WHEN: Cancel using internal method
-    sut.cancelTaskInternal(id: "internal")
+    // WHEN: Cancel using internal method with single ID in array
+    sut.cancelTasksInternal(ids: ["internal"])
 
     // THEN: Task should be cancelled
     #expect(!sut.isTaskRunning(id: "internal"))
   }
 
-  @Test func cancelTaskInternal_removesFromTracking() async {
+  @Test func cancelTasksInternal_removesFromTracking() async {
     let sut = TaskManager()
     // GIVEN: A running task
     sut.executeTask(
@@ -218,9 +218,106 @@ import Testing
     #expect(sut.runningTaskCount == 1)
 
     // WHEN: Cancel using internal method
-    sut.cancelTaskInternal(id: "internal-tracking")
+    sut.cancelTasksInternal(ids: ["internal-tracking"])
 
     // THEN: Task should be removed
+    #expect(sut.runningTaskCount == 0)
+  }
+
+  @Test func cancelTasksInternal_cancelsMultipleTasks() async {
+    let sut = TaskManager()
+    // GIVEN: Multiple running tasks
+    sut.executeTask(
+      id: "task-1", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
+    sut.executeTask(
+      id: "task-2", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
+    sut.executeTask(
+      id: "task-3", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
+
+    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    #expect(sut.runningTaskCount == 3)
+
+    // WHEN: Cancel multiple tasks at once
+    sut.cancelTasksInternal(ids: ["task-1", "task-3"])
+
+    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+
+    // THEN: Two tasks should be cancelled, one should remain
+    #expect(!sut.isTaskRunning(id: "task-1"))
+    #expect(sut.isTaskRunning(id: "task-2"))
+    #expect(!sut.isTaskRunning(id: "task-3"))
+    #expect(sut.runningTaskCount == 1)
+  }
+
+  @Test func cancelTasksInternal_withEmptyArray() async {
+    let sut = TaskManager()
+    // GIVEN: Running tasks
+    sut.executeTask(
+      id: "task", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
+
+    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    #expect(sut.runningTaskCount == 1)
+
+    // WHEN: Cancel with empty array
+    sut.cancelTasksInternal(ids: [])
+
+    // THEN: No tasks should be affected
+    #expect(sut.runningTaskCount == 1)
+    #expect(sut.isTaskRunning(id: "task"))
+  }
+
+  @Test func cancelTasksInternal_withNonExistentIds() async {
+    let sut = TaskManager()
+    // GIVEN: One running task
+    sut.executeTask(
+      id: "existing", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
+
+    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+
+    // WHEN: Cancel with non-existent IDs
+    sut.cancelTasksInternal(ids: ["non-existent-1", "non-existent-2"])
+
+    // THEN: Should not crash, existing task should remain
+    #expect(sut.isTaskRunning(id: "existing"))
+    #expect(sut.runningTaskCount == 1)
+  }
+
+  @Test func cancelTasksInternal_withMixedExistingAndNonExistentIds() async {
+    let sut = TaskManager()
+    // GIVEN: Two running tasks
+    sut.executeTask(
+      id: "task-1", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
+    sut.executeTask(
+      id: "task-2", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
+
+    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    #expect(sut.runningTaskCount == 2)
+
+    // WHEN: Cancel with mix of existing and non-existent IDs
+    sut.cancelTasksInternal(ids: ["task-1", "non-existent", "task-2"])
+
+    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+
+    // THEN: Only existing tasks should be cancelled
+    #expect(!sut.isTaskRunning(id: "task-1"))
+    #expect(!sut.isTaskRunning(id: "task-2"))
+    #expect(sut.runningTaskCount == 0)
+  }
+
+  @Test func cancelTasksInternal_withDuplicateIds() async {
+    let sut = TaskManager()
+    // GIVEN: One running task
+    sut.executeTask(
+      id: "dup", operation: { try await Task.sleep(nanoseconds: 100_000_000) }, onError: nil)
+
+    try? await Task.sleep(nanoseconds: 10_000_000)  // 10ms
+    #expect(sut.isTaskRunning(id: "dup"))
+
+    // WHEN: Cancel with duplicate IDs in array
+    sut.cancelTasksInternal(ids: ["dup", "dup", "dup"])
+
+    // THEN: Task should be cancelled only once (no crash)
+    #expect(!sut.isTaskRunning(id: "dup"))
     #expect(sut.runningTaskCount == 0)
   }
 
