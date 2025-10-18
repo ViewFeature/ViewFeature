@@ -196,9 +196,9 @@ final class MyFeatureTests: XCTestCase {
 ///
 /// ## Example
 /// ```swift
-/// let task = await handler.handle(action: .increment, state: &state)
+/// let task = await handler.handle(action: .increment, state: state)
 /// ```
-public func handle(action: Action, state: inout State) async -> ActionTask
+public func handle(action: Action, state: State) async -> ActionTask
 ```
 
 ## Questions?

@@ -2,11 +2,11 @@ import Foundation
 
 /// Action execution closure that mutates state and returns a task.
 public typealias ActionExecution<Action, State> =
-  @MainActor (Action, inout State) async ->
+  @MainActor (Action, State) async ->
   ActionTask<Action, State>
 
 /// Error handler closure that can mutate state in response to errors.
-public typealias StateErrorHandler<State> = (Error, inout State) -> Void
+public typealias StateErrorHandler<State> = (Error, State) -> Void
 
 /// Core action processing engine with integrated middleware pipeline.
 ///
@@ -47,26 +47,26 @@ public final class ActionProcessor<Action, State> {
   /// Processes an action through the middleware pipeline.
   ///
   /// Executes before-action middleware, action logic, after-action middleware, and error handling if needed.
-  public func process(action: Action, state: inout State) async -> ActionTask<Action, State> {
+  public func process(action: Action, state: State) async -> ActionTask<Action, State> {
     let startTime = ContinuousClock.now
 
     do {
       let result = try await executeWithMiddleware(
-        action: action, state: &state, startTime: startTime)
+        action: action, state: state, startTime: startTime)
       return result
     } catch {
-      await handleError(error: error, action: action, state: &state)
+      await handleError(error: error, action: action, state: state)
       return ActionTask.none
     }
   }
 
   private func executeWithMiddleware(
     action: Action,
-    state: inout State,
+    state: State,
     startTime: ContinuousClock.Instant
   ) async throws -> ActionTask<Action, State> {
     try await middlewareManager.executeBeforeAction(action: action, state: state)
-    let result = await baseExecution(action, &state)
+    let result = await baseExecution(action, state)
     let elapsed = startTime.duration(to: ContinuousClock.now)
     let duration = TimeInterval(elapsed.components.seconds) +
                    TimeInterval(elapsed.components.attoseconds) / 1e18
@@ -102,7 +102,7 @@ public final class ActionProcessor<Action, State> {
   ///   state.isLoading = false
   /// }
   /// ```
-  public func onError(_ handler: @escaping (Error, inout State) -> Void) -> ActionProcessor<
+  public func onError(_ handler: @escaping (Error, State) -> Void) -> ActionProcessor<
     Action, State
   > {
     ActionProcessor(
@@ -131,9 +131,9 @@ public final class ActionProcessor<Action, State> {
   public func transform(
     _ transform: @escaping (ActionTask<Action, State>) -> ActionTask<Action, State>
   ) -> ActionProcessor<Action, State> {
-    let transformedExecution: @MainActor (Action, inout State) async -> ActionTask<Action, State> =
+    let transformedExecution: @MainActor (Action, State) async -> ActionTask<Action, State> =
       { action, state in
-        let result = await self.baseExecution(action, &state)
+        let result = await self.baseExecution(action, state)
         return transform(result)
       }
 
@@ -149,7 +149,7 @@ public final class ActionProcessor<Action, State> {
   private func handleError(
     error: Error,
     action: Action,
-    state: inout State
+    state: State
   ) async {
     await middlewareManager.executeErrorHandling(
       error: error,
@@ -157,6 +157,6 @@ public final class ActionProcessor<Action, State> {
       state: state
     )
 
-    errorHandler?(error, &state)
+    errorHandler?(error, state)
   }
 }

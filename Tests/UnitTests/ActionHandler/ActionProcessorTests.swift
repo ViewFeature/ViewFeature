@@ -17,10 +17,22 @@ import Testing
     case throwError
   }
 
-  struct TestState: Equatable, Sendable {
+  final class TestState: Equatable, @unchecked Sendable {
     var count = 0
     var errorMessage: String?
     var isLoading = false
+
+    init(count: Int = 0, errorMessage: String? = nil, isLoading: Bool = false) {
+      self.count = count
+      self.errorMessage = errorMessage
+      self.isLoading = isLoading
+    }
+
+    static func == (lhs: TestState, rhs: TestState) -> Bool {
+      lhs.count == rhs.count &&
+      lhs.errorMessage == rhs.errorMessage &&
+      lhs.isLoading == rhs.isLoading
+    }
   }
 
   // MARK: - init(_:)
@@ -34,7 +46,7 @@ import Testing
 
     // THEN: Should execute action
     var state = TestState()
-    let task = await sut.process(action: .increment, state: &state)
+    let task = await sut.process(action: .increment, state: state)
 
     #expect(state.count == 1)
     if case .none = task.storeTask {
@@ -62,9 +74,9 @@ import Testing
 
     // WHEN: Execute different actions
     var state = TestState()
-    _ = await sut.process(action: .increment, state: &state)
-    _ = await sut.process(action: .decrement, state: &state)
-    _ = await sut.process(action: .asyncOperation, state: &state)
+    _ = await sut.process(action: .increment, state: state)
+    _ = await sut.process(action: .decrement, state: state)
+    _ = await sut.process(action: .asyncOperation, state: state)
 
     // THEN: Should handle all actions
     // swiftlint:disable:next empty_count
@@ -85,7 +97,7 @@ import Testing
 
     // WHEN: Process action
     var state = TestState()
-    let task = await sut.process(action: .increment, state: &state)
+    let task = await sut.process(action: .increment, state: state)
 
     // THEN: Should execute and mutate state
     #expect(executionCount == 1)
@@ -107,7 +119,7 @@ import Testing
 
     // WHEN: Process action
     var state = TestState()
-    let task = await sut.process(action: .asyncOperation, state: &state)
+    let task = await sut.process(action: .asyncOperation, state: state)
 
     // THEN: Should return run task
     #expect(state.isLoading)
@@ -126,7 +138,7 @@ import Testing
 
     // WHEN: Process action
     var state = TestState()
-    let task = await sut.process(action: .increment, state: &state)
+    let task = await sut.process(action: .increment, state: state)
 
     // THEN: Should return cancels task
     if case .cancels(let ids) = task.storeTask {
@@ -153,7 +165,7 @@ import Testing
 
     // WHEN: Process action (middleware throws)
     var state = TestState()
-    let task = await sut.process(action: .throwError, state: &state)
+    let task = await sut.process(action: .throwError, state: state)
 
     // THEN: Should return noTask on error and not execute action
     // swiftlint:disable:next empty_count
@@ -175,7 +187,7 @@ import Testing
 
     // WHEN: Process action
     var state = TestState()
-    _ = await sut.process(action: .increment, state: &state)
+    _ = await sut.process(action: .increment, state: state)
 
     // THEN: Should execute with middleware
     #expect(state.count == 1)
@@ -203,7 +215,7 @@ import Testing
 
     // WHEN: Process action (middleware throws)
     var state = TestState()
-    _ = await sut.process(action: .throwError, state: &state)
+    _ = await sut.process(action: .throwError, state: state)
 
     // THEN: Should call error handler
     #expect(errorWasCalled)
@@ -219,9 +231,9 @@ import Testing
 
     // WHEN: Process multiple times
     var state = TestState()
-    _ = await sut.process(action: .increment, state: &state)
-    _ = await sut.process(action: .increment, state: &state)
-    _ = await sut.process(action: .increment, state: &state)
+    _ = await sut.process(action: .increment, state: state)
+    _ = await sut.process(action: .increment, state: state)
+    _ = await sut.process(action: .increment, state: state)
 
     // THEN: Should accumulate state changes
     #expect(state.count == 3)
@@ -241,7 +253,7 @@ import Testing
 
     // THEN: Should create new processor with middleware
     var state = TestState()
-    _ = await sut.process(action: .increment, state: &state)
+    _ = await sut.process(action: .increment, state: state)
     #expect(state.count == 1)
   }
 
@@ -257,7 +269,7 @@ import Testing
 
     // WHEN: Process action
     var state = TestState()
-    _ = await sut.process(action: .increment, state: &state)
+    _ = await sut.process(action: .increment, state: state)
 
     // THEN: Should work with multiple middleware
     #expect(state.count == 1)
@@ -275,11 +287,11 @@ import Testing
 
     // THEN: Base processor should remain unchanged
     var state1 = TestState()
-    _ = await base.process(action: .increment, state: &state1)
+    _ = await base.process(action: .increment, state: state1)
     #expect(state1.count == 1)
 
     var state2 = TestState()
-    _ = await withMiddleware.process(action: .increment, state: &state2)
+    _ = await withMiddleware.process(action: .increment, state: state2)
     #expect(state2.count == 1)
   }
 
@@ -306,7 +318,7 @@ import Testing
 
     // WHEN: Process action (middleware throws)
     var state = TestState()
-    _ = await sut.process(action: .throwError, state: &state)
+    _ = await sut.process(action: .throwError, state: state)
 
     // THEN: Should call error handler
     #expect(capturedError != nil)
@@ -335,7 +347,7 @@ import Testing
 
     // WHEN: Process action (middleware throws)
     var state = TestState(count: 0, errorMessage: nil, isLoading: true)
-    _ = await sut.process(action: .throwError, state: &state)
+    _ = await sut.process(action: .throwError, state: state)
 
     // THEN: Should mutate state in error handler
     #expect(state.count == 999)
@@ -363,7 +375,7 @@ import Testing
 
     // WHEN: Process action
     var state = TestState()
-    _ = await sut.process(action: .throwError, state: &state)
+    _ = await sut.process(action: .throwError, state: state)
 
     // THEN: Should work with middleware
     #expect(state.errorMessage == "Handled")
@@ -381,7 +393,7 @@ import Testing
 
     // WHEN: Process successful action
     var state = TestState()
-    _ = await sut.process(action: .increment, state: &state)
+    _ = await sut.process(action: .increment, state: state)
 
     // THEN: Error handler should not be called
     #expect(state.count == 1)
@@ -409,7 +421,7 @@ import Testing
 
     // WHEN: Process action
     var state = TestState()
-    let task = await sut.process(action: .asyncOperation, state: &state)
+    let task = await sut.process(action: .asyncOperation, state: state)
 
     // THEN: Task should be transformed
     #expect(state.count == 1)
@@ -437,7 +449,7 @@ import Testing
 
     // WHEN: Process action
     var state = TestState()
-    let task = await sut.process(action: .asyncOperation, state: &state)
+    let task = await sut.process(action: .asyncOperation, state: state)
 
     // THEN: Should convert to cancels task
     if case .cancels(let ids) = task.storeTask {
@@ -464,7 +476,7 @@ import Testing
 
     // WHEN: Process action returning noTask
     var state = TestState()
-    let task = await sut.process(action: .increment, state: &state)
+    let task = await sut.process(action: .increment, state: state)
 
     // THEN: noTask should remain unchanged
     if case .none = task.storeTask {
@@ -491,7 +503,7 @@ import Testing
 
     // WHEN: Process action
     var state = TestState()
-    let task = await sut.process(action: .asyncOperation, state: &state)
+    let task = await sut.process(action: .asyncOperation, state: state)
 
     // THEN: Should work with all features
     #expect(state.count == 1)
@@ -523,7 +535,7 @@ import Testing
 
     // WHEN: Process action
     var state = TestState(count: 5)
-    let task = await sut.process(action: .increment, state: &state)
+    let task = await sut.process(action: .increment, state: state)
 
     // THEN: Should execute full pipeline
     #expect(state.count == 15)
@@ -556,7 +568,7 @@ import Testing
 
     // WHEN: Process action (middleware throws)
     var state = TestState()
-    let task = await sut.process(action: TestAction.throwError, state: &state)
+    let task = await sut.process(action: TestAction.throwError, state: state)
 
     // THEN: Should handle error correctly
     // swiftlint:disable:next empty_count
@@ -607,18 +619,18 @@ import Testing
     // WHEN: Execute multiple actions
     var state = TestState()
 
-    _ = await incrementProcessor.process(action: TestAction.increment, state: &state)
+    _ = await incrementProcessor.process(action: TestAction.increment, state: state)
     #expect(state.count == 1)
     #expect(!state.isLoading)
 
-    _ = await asyncProcessor.process(action: TestAction.asyncOperation, state: &state)
+    _ = await asyncProcessor.process(action: TestAction.asyncOperation, state: state)
     #expect(state.isLoading)
 
-    _ = await errorProcessor.process(action: TestAction.throwError, state: &state)
+    _ = await errorProcessor.process(action: TestAction.throwError, state: state)
     #expect(state.errorMessage != nil)
     #expect(!state.isLoading)
 
-    _ = await decrementProcessor.process(action: TestAction.decrement, state: &state)
+    _ = await decrementProcessor.process(action: TestAction.decrement, state: state)
     // swiftlint:disable:next empty_count
     #expect(state.count == 0)
     #expect(state.errorMessage == nil)
@@ -638,19 +650,19 @@ import Testing
 
     // THEN: All variants should work independently
     var state1 = TestState()
-    _ = await base.process(action: .increment, state: &state1)
+    _ = await base.process(action: .increment, state: state1)
     #expect(state1.count == 1)
 
     var state2 = TestState()
-    _ = await withMiddleware.process(action: .increment, state: &state2)
+    _ = await withMiddleware.process(action: .increment, state: state2)
     #expect(state2.count == 1)
 
     var state3 = TestState()
-    _ = await withError.process(action: .increment, state: &state3)
+    _ = await withError.process(action: .increment, state: state3)
     #expect(state3.count == 1)
 
     var state4 = TestState()
-    _ = await withTransform.process(action: .increment, state: &state4)
+    _ = await withTransform.process(action: .increment, state: state4)
     #expect(state4.count == 1)
   }
 }

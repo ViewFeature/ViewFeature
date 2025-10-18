@@ -19,7 +19,7 @@ import Testing
     case clearCompleted
   }
 
-  struct Todo: Equatable, Sendable {
+  struct Todo: Equatable,  Sendable {
     let id: Int
     var title: String
     var isCompleted: Bool

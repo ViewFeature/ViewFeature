@@ -164,10 +164,7 @@ public final class Store<F: Feature> {
   // MARK: - Private Implementation
 
   private func processAction(_ action: F.Action) async {
-    // State is a reference type (AnyObject), so handler mutations affect _state directly
-    var mutableState = _state
-    let actionTask = await handler.handle(action: action, state: &mutableState)
-    // No reassignment needed - _state and mutableState reference the same object
+    let actionTask = await handler.handle(action: action, state: _state)
     await executeTask(actionTask.storeTask)
   }
 

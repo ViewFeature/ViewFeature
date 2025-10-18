@@ -16,7 +16,7 @@ import Testing
   }
 
   @Observable
-  final class TestState {
+  final class TestState: @unchecked Sendable {
     var count = 0
 
     init(count: Int = 0) {

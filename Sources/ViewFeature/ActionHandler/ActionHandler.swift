@@ -108,13 +108,17 @@ public final class ActionHandler<Action, State> {
   ///     ActionHandler { action, state in
   ///       switch action {
   ///       case .increment:
-  ///         state.count += 1
+  ///         state.count += 1  // ✅ Correct: Mutate properties
   ///         return .none
   ///       }
   ///     }
   ///   }
   /// }
   /// ```
+  ///
+  /// - Note: State is constrained to `AnyObject` (reference type). Mutate properties
+  ///   directly (`state.count += 1`). Since State is passed as a reference, all mutations
+  ///   are automatically reflected in the Store's state.
   public init(_ actionLogic: @escaping ActionExecution<Action, State>) {
     self.processor = ActionProcessor(actionLogic)
   }
@@ -129,8 +133,8 @@ public final class ActionHandler<Action, State> {
   ///   - action: The action to process
   ///   - state: The current state (will be mutated)
   /// - Returns: An ``ActionTask`` containing any asynchronous side effects
-  public func handle(action: Action, state: inout State) async -> ActionTask<Action, State> {
-    await processor.process(action: action, state: &state)
+  public func handle(action: Action, state: State) async -> ActionTask<Action, State> {
+    await processor.process(action: action, state: state)
   }
 }
 
@@ -140,7 +144,7 @@ extension ActionHandler {
   /// Adds error handling to the action processing pipeline.
   ///
   /// The error handler is called when any error occurs during action processing
-  /// or task execution. It receives the error and an `inout` state parameter,
+  /// or task execution. It receives the error and state parameter,
   /// allowing you to update the state based on the error.
   ///
   /// - Parameter errorHandler: A closure that handles errors
@@ -153,7 +157,7 @@ extension ActionHandler {
   ///   state.isLoading = false
   /// }
   /// ```
-  public func onError(_ errorHandler: @escaping (Error, inout State) -> Void) -> ActionHandler<
+  public func onError(_ errorHandler: @escaping (Error, State) -> Void) -> ActionHandler<
     Action, State
   > {
     ActionHandler(processor: processor.onError(errorHandler))

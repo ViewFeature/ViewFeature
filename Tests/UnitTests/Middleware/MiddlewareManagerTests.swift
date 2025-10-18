@@ -17,9 +17,18 @@ import Testing
     case loadData
   }
 
-  struct TestState: Equatable, Sendable {
+  final class TestState: Equatable, @unchecked Sendable {
     var count = 0
     var isLoading = false
+
+    init(count: Int = 0, isLoading: Bool = false) {
+      self.count = count
+      self.isLoading = isLoading
+    }
+
+    static func == (lhs: TestState, rhs: TestState) -> Bool {
+      lhs.count == rhs.count && lhs.isLoading == rhs.isLoading
+    }
   }
 
   // MARK: - init(middlewares:)

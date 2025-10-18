@@ -16,10 +16,22 @@ import Testing
     case asyncOp
   }
 
-  struct TestState: Equatable, Sendable {
+  final class TestState: Equatable, @unchecked Sendable {
     var count = 0
     var errorMessage: String?
     var isLoading = false
+
+    init(count: Int = 0, errorMessage: String? = nil, isLoading: Bool = false) {
+      self.count = count
+      self.errorMessage = errorMessage
+      self.isLoading = isLoading
+    }
+
+    static func == (lhs: TestState, rhs: TestState) -> Bool {
+      lhs.count == rhs.count &&
+      lhs.errorMessage == rhs.errorMessage &&
+      lhs.isLoading == rhs.isLoading
+    }
   }
 
   // MARK: - init(_:)
@@ -33,7 +45,7 @@ import Testing
 
     // THEN: Should handle actions
     var state = TestState()
-    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .increment, state: state)
     #expect(state.count == 1)
   }
 
@@ -54,8 +66,8 @@ import Testing
 
     // WHEN: Handle different actions
     var state = TestState()
-    _ = await sut.handle(action: .increment, state: &state)
-    _ = await sut.handle(action: .decrement, state: &state)
+    _ = await sut.handle(action: .increment, state: state)
+    _ = await sut.handle(action: .decrement, state: state)
 
     // THEN: Should process all actions
     // swiftlint:disable:next empty_count
@@ -73,7 +85,7 @@ import Testing
 
     // WHEN: Handle action
     var state = TestState()
-    let task = await sut.handle(action: .increment, state: &state)
+    let task = await sut.handle(action: .increment, state: state)
 
     // THEN: Should update state
     #expect(state.count == 5)
@@ -94,7 +106,7 @@ import Testing
 
     // WHEN: Handle action
     var state = TestState()
-    let task = await sut.handle(action: .asyncOp, state: &state)
+    let task = await sut.handle(action: .asyncOp, state: state)
 
     // THEN: Should return run task
     #expect(state.isLoading)
@@ -113,7 +125,7 @@ import Testing
 
     // WHEN: Handle action
     var state = TestState()
-    let task = await sut.handle(action: .increment, state: &state)
+    let task = await sut.handle(action: .increment, state: state)
 
     // THEN: Should return cancels task
     if case .cancels(let ids) = task.storeTask {
@@ -132,9 +144,9 @@ import Testing
 
     // WHEN: Handle multiple times
     var state = TestState()
-    _ = await sut.handle(action: .increment, state: &state)
-    _ = await sut.handle(action: .increment, state: &state)
-    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .increment, state: state)
+    _ = await sut.handle(action: .increment, state: state)
+    _ = await sut.handle(action: .increment, state: state)
 
     // THEN: Should accumulate
     #expect(state.count == 3)
@@ -156,7 +168,7 @@ import Testing
 
     // THEN: Should return a working handler
     var state = TestState()
-    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .increment, state: state)
     #expect(state.count == 1)
   }
 
@@ -173,7 +185,7 @@ import Testing
 
     // WHEN: Handle action
     var state = TestState()
-    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .increment, state: state)
 
     // THEN: Should work with chaining
     #expect(state.count == 1)
@@ -191,7 +203,7 @@ import Testing
 
     // WHEN: Handle action (no error occurs)
     var state = TestState()
-    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .increment, state: state)
 
     // THEN: Normal operation works
     #expect(state.count == 1)
@@ -209,7 +221,7 @@ import Testing
 
     // WHEN: Handle action
     var state = TestState()
-    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .increment, state: state)
 
     // THEN: Should execute with middleware
     #expect(state.count == 1)
@@ -225,7 +237,7 @@ import Testing
 
     // WHEN: Handle action
     var state = TestState()
-    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .increment, state: state)
 
     // THEN: Should execute with default middleware
     #expect(state.count == 1)
@@ -245,7 +257,7 @@ import Testing
 
     // WHEN: Handle action
     var state = TestState()
-    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .increment, state: state)
 
     // THEN: Should work with multiple middleware
     #expect(state.count == 1)
@@ -271,7 +283,7 @@ import Testing
 
     // WHEN: Handle action
     var state = TestState()
-    let task = await sut.handle(action: .increment, state: &state)
+    let task = await sut.handle(action: .increment, state: state)
 
     // THEN: Task should be transformed
     #expect(state.count == 1)
@@ -299,7 +311,7 @@ import Testing
 
     // WHEN: Handle action
     var state = TestState()
-    let task = await sut.handle(action: .asyncOp, state: &state)
+    let task = await sut.handle(action: .asyncOp, state: state)
 
     // THEN: Should convert to cancels
     if case .cancels(let ids) = task.storeTask {
@@ -326,7 +338,7 @@ import Testing
 
     // WHEN: Handle action returning noTask
     var state = TestState()
-    let task = await sut.handle(action: .increment, state: &state)
+    let task = await sut.handle(action: .increment, state: state)
 
     // THEN: noTask should remain
     if case .none = task.storeTask {
@@ -352,7 +364,7 @@ import Testing
 
     // WHEN: Handle action
     var state = TestState()
-    let task = await sut.handle(action: .asyncOp, state: &state)
+    let task = await sut.handle(action: .asyncOp, state: state)
 
     // THEN: Should work with all features
     #expect(state.count == 1)
@@ -388,9 +400,9 @@ import Testing
 
     // WHEN: Handle multiple actions
     var state = TestState()
-    _ = await sut.handle(action: .increment, state: &state)
-    _ = await sut.handle(action: .increment, state: &state)
-    _ = await sut.handle(action: .decrement, state: &state)
+    _ = await sut.handle(action: .increment, state: state)
+    _ = await sut.handle(action: .increment, state: state)
+    _ = await sut.handle(action: .decrement, state: state)
 
     // THEN: Should process all actions
     #expect(state.count == 1)  // +1 +1 -1 = 1
@@ -411,19 +423,19 @@ import Testing
 
     // THEN: All should work independently
     var state1 = TestState()
-    _ = await base.handle(action: .increment, state: &state1)
+    _ = await base.handle(action: .increment, state: state1)
     #expect(state1.count == 1)
 
     var state2 = TestState()
-    _ = await withMiddleware.handle(action: .increment, state: &state2)
+    _ = await withMiddleware.handle(action: .increment, state: state2)
     #expect(state2.count == 1)
 
     var state3 = TestState()
-    _ = await withError.handle(action: .increment, state: &state3)
+    _ = await withError.handle(action: .increment, state: state3)
     #expect(state3.count == 1)
 
     var state4 = TestState()
-    _ = await withTransform.handle(action: .increment, state: &state4)
+    _ = await withTransform.handle(action: .increment, state: state4)
     #expect(state4.count == 1)
   }
 
@@ -450,16 +462,16 @@ import Testing
 
     // WHEN: Execute complex sequence
     var state = TestState(count: 100)
-    _ = await sut.handle(action: .increment, state: &state)
+    _ = await sut.handle(action: .increment, state: state)
     #expect(state.count == 110)
 
-    let task = await sut.handle(action: .asyncOp, state: &state)
+    let task = await sut.handle(action: .asyncOp, state: state)
     #expect(state.isLoading)
     if case .run(let id, _, _, _) = task.storeTask {
       #expect(id == "complex")
     }
 
-    _ = await sut.handle(action: .decrement, state: &state)
+    _ = await sut.handle(action: .decrement, state: state)
     #expect(state.count == 105)  // 110 - 5 = 105
   }
 }
