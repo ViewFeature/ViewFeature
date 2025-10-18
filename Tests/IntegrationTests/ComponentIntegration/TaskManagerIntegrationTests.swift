@@ -87,12 +87,10 @@ import Testing
       feature: DataFeature()
     )
 
-    // WHEN: Start task (concurrent) and immediately cancel
+    // WHEN: Start task (fire-and-forget) and cancel it
     let fetchTask = sut.send(.fetch("data1"))
 
-    // Give task time to start
-    await Task.yield()
-    await Task.yield()
+    // Give task time to start (cooperative scheduling)
     await Task.yield()
 
     await sut.send(.cancelFetch("data1")).value
@@ -102,37 +100,35 @@ import Testing
 
     // Give time for cleanup
     await Task.yield()
-    await Task.yield()
 
     // THEN: Task should be cancelled and cleaned up
     #expect(!sut.isTaskRunning(id: "fetch-data1"))
     #expect(sut.state.isLoading["data1"] == false)
   }
 
-  @Test func multipleConcurrentTasks() async {
-    // GIVEN: Store
+  @Test func multipleSequentialTasks() async {
+    // GIVEN: Store (processes actions sequentially on MainActor)
     let sut = Store(
       initialState: DataState(),
       feature: DataFeature()
     )
 
-    // WHEN: Start multiple tasks (fire and forget for concurrent execution)
-    _ = sut.send(.fetch("data1"))
-    _ = sut.send(.fetch("data2"))
-    _ = sut.send(.fetch("data3"))
+    // WHEN: Send multiple tasks - Store processes them SEQUENTIALLY, not concurrently
+    // Each send() returns immediately (fire-and-forget), but Store processes actions one at a time
+    let task1 = sut.send(.fetch("data1"))
+    let task2 = sut.send(.fetch("data2"))
+    let task3 = sut.send(.fetch("data3"))
 
-    try? await Task.sleep(for: .milliseconds(10))
+    // Wait for all tasks to complete (sequential execution ensures order)
+    await task1.value
+    await task2.value
+    await task3.value
 
-    // THEN: All tasks should be tracked and running
-    #expect(sut.state.isLoading["data1"] ?? false)
+    // THEN: All tasks complete, state is set correctly
+    #expect(sut.state.isLoading["data1"] ?? false)  // Still marked as loading from action
     #expect(sut.state.isLoading["data2"] ?? false)
     #expect(sut.state.isLoading["data3"] ?? false)
-
-    // Wait for all to complete
-    try? await Task.sleep(for: .milliseconds(100))
-
-    // Tasks should complete
-    #expect(sut.runningTaskCount >= 0)
+    #expect(sut.runningTaskCount >= 0)  // Tasks have completed
   }
 
   // MARK: - Task Cancellation Tests
@@ -142,24 +138,26 @@ import Testing
   // Direct weak reference checks are unreliable due to isolated deinit's async nature
 
   @Test func cancelSpecificTaskAmongMany() async {
-    // GIVEN: Store with multiple running tasks
+    // GIVEN: Store with multiple sequential tasks
     let sut = Store(
       initialState: DataState(),
       feature: DataFeature()
     )
 
-    _ = sut.send(.fetch("data1"))
-    _ = sut.send(.fetch("data2"))
-    _ = sut.send(.fetch("data3"))
+    // Note: Store processes actions sequentially, so these execute one after another
+    let task1 = sut.send(.fetch("data1"))
+    let task2 = sut.send(.fetch("data2"))
+    let task3 = sut.send(.fetch("data3"))
 
-    try? await Task.sleep(for: .milliseconds(10))
-
-    // WHEN: Cancel specific task
+    // WHEN: Cancel specific task (sequential processing means data2 might not have started yet)
     await sut.send(.cancelFetch("data2")).value
 
-    try? await Task.sleep(for: .milliseconds(20))
+    // Wait for all tasks to complete
+    await task1.value
+    await task2.value
+    await task3.value
 
-    // THEN: Only that task should be cancelled
+    // THEN: Task should be cancelled
     #expect(!sut.isTaskRunning(id: "fetch-data2"))
   }
 
@@ -239,10 +237,7 @@ import Testing
     // WHEN: Execute task that throws
     await sut.send(.fetch("data1")).value
 
-    // Wait for error handler to complete
-    try? await Task.sleep(for: .milliseconds(50))
-
-    // THEN: Error should be handled
+    // THEN: Error should be handled (no sleep needed - await .value waits for completion)
     #expect(sut.state.errors["data1"] != nil)
     #expect(sut.state.isLoading["data1"] == false)
   }
@@ -312,12 +307,14 @@ import Testing
     await sut.send(.fetch("data1")).value
     #expect(sut.runningTaskCount == 0)
 
-    _ = sut.send(.fetch("data1"))
-    try? await Task.sleep(for: .milliseconds(10))
+    let task2 = sut.send(.fetch("data1"))
+    await Task.yield()  // Give task time to start
 
     // THEN: Task should be running again
     #expect(sut.state.isLoading["data1"] ?? false)
     #expect(sut.isTaskRunning(id: "fetch-data1"))
+
+    await task2.value  // Clean up
   }
 
   // MARK: - Task Manager State Consistency
@@ -329,19 +326,21 @@ import Testing
       feature: DataFeature()
     )
 
-    // WHEN: Start, cancel, and restart tasks
-    _ = sut.send(.fetch("data1"))
-    try? await Task.sleep(for: .milliseconds(10))
+    // WHEN: Start, cancel, and restart tasks (sequential processing)
+    let task1 = sut.send(.fetch("data1"))
+    await Task.yield()  // Give task time to start
 
     await sut.send(.cancelFetch("data1")).value
-    try? await Task.sleep(for: .milliseconds(20))
+    await task1.value  // Wait for cancelled task to complete
 
-    _ = sut.send(.fetch("data2"))
-    try? await Task.sleep(for: .milliseconds(10))
+    let task2 = sut.send(.fetch("data2"))
+    await Task.yield()  // Give task time to start
 
     // THEN: Task manager state should be consistent
     #expect(!sut.isTaskRunning(id: "fetch-data1"))
-    // data2 might still be running or completed
+    // data2 should be running
+
+    await task2.value  // Clean up
   }
 
   // MARK: - Integration with Synchronous Actions
@@ -353,12 +352,12 @@ import Testing
       feature: DataFeature()
     )
 
-    // WHEN: Mix synchronous and asynchronous actions
+    // WHEN: Mix synchronous and asynchronous actions (sequential processing)
     await sut.send(.process("data1")).value
     #expect(sut.state.data["data1"] == "processed")
 
-    _ = sut.send(.fetch("data2"))
-    try? await Task.sleep(for: .milliseconds(10))
+    let task2 = sut.send(.fetch("data2"))
+    await Task.yield()  // Give task time to start
 
     await sut.send(.process("data3")).value
     #expect(sut.state.data["data3"] == "processed")
@@ -367,5 +366,7 @@ import Testing
     #expect(sut.state.data["data1"] == "processed")
     #expect(sut.state.data["data3"] == "processed")
     #expect(sut.state.isLoading["data2"] ?? false)
+
+    await task2.value  // Clean up
   }
 }

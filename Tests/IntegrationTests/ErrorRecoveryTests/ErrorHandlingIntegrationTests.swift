@@ -86,10 +86,7 @@ import Testing
     // WHEN: Execute task that throws
     await sut.send(.fetchData("data1")).value
 
-    // Wait for error handling
-    try? await Task.sleep(for: .milliseconds(50))
-
-    // THEN: Error should be captured in state
+    // THEN: Error should be captured in state (no sleep needed - await .value waits for completion)
     #expect(sut.state.errors["data1"] != nil)
     #expect(sut.state.lastError != nil)
   }
@@ -133,9 +130,7 @@ import Testing
     await sut.send(.fetchData("data1")).value
     await sut.send(.fetchData("data2")).value
 
-    try? await Task.sleep(for: .milliseconds(50))
-
-    // THEN: Each error should be tracked separately
+    // THEN: Each error should be tracked separately (no sleep needed - sequential execution)
     #expect(sut.state.errors["data1"] != nil)
     #expect(sut.state.errors["data2"] != nil)
     #expect(sut.state.errors.count == 2)
@@ -200,13 +195,12 @@ import Testing
 
     // WHEN: Fail, then recover
     await sut.send(.fetchData("data1")).value
-    try? await Task.sleep(for: .milliseconds(30))
 
     #expect(sut.state.lastError != nil)
 
     await sut.send(.recoverFromError).value
 
-    // THEN: State should be recovered
+    // THEN: State should be recovered (no sleep needed - sequential execution)
     #expect(sut.state.lastError == nil)
     #expect(sut.state.errors.isEmpty)
   }
@@ -254,14 +248,12 @@ import Testing
 
     // WHEN: Fail and retry
     await sut.send(.fetchData("data1")).value
-    try? await Task.sleep(for: .milliseconds(30))
 
     #expect(sut.state.errors["data1"] != nil)
 
     await sut.send(.retryFetch("data1")).value
-    try? await Task.sleep(for: .milliseconds(30))
 
-    // THEN: Retry should clear error
+    // THEN: Retry should clear error (no sleep needed - sequential execution)
     #expect(sut.state.errors["data1"] == nil)
     #expect(sut.state.retryCount == 1)
   }
@@ -306,9 +298,8 @@ import Testing
 
     // WHEN: Error occurs
     await sut.send(.fetchData("data1")).value
-    try? await Task.sleep(for: .milliseconds(30))
 
-    // THEN: Existing state should be preserved
+    // THEN: Existing state should be preserved (no sleep needed - await .value waits for completion)
     #expect(sut.state.data["existing"] == "value")
     #expect(sut.state.data["data1"] == "failed")
     #expect(sut.state.errors["data1"] != nil)
@@ -418,14 +409,13 @@ import Testing
 
     // WHEN: Error triggers recovery state
     await sut.send(.fetchData("data1")).value
-    try? await Task.sleep(for: .milliseconds(30))
 
     #expect(sut.state.isRecovering)
 
     // Recover
     await sut.send(.recoverFromError).value
 
-    // THEN: System should recover
+    // THEN: System should recover (no sleep needed - sequential execution)
     #expect(!sut.state.isRecovering)
     #expect(sut.state.errors.isEmpty)
   }
@@ -468,9 +458,8 @@ import Testing
 
     // WHEN: Error occurs
     await sut.send(.fetchData("data1")).value
-    try? await Task.sleep(for: .milliseconds(30))
 
-    // THEN: Error should be handled safely
+    // THEN: Error should be handled safely (no sleep needed - await .value waits for completion)
     #expect(sut.state.errors["data1"] != nil)
     #expect(sut.state.lastError != nil)
   }
@@ -559,25 +548,21 @@ import Testing
     // WHEN: Execute full recovery workflow
     // Initial failure
     await sut.send(.fetchData("data1")).value
-    try? await Task.sleep(for: .milliseconds(30))
     #expect(sut.state.errors["data1"] != nil)
 
     // First retry - fails
     await sut.send(.retryFetch("data1")).value
-    try? await Task.sleep(for: .milliseconds(30))
     #expect(sut.state.retryCount == 1)
 
     // Second retry - fails
     await sut.send(.retryFetch("data1")).value
-    try? await Task.sleep(for: .milliseconds(30))
     #expect(sut.state.retryCount == 2)
 
     // Third retry - succeeds
     await sut.send(.retryFetch("data1")).value
-    try? await Task.sleep(for: .milliseconds(30))
     #expect(sut.state.retryCount == 3)
 
-    // THEN: Should eventually succeed
+    // THEN: Should eventually succeed (no sleep needed - sequential execution ensures order)
     // Error might still be present from last failure, but retry count is correct
     #expect(sut.state.retryCount == 3)
   }

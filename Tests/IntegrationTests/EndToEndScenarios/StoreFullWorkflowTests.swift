@@ -124,13 +124,14 @@ import Testing
       feature: UserFeature()
     )
 
-    // Start loading user
-    _ = sut.send(.loadUser("user456"))
-    try? await Task.sleep(for: .milliseconds(10))
+    // Start loading user (fire-and-forget)
+    let loadTask = sut.send(.loadUser("user456"))
+    await Task.yield()  // Give task time to start
     #expect(sut.state.isLoading)
 
     // WHEN: Logout while loading
     await sut.send(.logout).value
+    await loadTask.value  // Wait for cancelled task to complete
 
     // THEN: State should be reset and task cancelled
     #expect(!sut.state.isLoading)
@@ -152,14 +153,9 @@ import Testing
     await sut.send(.loadUser("user789")).value
     await sut.send(.updateProfile(name: "Jane Doe", email: "jane@example.com")).value
     await sut.send(.refreshData).value
-
-    // Wait for refresh to complete
-    try? await Task.sleep(for: .milliseconds(50))
-
     await sut.send(.refreshData).value
-    try? await Task.sleep(for: .milliseconds(50))
 
-    // THEN: All actions should be processed
+    // THEN: All actions should be processed (no sleep needed - sequential execution ensures order)
     #expect(sut.state.userId == "user789")
     #expect(sut.state.userName == "Jane Doe")
     #expect(sut.state.refreshCount == 2)
@@ -173,10 +169,9 @@ import Testing
       feature: UserFeature()
     )
 
-    // WHEN: Execute complex state transitions
+    // WHEN: Execute complex state transitions (all sequential)
     // Load -> Cancel -> Load -> Update -> Refresh -> Logout
     await sut.send(.loadUser("user1")).value
-    try? await Task.sleep(for: .milliseconds(10))
 
     await sut.send(.cancelLoad).value
     #expect(!sut.state.isLoading)
@@ -184,11 +179,10 @@ import Testing
     await sut.send(.loadUser("user2")).value
     await sut.send(.updateProfile(name: "User 2", email: "user2@example.com")).value
     await sut.send(.refreshData).value
-    try? await Task.sleep(for: .milliseconds(50))
 
     await sut.send(.logout).value
 
-    // THEN: Should end in clean state
+    // THEN: Should end in clean state (no sleep needed - sequential execution)
     #expect(!sut.state.isLoggedIn)
     #expect(sut.state.userId == nil)
   }
@@ -211,10 +205,7 @@ import Testing
     await task2.value
     await task3.value
 
-    // Wait for async tasks
-    try? await Task.sleep(for: .milliseconds(100))
-
-    // THEN: All actions should be processed
+    // THEN: All actions should be processed (await .value ensures completion)
     #expect(sut.state.userName == "Test")
     #expect(sut.state.isLoggedIn)
     #expect(sut.state.refreshCount >= 1)
@@ -263,13 +254,12 @@ import Testing
       feature: UserFeature()
     )
 
-    // WHEN: Perform multiple refreshes
+    // WHEN: Perform multiple refreshes (sequential execution)
     for _ in 0..<5 {
       await sut.send(.refreshData).value
-      try? await Task.sleep(for: .milliseconds(30))
     }
 
-    // THEN: All refreshes should be counted
+    // THEN: All refreshes should be counted (no sleep needed - await .value ensures order)
     #expect(sut.state.refreshCount == 5)
   }
 

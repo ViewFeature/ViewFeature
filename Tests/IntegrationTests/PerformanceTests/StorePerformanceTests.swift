@@ -194,16 +194,17 @@ import Testing
       feature: PerformanceFeature()
     )
 
-    // WHEN: Create many light tasks
+    // WHEN: Create many light tasks (sequential processing)
     let taskCount = 100
     let startTime = Date()
 
+    var lastTask: Task<Void, Never>?
     for _ in 0..<taskCount {
-      _ = sut.send(.lightTask)
+      lastTask = sut.send(.lightTask)
     }
 
-    // Wait for all tasks to complete
-    try? await Task.sleep(for: .milliseconds(500))
+    // Wait for all tasks to complete (sequential execution ensures order)
+    await lastTask?.value
 
     let duration = Date().timeIntervalSince(startTime)
 
@@ -389,20 +390,22 @@ import Testing
       feature: PerformanceFeature()
     )
 
-    // WHEN: Simulate realistic workload
+    // WHEN: Simulate realistic workload (sequential processing)
     // 80% simple actions, 20% with tasks
     let startTime = Date()
 
+    var lastTask: Task<Void, Never>?
     for index in 0..<500 {
       if index % 5 == 0 {
-        _ = sut.send(.heavyComputation)
+        lastTask = sut.send(.heavyComputation)
       } else {
-        await sut.send(.increment).value
+        lastTask = sut.send(.increment)
+        await lastTask!.value
       }
     }
 
-    // Wait for tasks
-    try? await Task.sleep(for: .milliseconds(1000))
+    // Wait for last task to complete (sequential execution ensures all tasks complete)
+    await lastTask?.value
 
     let duration = Date().timeIntervalSince(startTime)
 

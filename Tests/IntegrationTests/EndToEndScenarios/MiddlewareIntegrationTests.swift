@@ -109,10 +109,7 @@ import Testing
     await store.send(.addItem("Banana")).value
     await store.send(.removeItem("Apple")).value
 
-    // Wait for middleware processing
-    try? await Task.sleep(for: .milliseconds(20))
-
-    // THEN: State should be updated correctly
+    // THEN: State should be updated correctly (no sleep needed - await .value waits for completion)
     #expect(store.state.items == ["Banana"])
   }
 
@@ -132,9 +129,7 @@ import Testing
     await store.send(.addItem("Item1")).value
     await store.send(.checkout).value
 
-    try? await Task.sleep(for: .milliseconds(100))
-
-    // THEN: Middleware should process async actions
+    // THEN: Middleware should process async actions (no sleep needed - sequential execution)
     #expect(store.state.isCheckingOut)
   }
 
@@ -158,9 +153,7 @@ import Testing
     await store.send(.addItem("Item1")).value
     await store.send(.addItem("Item2")).value
 
-    try? await Task.sleep(for: .milliseconds(20))
-
-    // THEN: All middleware should execute
+    // THEN: All middleware should execute (no sleep needed - sequential execution)
     #expect(store.state.items.count == 2)
   }
 
@@ -183,9 +176,7 @@ import Testing
     await store.send(.addItem("Banana")).value
     await store.send(.checkout).value
 
-    try? await Task.sleep(for: .milliseconds(100))
-
-    // THEN: Actions should be logged (no crashes)
+    // THEN: Actions should be logged (no crashes, no sleep needed - sequential execution)
     #expect(store.state.items == ["Apple", "Banana"])
     #expect(store.state.isCheckingOut)
   }
@@ -223,9 +214,7 @@ import Testing
     await store.send(.checkout).value
     #expect(store.state.isCheckingOut)
 
-    try? await Task.sleep(for: .milliseconds(100))
-
-    // THEN: Final state should be correct
+    // THEN: Final state should be correct (no sleep needed - await .value ensures completion)
     #expect(store.state.items == ["Apple", "Orange"])
   }
 
@@ -277,9 +266,7 @@ import Testing
     // WHEN: Send action
     await store.send(.addItem("Item")).value
 
-    try? await Task.sleep(for: .milliseconds(20))
-
-    // THEN: Execution order should be preserved
+    // THEN: Execution order should be preserved (no sleep needed - sequential execution)
     // Note: Middleware is not automatically applied to Store, so we just verify state
     #expect(store.state.items == ["Item"])
   }
@@ -325,9 +312,7 @@ import Testing
     await store.send(.addItem("Item1")).value
     await store.send(.addItem("Item2")).value
 
-    try? await Task.sleep(for: .milliseconds(20))
-
-    // THEN: State should be updated
+    // THEN: State should be updated (no sleep needed - sequential execution)
     #expect(store.state.items.count == 2)
   }
 }
