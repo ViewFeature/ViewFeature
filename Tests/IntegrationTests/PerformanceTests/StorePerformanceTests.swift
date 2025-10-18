@@ -47,14 +47,14 @@ import Testing
 
         case .heavyComputation:
           state.operations += 1
-          return .run(id: "heavy") { _ in
+          return .run {  _ in
             // Simulate heavy work
             try await Task.sleep(for: .milliseconds(5))
           }
 
         case .lightTask:
           state.operations += 1
-          return .run(id: "light-\(state.operations)") { _ in
+          return .run {  _ in
             try await Task.sleep(for: .milliseconds(1))
           }
         }

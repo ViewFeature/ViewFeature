@@ -46,13 +46,14 @@ struct CounterFeature: Feature {
 
       case .delayedIncrement:
         state.isLoading = true
-        return .run(id: "delayed-increment") { state in
+        return .run { state in
           try await Task.sleep(for: .seconds(3))
           // Check if task was cancelled during sleep
           try Task.checkCancellation()
           state.count += 1
           state.isLoading = false
         }
+        .cancellable(id: "delayed-increment")
         .catch { _, state in
           state.isLoading = false
         }

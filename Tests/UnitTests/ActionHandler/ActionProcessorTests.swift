@@ -101,7 +101,8 @@ import Testing
     // GIVEN: Processor that returns run task
     let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.isLoading = true
-      return .run(id: "test-task") { _ in }
+      return .run { _ in }
+        .cancellable(id: "test-task")
     }
 
     // WHEN: Process action
@@ -110,7 +111,7 @@ import Testing
 
     // THEN: Should return run task
     #expect(state.isLoading)
-    if case .run(let id, _, _) = task.storeTask {
+    if case .run(let id, _, _, _) = task.storeTask {
       #expect(id == "test-task")
     } else {
       Issue.record("Expected run task")
@@ -393,12 +394,14 @@ import Testing
     // GIVEN: Processor with transform
     let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
-      return .run(id: "original") { _ in }
+      return .run { _ in }
+        .cancellable(id: "original")
     }
     .transform { task in
       switch task.storeTask {
       case .run:
-        return .run(id: "transformed") { _ in }
+        return .run { _ in }
+          .cancellable(id: "transformed")
       default:
         return task
       }
@@ -410,7 +413,7 @@ import Testing
 
     // THEN: Task should be transformed
     #expect(state.count == 1)
-    if case .run(let id, _, _) = task.storeTask {
+    if case .run(let id, _, _, _) = task.storeTask {
       #expect(id == "transformed")
     } else {
       Issue.record("Expected run task")
@@ -420,11 +423,12 @@ import Testing
   @Test func transform_canConvertTaskTypes() async {
     // GIVEN: Processor that converts run to cancel
     let sut = ActionProcessor<TestAction, TestState> { _, _ in
-      .run(id: "will-cancel") { _ in }
+      .run { _ in }
+        .cancellable(id: "will-cancel")
     }
     .transform { task in
       switch task.storeTask {
-      case .run(let id, _, _):
+      case .run(let id, _, _, _):
         return .cancel(id: id)
       default:
         return task
@@ -474,7 +478,8 @@ import Testing
     // GIVEN: Processor with middleware, error handler, and transform
     let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 1
-      return .run(id: "task") { _ in }
+      return .run { _ in }
+        .cancellable(id: "task")
     }
     .use(LoggingMiddleware())
     .onError { _, state in
@@ -504,7 +509,8 @@ import Testing
     var middlewareExecuted = false
     let sut = ActionProcessor<TestAction, TestState> { _, state in
       state.count += 10
-      return .run(id: "main-task") { _ in }
+      return .run { _ in }
+        .cancellable(id: "main-task")
     }
     .use(LoggingMiddleware(logLevel: .debug))
     .onError { _, state in
@@ -523,7 +529,7 @@ import Testing
     #expect(state.count == 15)
     #expect(middlewareExecuted)
     #expect(state.errorMessage == nil)
-    if case .run(let id, _, _) = task.storeTask {
+    if case .run(let id, _, _, _) = task.storeTask {
       #expect(id == "main-task")
     }
   }
@@ -578,7 +584,8 @@ import Testing
 
     let asyncProcessor = ActionProcessor<TestAction, TestState> { _, state in
       state.isLoading = true
-      return .run(id: "async") { _ in }
+      return .run { _ in }
+        .cancellable(id: "async")
     }
 
     struct ThrowingMiddleware: BeforeActionMiddleware {

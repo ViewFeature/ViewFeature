@@ -66,12 +66,13 @@ import Testing
     // GIVEN: An explicit task ID
     let taskId = "my-custom-task"
 
-    // WHEN: Create a run task with explicit ID
-    let sut: ActionTask<TestAction, TestState> = .run(id: taskId) { _ in }
+    // WHEN: Create a run task with explicit ID via .cancellable()
+    let sut: ActionTask<TestAction, TestState> = .run { _ in }
+      .cancellable(id: taskId)
 
     // THEN: Should have run storeTask with correct ID
     switch sut.storeTask {
-    case .run(let id, _, _):
+    case .run(let id, _, _, _):
       #expect(id == taskId)
     case .none, .cancel:
       Issue.record("Expected run task, got different type")
@@ -84,7 +85,7 @@ import Testing
 
     // THEN: Should have run storeTask with auto-generated ID
     switch sut.storeTask {
-    case .run(let id, _, _):
+    case .run(let id, _, _, _):
       #expect(id.hasPrefix("auto-task-"), "ID should have auto-task prefix")
       #expect(id.count > "auto-task-".count, "ID should have unique suffix")
     case .none, .cancel:
@@ -101,11 +102,11 @@ import Testing
     var id1: String?
     var id2: String?
 
-    if case .run(let id, _, _) = task1.storeTask {
+    if case .run(let id, _, _, _) = task1.storeTask {
       id1 = id
     }
 
-    if case .run(let id, _, _) = task2.storeTask {
+    if case .run(let id, _, _, _) = task2.storeTask {
       id2 = id
     }
 
@@ -122,7 +123,8 @@ import Testing
     let operation: @Sendable (TestState) async throws -> Void = { _ in }
 
     // WHEN: Create a run task with operation
-    let sut: ActionTask<TestAction, TestState> = .run(id: "test", operation: operation)
+    let sut: ActionTask<TestAction, TestState> = .run(operation: operation)
+      .cancellable(id: "test")
 
     // THEN: Should store the operation (cannot directly test, but can verify task type)
     switch sut.storeTask {
@@ -140,11 +142,12 @@ import Testing
     let longId = String(repeating: "a", count: 1000)
 
     // WHEN: Create a run task with long ID
-    let sut: ActionTask<TestAction, TestState> = .run(id: longId) { _ in }
+    let sut: ActionTask<TestAction, TestState> = .run { _ in }
+      .cancellable(id: longId)
 
     // THEN: Should accept and store the long ID
     switch sut.storeTask {
-    case .run(let id, _, _):
+    case .run(let id, _, _, _):
       #expect(id == longId)
       #expect(id.count == 1000)
     default:
@@ -157,11 +160,12 @@ import Testing
     let specialId = "task-🎉-日本語-123"
 
     // WHEN: Create a run task with special ID
-    let sut: ActionTask<TestAction, TestState> = .run(id: specialId) { _ in }
+    let sut: ActionTask<TestAction, TestState> = .run { _ in }
+      .cancellable(id: specialId)
 
     // THEN: Should accept and store the ID with special characters
     switch sut.storeTask {
-    case .run(let id, _, _):
+    case .run(let id, _, _, _):
       #expect(id == specialId)
     default:
       Issue.record("Expected run task")
@@ -263,7 +267,7 @@ import Testing
   @Test func allTaskTypes_canBeCreatedWithSameActionAndStateTypes() {
     // GIVEN & WHEN: Create all three task types
     let noTask: ActionTask<TestAction, TestState> = .none
-    let runTask: ActionTask<TestAction, TestState> = .run(id: "test") { _ in }
+    let runTask: ActionTask<TestAction, TestState> = .run { _ in }
     let cancelTask: ActionTask<TestAction, TestState> = .cancel(id: "test")
 
     // THEN: All should be valid tasks
@@ -319,7 +323,8 @@ import Testing
 
   @Test func catch_withRunTask_attachesErrorHandler() {
     // GIVEN: A run task without error handler
-    let sut: ActionTask<TestAction, TestState> = .run(id: "test") { _ in }
+    let sut: ActionTask<TestAction, TestState> = .run { _ in }
+      .cancellable(id: "test")
 
     // WHEN: Attach error handler with catch
     let result = sut.catch { _, state in
@@ -328,7 +333,7 @@ import Testing
 
     // THEN: Should have run task with error handler
     switch result.storeTask {
-    case .run(let id, _, let onError):
+    case .run(let id, _, let onError, _):
       #expect(id == "test")
       #expect(onError != nil, "Error handler should be attached")
     default:
@@ -345,7 +350,7 @@ import Testing
 
     // THEN: Should preserve auto-generated ID and attach handler
     switch result.storeTask {
-    case .run(let id, _, let onError):
+    case .run(let id, _, let onError, _):
       #expect(id.hasPrefix("auto-task-"), "Should preserve auto-generated ID")
       #expect(onError != nil, "Error handler should be attached")
     default:
@@ -355,7 +360,8 @@ import Testing
 
   @Test func catch_canChainMultipleTimes() {
     // GIVEN: A run task
-    let sut: ActionTask<TestAction, TestState> = .run(id: "test") { _ in }
+    let sut: ActionTask<TestAction, TestState> = .run { _ in }
+      .cancellable(id: "test")
 
     // WHEN: Chain catch multiple times (last one wins)
     let result =
@@ -365,7 +371,7 @@ import Testing
 
     // THEN: Should have the last error handler
     switch result.storeTask {
-    case .run(_, _, let onError):
+    case .run(_, _, let onError, _):
       #expect(onError != nil, "Should have error handler")
     // Note: Can't easily test which handler is attached in unit test
     // This is tested in integration tests
@@ -377,14 +383,15 @@ import Testing
   @Test func catch_preservesTaskId() {
     // GIVEN: A run task with specific ID
     let originalId = "my-important-task"
-    let sut: ActionTask<TestAction, TestState> = .run(id: originalId) { _ in }
+    let sut: ActionTask<TestAction, TestState> = .run { _ in }
+      .cancellable(id: originalId)
 
     // WHEN: Attach error handler
     let result = sut.catch { _, _ in }
 
     // THEN: Should preserve the original task ID
     switch result.storeTask {
-    case .run(let id, _, _):
+    case .run(let id, _, _, _):
       #expect(id == originalId, "Task ID should be preserved")
     default:
       Issue.record("Expected run task")
@@ -393,7 +400,8 @@ import Testing
 
   @Test func catch_withComplexErrorHandler() {
     // GIVEN: A run task
-    let sut: ActionTask<TestAction, TestState> = .run(id: "test") { _ in }
+    let sut: ActionTask<TestAction, TestState> = .run { _ in }
+      .cancellable(id: "test")
 
     // WHEN: Attach complex error handler
     let result = sut.catch { error, state in
@@ -403,7 +411,7 @@ import Testing
 
     // THEN: Should successfully attach the handler
     switch result.storeTask {
-    case .run(let id, _, let onError):
+    case .run(let id, _, let onError, _):
       #expect(id == "test")
       #expect(onError != nil)
     default:

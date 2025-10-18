@@ -82,32 +82,27 @@ extension ActionTask {
 
   /// Creates an asynchronous task with an automatically generated ID.
   ///
-  /// Cannot be cancelled by ID. For cancellable tasks, use `run(id:operation:)`.
+  /// Use `.cancellable(id:cancelInFlight:)` to make the task cancellable by ID.
+  ///
+  /// ```swift
+  /// // Simple task without cancellation
+  /// return .run { state in
+  ///   let data = try await fetch()
+  ///   state.data = data
+  /// }
+  ///
+  /// // Make it cancellable with ID
+  /// return .run { state in
+  ///   let data = try await fetch()
+  ///   state.data = data
+  /// }
+  /// .cancellable(id: "fetch", cancelInFlight: true)
+  /// ```
   public static func run(
     operation: @escaping @MainActor (State) async throws -> Void
   ) -> ActionTask {
     let taskId = TaskIdGenerator.generate()
-    return ActionTask(storeTask: .run(id: taskId, operation: operation, onError: nil))
-  }
-
-  /// Creates a cancellable task with a specific ID.
-  ///
-  /// Can be cancelled later using `cancel(id:)`. Tasks with the same ID automatically cancel previous instances.
-  ///
-  /// ```swift
-  /// return .run(id: "download") { state in
-  ///   let data = try await download()
-  ///   state.downloadedData = data
-  ///   state.isDownloading = false
-  /// }
-  /// // Later: return .cancel(id: "download")
-  /// ```
-  public static func run<ID: TaskID>(
-    id: ID,
-    operation: @escaping @MainActor (State) async throws -> Void
-  ) -> ActionTask {
-    let stringId = id.taskIdString
-    return ActionTask(storeTask: .run(id: stringId, operation: operation, onError: nil))
+    return ActionTask(storeTask: .run(id: taskId, operation: operation, onError: nil, cancelInFlight: false))
   }
 
   /// Cancels a running task by its ID. Does nothing if the task isn't running.
@@ -131,8 +126,55 @@ extension ActionTask {
   /// ```
   public func `catch`(_ handler: @escaping @MainActor (Error, State) -> Void) -> ActionTask {
     switch storeTask {
-    case .run(let id, let operation, _):
-      return ActionTask(storeTask: .run(id: id, operation: operation, onError: handler))
+    case .run(let id, let operation, _, let cancelInFlight):
+      return ActionTask(storeTask: .run(id: id, operation: operation, onError: handler, cancelInFlight: cancelInFlight))
+    default:
+      return self
+    }
+  }
+
+  /// Makes this task cancellable with a specific ID and optional automatic cancellation.
+  ///
+  /// This method allows you to:
+  /// 1. Assign a specific ID to the task (overriding any auto-generated ID)
+  /// 2. Optionally cancel any in-flight task with the same ID before starting this one
+  ///
+  /// ```swift
+  /// // Cancel previous search before starting new one
+  /// return .run { state in
+  ///   let results = try await search(text)
+  ///   state.results = results
+  /// }
+  /// .cancellable(id: "search", cancelInFlight: true)
+  ///
+  /// // Multiple downloads can run concurrently (cancelInFlight: false)
+  /// return .run { state in
+  ///   let data = try await download(url)
+  ///   state.downloads[url] = data
+  /// }
+  /// .cancellable(id: "download-\(url)", cancelInFlight: false)
+  /// ```
+  ///
+  /// - Parameters:
+  ///   - id: The identifier for this task. Can be any `TaskID` type (String, Int, UUID, or custom enum).
+  ///   - cancelInFlight: If `true`, cancels any running task with the same ID before starting this one.
+  ///                     If `false` (default), allows multiple tasks with the same ID to run concurrently.
+  /// - Returns: A new `ActionTask` with the specified ID and cancellation behavior.
+  ///
+  /// - Note: This method only affects `.run` tasks. It has no effect on `.none` or `.cancel` tasks.
+  public func cancellable<ID: TaskID>(
+    id: ID,
+    cancelInFlight: Bool = false
+  ) -> ActionTask {
+    switch storeTask {
+    case .run(_, let operation, let onError, _):
+      let stringId = id.taskIdString
+      return ActionTask(storeTask: .run(
+        id: stringId,
+        operation: operation,
+        onError: onError,
+        cancelInFlight: cancelInFlight
+      ))
     default:
       return self
     }

@@ -54,7 +54,7 @@ import Testing
         case .loadUser(let id):
           state.isLoading = true
           state.userId = id
-          return .run(id: "loadUser") { _ in
+          return .run {  _ in
             // Simulate network request
             try await Task.sleep(for: .milliseconds(50))
           }
@@ -78,7 +78,7 @@ import Testing
 
         case .refreshData:
           state.refreshCount += 1
-          return .run(id: "refresh") { _ in
+          return .run {  _ in
             try await Task.sleep(for: .milliseconds(20))
           }
 

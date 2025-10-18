@@ -43,9 +43,10 @@ import Testing
         switch action {
         case .fetch(let id):
           state.isLoading[id] = true
-          return .run(id: "fetch-\(id)") { _ in
+          return .run { _ in
             try await Task.sleep(for: .milliseconds(50))
           }
+          .cancellable(id: "fetch-\(id)")
 
         case .fetchMultiple(let ids):
           for id in ids {
@@ -53,9 +54,10 @@ import Testing
           }
           // Start first task (in real app, you'd handle multiple tasks differently)
           if let firstId = ids.first {
-            return .run(id: "fetch-\(firstId)") { _ in
+            return .run { _ in
               try await Task.sleep(for: .milliseconds(30))
             }
+            .cancellable(id: "fetch-\(firstId)")
           } else {
             return .none
           }
@@ -170,9 +172,10 @@ import Testing
         ActionHandler { action, _ in
           switch action {
           case .fetch(let id):
-            return .run(id: "short-\(id)") { _ in
+            return .run { _ in
               try await Task.sleep(for: .milliseconds(10))
             }
+            .cancellable(id: "short-\(id)")
           default:
             return .none
           }
@@ -215,7 +218,8 @@ import Testing
                 onError: { error, errorState in
                   errorState.errors[id] = error.localizedDescription
                   errorState.isLoading[id] = false
-                }
+                },
+                cancelInFlight: false
               ))
           default:
             return .none
@@ -266,10 +270,11 @@ import Testing
         ActionHandler { [tracker] action, _ in
           switch action {
           case .fetch(let id):
-            return .run(id: "track-\(id)") { _ in
+            return .run { _ in
               try await Task.sleep(for: .milliseconds(20))
               await tracker.append(id)
             }
+            .cancellable(id: "track-\(id)")
           default:
             return .none
           }

@@ -6,7 +6,6 @@ import Testing
 /// Comprehensive unit tests for Store with 100% code coverage.
 ///
 /// Tests every public method and property in Store.swift
-// swiftlint:disable file_length type_body_length
 @MainActor
 @Suite struct StoreTests {
   // MARK: - Test Fixtures
@@ -49,12 +48,12 @@ import Testing
 
         case .asyncOp:
           state.isLoading = true
-          return .run(id: "async") { _ in
+          return .run { _ in
             try await Task.sleep(for: .milliseconds(10))
           }
 
         case .throwingOp:
-          return .run(id: "throwing") { _ in
+          return .run { _ in
             throw NSError(domain: "Test", code: 1)
           }
 
@@ -370,7 +369,6 @@ import Testing
     #expect(sut.runningTaskCount == 0)
   }
 
-
   // MARK: - Error Handling
 
   @Test func errorHandling_logsError() async {
@@ -411,7 +409,8 @@ import Testing
                 onError: { error, errorState in
                   errorState.errorMessage = "Error caught: \(error.localizedDescription)"
                   errorState.isLoading = false
-                }
+                },
+                cancelInFlight: false
               ))
           default:
             return .none
@@ -451,7 +450,8 @@ import Testing
                 operation: { _ in
                   throw NSError(domain: "TestError", code: 123)
                 },
-                onError: nil
+                onError: nil,
+                cancelInFlight: false
               ))
           default:
             return .none
@@ -493,7 +493,8 @@ import Testing
                 onError: { _, state in
                   state.count = 999
                   state.errorMessage = "Modified"
-                }
+                },
+                cancelInFlight: false
               ))
           default:
             return .none
@@ -647,4 +648,3 @@ import Testing
   // - @Observable macro's internal reference management
   // - Swift Testing framework's potential reference retention
 }
-// swiftlint:enable file_length type_body_length

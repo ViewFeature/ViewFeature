@@ -176,9 +176,11 @@ public final class Store<F: Feature> {
     case .none:
       break
 
-    case .run(let id, let operation, let onError):
-      // Cancel existing task with same ID before starting new one
-      taskManager.cancelTaskInternal(id: id)
+    case .run(let id, let operation, let onError, let cancelInFlight):
+      // Cancel existing task with same ID if cancelInFlight is true
+      if cancelInFlight {
+        taskManager.cancelTaskInternal(id: id)
+      }
 
       // Pass operation directly to TaskManager
       // TaskManager will create and track the Task

@@ -68,7 +68,8 @@ import Testing
                 onError: { error, errorState in
                   errorState.errors[id] = "\(error)"
                   errorState.lastError = "\(error)"
-                }
+                },
+                cancelInFlight: false
               ))
           default:
             return .none
@@ -113,7 +114,8 @@ import Testing
                 },
                 onError: { error, state in
                   state.errors[id] = "\(error)"
-                }
+                },
+                cancelInFlight: false
               ))
           default:
             return .none
@@ -160,7 +162,8 @@ import Testing
                 onError: { error, errorState in
                   errorState.errors[id] = "\(error)"
                   errorState.lastError = "\(error)"
-                }
+                },
+                cancelInFlight: false
               ))
 
           case .recoverFromError:
@@ -179,7 +182,8 @@ import Testing
                   try await Task.sleep(for: .milliseconds(10))
                   // Simulate success on retry
                 },
-                onError: nil
+                onError: nil,
+                cancelInFlight: false
               ))
 
           default:
@@ -225,13 +229,14 @@ import Testing
                 },
                 onError: { error, state in
                   state.errors[id] = "\(error)"
-                }
+                },
+                cancelInFlight: false
               ))
 
           case .retryFetch(let id):
             state.retryCount += 1
             state.errors[id] = nil
-            return .run(id: "retry-\(id)") { _ in
+            return .run {  _ in
               try await Task.sleep(for: .milliseconds(10))
             }
 
@@ -283,7 +288,8 @@ import Testing
                 onError: { error, state in
                   state.data[id] = "failed"
                   state.errors[id] = "\(error)"
-                }
+                },
+                cancelInFlight: false
               ))
 
           default:
@@ -331,7 +337,8 @@ import Testing
                   if !(error is CancellationError) {
                     state.errors[id] = "\(error)"
                   }
-                }
+                },
+                cancelInFlight: false
               ))
 
           default:
@@ -388,7 +395,8 @@ import Testing
                   state.errors[id] = "\(error)"
                   // Trigger recovery
                   state.isRecovering = true
-                }
+                },
+                cancelInFlight: false
               ))
 
           case .recoverFromError:
@@ -442,7 +450,8 @@ import Testing
                   // Safe error handling
                   state.errors[id] = "\(error)"
                   state.lastError = "\(error)"
-                }
+                },
+                cancelInFlight: false
               ))
 
           default:
@@ -487,7 +496,8 @@ import Testing
                 onError: { error, errorState in
                   errorState.errors[id] = "\(error)"
                   errorState.lastError = "\(error)"
-                }
+                },
+                cancelInFlight: false
               ))
 
           case .retryFetch(let id):
@@ -504,7 +514,8 @@ import Testing
                   },
                   onError: { error, state in
                     state.errors[id] = "\(error)"
-                  }
+                  },
+                  cancelInFlight: false
                 ))
             } else {
               // Success on 3rd retry
@@ -514,7 +525,8 @@ import Testing
                   operation: { _ in
                     // Success
                   },
-                  onError: nil
+                  onError: nil,
+                  cancelInFlight: false
                 ))
             }
 

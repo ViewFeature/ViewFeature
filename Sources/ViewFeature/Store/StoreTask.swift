@@ -7,7 +7,7 @@
 /// ## Topics
 /// ### Task Cases
 /// - ``none``
-/// - ``run(id:operation:onError:)``
+/// - ``run(id:operation:onError:cancelInFlight:)``
 /// - ``cancel(id:)``
 public enum StoreTask<Action, State> {
   /// No task to execute
@@ -17,10 +17,17 @@ public enum StoreTask<Action, State> {
   ///
   /// The operation receives the current state, allowing
   /// safe state mutation within the MainActor context.
+  ///
+  /// - Parameters:
+  ///   - id: Unique identifier for this task
+  ///   - operation: The async operation to execute
+  ///   - onError: Optional error handler
+  ///   - cancelInFlight: If true, cancels any running task with the same id before starting this one
   case run(
     id: String,
     operation: @MainActor (State) async throws -> Void,
-    onError: (@MainActor (Error, State) -> Void)?
+    onError: (@MainActor (Error, State) -> Void)?,
+    cancelInFlight: Bool
   )
 
   /// Cancel a running task

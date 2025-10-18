@@ -24,7 +24,7 @@ Modern state management for Swift 6.2 with async/await, automatic MainActor isol
 - 🛡️ **Thread-Safe by Default**: Automatic MainActor isolation (no manual annotations)
 - ⚡ **Type-Safe**: Compile-time safety via Swift's type system
 - 🏗 **SOLID Architecture**: Clean separation following SOLID principles
-- ✅ **100% Tested**: 267 tests with comprehensive coverage
+- ✅ **100% Tested**: 258 tests with comprehensive coverage
 - 📦 **Lightweight**: Only swift-log dependency
 - 🚀 **Production-Ready**: Battle-tested with integration and performance tests
 
@@ -304,10 +304,11 @@ struct CounterFeature: Feature {
                 return .none
 
             case .asyncIncrement:
-                return .run(id: "increment") { state in
+                return .run { state in
                     try await Task.sleep(for: .seconds(1))
                     state.count += 1  // ✅ Direct state mutation
                 }
+                .cancellable(id: "increment")
             }
         }
     }
@@ -377,8 +378,9 @@ Defines how actions transform state:
 #### ActionTask
 Represents side effects:
 - `.none` - No side effects
-- `.run(id:operation:)` - Execute async operations
-- `.cancel(id:)` - Cancel running tasks
+- `.run(operation:)` - Execute async operations with auto-generated ID
+- `.cancellable(id:cancelInFlight:)` - Assign ID and control in-flight cancellation
+- `.cancel(id:)` - Cancel running tasks by ID
 
 #### TaskManager
 Manages concurrent task execution:
@@ -408,11 +410,12 @@ struct DataFeature: Feature {
             switch action {
             case .loadData:
                 state.isLoading = true
-                return .run(id: "load-data") { state in
+                return .run { state in
                     let data = try await apiClient.fetch()
                     state.data = data
                     state.isLoading = false
                 }
+                .cancellable(id: "load-data")
                 .catch { error, state in
                     state.isLoading = false
                     state.errorMessage = error.localizedDescription
@@ -447,10 +450,11 @@ struct NetworkFeature: Feature {
             case .fetch:
                 state.isLoading = true
                 state.errorMessage = nil
-                return .run(id: "fetch") { state in
+                return .run { state in
                     try await networkCall()
                     state.isLoading = false
                 }
+                .cancellable(id: "fetch")
                 .catch { error, state in
                     state.errorMessage = error.localizedDescription
                     state.isLoading = false
@@ -460,6 +464,156 @@ struct NetworkFeature: Feature {
     }
 }
 ```
+
+### Task Cancellation with `.cancellable(id:cancelInFlight:)`
+
+The `.cancellable(id:cancelInFlight:)` method provides fine-grained control over task cancellation, inspired by The Composable Architecture's API design.
+
+#### Search Debouncing with `cancelInFlight: true`
+
+Cancel previous searches automatically when a new search is triggered:
+
+```swift
+struct SearchFeature: Feature {
+    @Observable
+    final class State {
+        var query: String = ""
+        var results: [String] = []
+        var isSearching = false
+    }
+
+    enum Action: Sendable {
+        case search(String)
+    }
+
+    func handle() -> ActionHandler<Action, State> {
+        ActionHandler { action, state in
+            switch action {
+            case .search(let query):
+                state.query = query
+                state.isSearching = true
+
+                // Auto-cancel previous search when new search starts
+                return .run { state in
+                    try await Task.sleep(for: .milliseconds(300))  // Debounce
+                    let results = try await apiClient.search(query)
+                    state.results = results
+                    state.isSearching = false
+                }
+                .cancellable(id: "search", cancelInFlight: true)
+                .catch { _, state in
+                    state.isSearching = false
+                }
+            }
+        }
+    }
+}
+
+// Usage in SwiftUI
+struct SearchView: View {
+    @State private var store = Store(
+        initialState: SearchFeature.State(),
+        feature: SearchFeature()
+    )
+
+    var body: some View {
+        TextField("Search", text: $store.state.query)
+            .onChange(of: store.state.query) { _, newQuery in
+                // Each keystroke cancels the previous search
+                store.send(.search(newQuery))
+            }
+
+        if store.state.isSearching {
+            ProgressView()
+        }
+
+        List(store.state.results, id: \.self) { result in
+            Text(result)
+        }
+    }
+}
+```
+
+#### Concurrent Downloads with `cancelInFlight: false`
+
+Allow multiple tasks with the same base ID pattern to run concurrently:
+
+```swift
+struct DownloadFeature: Feature {
+    @Observable
+    final class State {
+        var downloads: [String: Data] = [:]
+        var isDownloading: Set<String> = []
+    }
+
+    enum Action: Sendable {
+        case download(String)
+    }
+
+    func handle() -> ActionHandler<Action, State> {
+        ActionHandler { action, state in
+            switch action {
+            case .download(let id):
+                state.isDownloading.insert(id)
+
+                // Multiple downloads can run concurrently
+                return .run { state in
+                    let data = try await apiClient.download(id)
+                    state.downloads[id] = data
+                    state.isDownloading.remove(id)
+                }
+                .cancellable(id: "download-\(id)", cancelInFlight: false)
+                .catch { _, state in
+                    state.isDownloading.remove(id)
+                }
+            }
+        }
+    }
+}
+```
+
+#### Method Chaining
+
+The `.cancellable()` method works seamlessly with other ActionTask methods:
+
+```swift
+return .run { state in
+    try await longOperation()
+    state.data = result
+}
+.cancellable(id: "operation", cancelInFlight: true)
+.catch { error, state in
+    state.errorMessage = error.localizedDescription
+}
+```
+
+#### Automatic ID Generation
+
+When you omit the `id` parameter in `.run()`, an ID is auto-generated. You can override it with `.cancellable()`:
+
+```swift
+// Auto-generated ID
+return .run { state in
+    state.count += 1
+}
+
+// Override with specific ID and enable cancellation
+return .run { state in
+    try await fetchData()
+    state.data = result
+}
+.cancellable(id: "fetch", cancelInFlight: true)
+```
+
+#### Key Behaviors
+
+- **`cancelInFlight: true`** - Cancels any existing task with the same ID before starting the new one
+  - Perfect for: search, autocomplete, real-time updates
+  - Ensures: only the latest request completes
+
+- **`cancelInFlight: false`** (default) - Allows multiple tasks with the same ID to run concurrently
+  - Perfect for: downloads, parallel operations, independent tasks
+  - Ensures: all tasks complete unless explicitly cancelled
 
 ## Middleware
 
@@ -713,7 +867,7 @@ struct DownloadFeature: Feature {
             case .startDownload:
                 state.isDownloading = true
                 state.progress = 0.0
-                return .run(id: "download") { state in
+                return .run { state in
                     // Simulate long-running download
                     for progress in stride(from: 0.0, through: 1.0, by: 0.1) {
                         try await Task.sleep(for: .milliseconds(100))
@@ -721,6 +875,7 @@ struct DownloadFeature: Feature {
                     }
                     state.isDownloading = false
                 }
+                .cancellable(id: "download")
 
             case .cancelDownload:
                 state.isDownloading = false
@@ -826,30 +981,51 @@ return .run(id: "fetch") { state in
 - No `Reducer` protocol, use `Feature`
 - No automatic reducer composition tree
 
+**Familiar patterns:**
+- `.cancellable(id:cancelInFlight:)` works just like TCA's effect cancellation
+- Method chaining for composing task behaviors
+- ID-based task tracking and cancellation
+
 ```swift
 // TCA
 struct Feature: Reducer {
     struct State: Equatable {  // struct
         var count = 0
+        var isLoading = false
     }
-    enum Action: Sendable { case increment }
+    enum Action: Sendable {
+        case increment
+        case search(String)
+    }
 
     func reduce(into state: inout State, action: Action) -> Effect<Action> {
         switch action {
         case .increment:
             state.count += 1
             return .none
+
+        case .search(let query):
+            state.isLoading = true
+            return .run { send in
+                let result = try await search(query)
+                await send(.searchResponse(result))
+            }
+            .cancellable(id: "search", cancelInFlight: true)
         }
     }
 }
 
-// ViewFeature
+// ViewFeature - Similar API, different architecture
 struct Feature: Feature {
     @Observable
     final class State {  // class with @Observable
         var count = 0
+        var isLoading = false
     }
-    enum Action: Sendable { case increment }
+    enum Action: Sendable {
+        case increment
+        case search(String)
+    }
 
     func handle() -> ActionHandler<Action, State> {
         ActionHandler { action, state in  // no inout!
@@ -857,6 +1033,15 @@ struct Feature: Feature {
             case .increment:
                 state.count += 1
                 return .none
+
+            case .search(let query):
+                state.isLoading = true
+                return .run { state in
+                    let result = try await search(query)
+                    state.results = result  // Direct mutation
+                    state.isLoading = false
+                }
+                .cancellable(id: "search", cancelInFlight: true)
             }
         }
     }

@@ -48,7 +48,7 @@ import Testing
 
         case .checkout:
           state.isCheckingOut = true
-          return .run(id: "checkout") { _ in
+          return .run {  _ in
             try await Task.sleep(for: .milliseconds(50))
           }
 

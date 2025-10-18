@@ -94,10 +94,11 @@ struct UserFeature: Feature {
           User(name: "Bob", email: "bob@example.com", role: .member),
           User(name: "Charlie", email: "charlie@example.com", role: .guest)
         ]
-        return .run(id: "load-users") { _ in
+        return .run { _ in
           try await Task.sleep(for: .seconds(1.5))
           // Task completes - View layer handles follow-up actions if needed
         }
+        .cancellable(id: "load-users")
         .catch { _, state in
           state.isLoading = false
         }

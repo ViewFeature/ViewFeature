@@ -71,12 +71,13 @@ import Testing
     let sut: StoreTask<TestAction, TestState> = .run(
       id: taskId,
       operation: operation,
-      onError: nil
+      onError: nil,
+      cancelInFlight: false
     )
 
     // THEN: Should be run case with correct ID
     switch sut {
-    case .run(let id, _, let errorHandler):
+    case .run(let id, _, let errorHandler, _):
       #expect(id == taskId)
       #expect(errorHandler == nil)
     case .none, .cancel:
@@ -92,12 +93,13 @@ import Testing
     let sut: StoreTask<TestAction, TestState> = .run(
       id: "task",
       operation: operation,
-      onError: nil
+      onError: nil,
+      cancelInFlight: false
     )
 
     // THEN: Should have nil error handler by default
     switch sut {
-    case .run(_, _, let errorHandler):
+    case .run(_, _, let errorHandler, _):
       #expect(errorHandler == nil, "Default onError should be nil")
     default:
       Issue.record("Expected run case")
@@ -115,12 +117,13 @@ import Testing
     let sut: StoreTask<TestAction, TestState> = .run(
       id: "error-task",
       operation: operation,
-      onError: errorHandler
+      onError: errorHandler,
+      cancelInFlight: false
     )
 
     // THEN: Should have error handler
     switch sut {
-    case .run(let id, _, let handler):
+    case .run(let id, _, let handler, _):
       #expect(id == "error-task")
       #expect(handler != nil, "Error handler should be present")
     default:
@@ -137,12 +140,13 @@ import Testing
     let sut: StoreTask<TestAction, TestState> = .run(
       id: longId,
       operation: operation,
-      onError: nil
+      onError: nil,
+      cancelInFlight: false
     )
 
     // THEN: Should accept and store the long ID
     switch sut {
-    case .run(let id, _, _):
+    case .run(let id, _, _, _):
       #expect(id == longId)
       #expect(id.count == 1000)
     default:
@@ -159,12 +163,13 @@ import Testing
     let sut: StoreTask<TestAction, TestState> = .run(
       id: specialId,
       operation: operation,
-      onError: nil
+      onError: nil,
+      cancelInFlight: false
     )
 
     // THEN: Should accept special characters
     switch sut {
-    case .run(let id, _, _):
+    case .run(let id, _, _, _):
       #expect(id == specialId)
     default:
       Issue.record("Expected run case")
@@ -179,12 +184,13 @@ import Testing
     let sut: StoreTask<TestAction, TestState> = .run(
       id: "",
       operation: operation,
-      onError: nil
+      onError: nil,
+      cancelInFlight: false
     )
 
     // THEN: Should accept empty string
     switch sut {
-    case .run(let id, _, _):
+    case .run(let id, _, _, _):
       #expect(id == "")
     default:
       Issue.record("Expected run case")
@@ -202,12 +208,13 @@ import Testing
     let sut: StoreTask<TestAction, TestState> = .run(
       id: "throwing",
       operation: operation,
-      onError: nil
+      onError: nil,
+      cancelInFlight: false
     )
 
     // THEN: Should store the throwing operation
     switch sut {
-    case .run(_, let storedOperation, _):
+    case .run(_, let storedOperation, _, _):
       // Verify operation throws
       do {
         try await storedOperation(TestState())
@@ -243,12 +250,13 @@ import Testing
     let sut: StoreTask<TestAction, TestState> = .run(
       id: "success",
       operation: operation,
-      onError: nil
+      onError: nil,
+      cancelInFlight: false
     )
 
     // THEN: Operation should execute successfully
     switch sut {
-    case .run(_, let storedOperation, _):
+    case .run(_, let storedOperation, _, _):
       try? await storedOperation(TestState())
       let executed = await tracker.wasExecuted()
       #expect(executed)
@@ -270,12 +278,13 @@ import Testing
     let sut: StoreTask<TestAction, TestState> = .run(
       id: "test",
       operation: { _ in },
-      onError: errorHandler
+      onError: errorHandler,
+      cancelInFlight: false
     )
 
     // THEN: Error handler should be stored
     switch sut {
-    case .run(_, _, let handler):
+    case .run(_, _, let handler, _):
       #expect(handler != nil)
 
       // Execute handler
@@ -300,12 +309,13 @@ import Testing
     let sut: StoreTask<TestAction, TestState> = .run(
       id: "mutate",
       operation: { _ in },
-      onError: errorHandler
+      onError: errorHandler,
+      cancelInFlight: false
     )
 
     // THEN: Handler should mutate state
     switch sut {
-    case .run(_, _, let handler):
+    case .run(_, _, let handler, _):
       var state = TestState(count: 0)
       let error = NSError(domain: "Test", code: 1)
       handler?(error, state)
@@ -390,7 +400,8 @@ import Testing
     let runTask: StoreTask<TestAction, TestState> = .run(
       id: "run",
       operation: { _ in },
-      onError: nil
+      onError: nil,
+      cancelInFlight: false
     )
     let cancelTask: StoreTask<TestAction, TestState> = .cancel(id: "cancel")
 
@@ -424,12 +435,13 @@ import Testing
     let sut: StoreTask<TestAction, TestState> = .run(
       id: "complex",
       operation: { _ in },
-      onError: complexHandler
+      onError: complexHandler,
+      cancelInFlight: false
     )
 
     // THEN: Handler should work correctly
     switch sut {
-    case .run(_, _, let handler):
+    case .run(_, _, let handler, _):
       var state = TestState(count: 0)
 
       handler?(NSError(domain: "E1", code: 1), state)
