@@ -118,7 +118,7 @@ import Testing
     }
   }
 
-  // MARK: - init(initialState:feature:taskManager:)
+  // MARK: - init(initialState:feature:taskExecutor:)
 
   @Test func init_withDefaultTaskManager() async {
     // GIVEN: Initial state and feature
@@ -140,14 +140,14 @@ import Testing
     let initialState = TestState(count: 5)
     let feature = TestFeature()
 
-    // WHEN: Create store with custom task manager
+    // WHEN: Create store with custom task executor
     let sut = Store(
       initialState: initialState,
       feature: feature,
-      taskManager: taskManager
+      taskExecutor: taskManager
     )
 
-    // THEN: Should use custom task manager
+    // THEN: Should use custom task executor
     #expect(sut.state.count == 5)
     #expect(sut.runningTaskCount == 0)
   }

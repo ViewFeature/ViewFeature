@@ -83,7 +83,7 @@ import Observation
 @MainActor
 public final class Store<F: Feature> {
   private var _state: F.State
-  private let taskManager: TaskManager
+  private let taskExecutor: any TaskExecuting
   private let handler: ActionHandler<F.Action, F.State>
   private let feature: F
   private let logger: Logger
@@ -100,14 +100,21 @@ public final class Store<F: Feature> {
   // MARK: - Initialization
 
   /// Primary initializer with full DIP compliance
+  ///
+  /// - Parameters:
+  ///   - initialState: The initial state for this feature
+  ///   - feature: The feature implementation defining action handling
+  ///   - taskExecutor: The task executor for managing async operations.
+  ///     Defaults to ``TaskManager`` for production use. Inject a test double
+  ///     (like `ImmediateTaskManager`) for testing.
   public init(
     initialState: F.State,
     feature: F,
-    taskManager: TaskManager = TaskManager()
+    taskExecutor: any TaskExecuting = TaskManager()
   ) {
     self.feature = feature
     self._state = initialState
-    self.taskManager = taskManager
+    self.taskExecutor = taskExecutor
     self.handler = feature.handle()
 
     let subsystem = Bundle.main.bundleIdentifier ?? "com.viewfeature.library"
@@ -213,12 +220,12 @@ public final class Store<F: Feature> {
     case .run(let id, let operation, let onError, let cancelInFlight):
       // Cancel existing task with same ID if cancelInFlight is true
       if cancelInFlight {
-        taskManager.cancelTasksInternal(ids: [id])
+        taskExecutor.cancelTasks(ids: [id])
       }
 
-      // Pass operation directly to TaskManager
-      // TaskManager will create and track the Task
-      let task = taskManager.executeTask(
+      // Pass operation directly to TaskExecutor
+      // TaskExecutor will create and track the Task
+      let task = taskExecutor.executeTask(
         id: id,
         operation: { @MainActor [weak self] in
           guard let self else { return }
@@ -259,7 +266,7 @@ public final class Store<F: Feature> {
       await task.value
 
     case .cancels(let ids):
-      taskManager.cancelTasksInternal(ids: ids)
+      taskExecutor.cancelTasks(ids: ids)
     }
   }
 
@@ -274,7 +281,7 @@ public final class Store<F: Feature> {
   /// Text("Active tasks: \(store.runningTaskCount)")
   /// ```
   public var runningTaskCount: Int {
-    taskManager.runningTaskCount
+    taskExecutor.runningTaskCount
   }
 
   /// Checks if a specific task is currently running.
@@ -291,6 +298,6 @@ public final class Store<F: Feature> {
   /// - Parameter id: The task identifier to check
   /// - Returns: `true` if the task is currently running, `false` otherwise
   public func isTaskRunning<ID: TaskID>(id: ID) -> Bool {
-    taskManager.isTaskRunning(id: id)
+    taskExecutor.isTaskRunning(id: id)
   }
 }

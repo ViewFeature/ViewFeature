@@ -170,32 +170,58 @@ public protocol ErrorHandlingMiddleware: BaseActionMiddleware {
 
 /// Full-featured middleware that supports all processing stages.
 ///
-/// `ActionMiddleware` combines all middleware protocols into a single interface.
-/// Conform to this protocol when you need to implement middleware that handles
-/// before, after, and error stages. For specialized middleware, conform to
-/// individual protocols instead.
+/// - Warning: **Deprecated**. Conform to individual middleware protocols instead.
 ///
-/// ## Example Implementation
+/// `ActionMiddleware` combines all middleware protocols into a single interface, which
+/// violates the Interface Segregation Principle (ISP). Instead of using this protocol,
+/// conform to only the specific middleware protocols you need.
+///
+/// ## Migration Guide
+///
+/// **Before** (using ActionMiddleware):
 /// ```swift
-/// struct ComprehensiveMiddleware: ActionMiddleware {
-///   let id = "ComprehensiveMiddleware"
+/// struct MyMiddleware: ActionMiddleware {
+///   let id = "MyMiddleware"
 ///
 ///   func beforeAction<Action, State>(_ action: Action, state: State) async throws {
 ///     print("Before: \(action)")
 ///   }
 ///
-///   func afterAction<Action, State>(
-///     _ action: Action,
-///     state: State,
-///     result: ActionTask<Action, State>,
-///     duration: TimeInterval
-///   ) async throws {
-///     print("After: \(action) (\(duration)s)")
+///   // Forced to provide empty implementations
+///   func afterAction<Action, State>(...) async throws { /* empty */ }
+///   func onError<Action, State>(...) async { /* empty */ }
+/// }
+/// ```
+///
+/// **After** (using individual protocols):
+/// ```swift
+/// struct MyMiddleware: BeforeActionMiddleware {
+///   let id = "MyMiddleware"
+///
+///   func beforeAction<Action, State>(_ action: Action, state: State) async throws {
+///     print("Before: \(action)")
+///   }
+///
+///   // No need to implement afterAction or onError!
+/// }
+/// ```
+///
+/// ## For Multi-Stage Middleware
+///
+/// If you need to implement multiple stages, compose the protocols:
+/// ```swift
+/// struct MyMiddleware: BeforeActionMiddleware, ErrorHandlingMiddleware {
+///   let id = "MyMiddleware"
+///
+///   func beforeAction<Action, State>(_ action: Action, state: State) async throws {
+///     print("Before: \(action)")
 ///   }
 ///
 ///   func onError<Action, State>(_ error: Error, action: Action, state: State) async {
 ///     print("Error: \(error)")
 ///   }
+///
+///   // No need to implement afterAction!
 /// }
 /// ```
 ///
@@ -204,6 +230,30 @@ public protocol ErrorHandlingMiddleware: BaseActionMiddleware {
 /// - ``BeforeActionMiddleware``
 /// - ``AfterActionMiddleware``
 /// - ``ErrorHandlingMiddleware``
+@available(*, deprecated, message: """
+    Conform to individual middleware protocols instead of ActionMiddleware.
+
+    This promotes Interface Segregation Principle: implement only what you need.
+
+    BEFORE:
+        struct MyMiddleware: ActionMiddleware {
+            func beforeAction(...) { print("before") }
+            func afterAction(...) { /* forced empty impl */ }
+            func onError(...) { /* forced empty impl */ }
+        }
+
+    AFTER:
+        struct MyMiddleware: BeforeActionMiddleware {
+            func beforeAction(...) { print("before") }
+            // No need to implement unused methods!
+        }
+
+    For multi-stage middleware:
+        struct MyMiddleware: BeforeActionMiddleware, ErrorHandlingMiddleware {
+            func beforeAction(...) { ... }
+            func onError(...) { ... }
+        }
+    """)
 public protocol ActionMiddleware: BeforeActionMiddleware, AfterActionMiddleware,
   ErrorHandlingMiddleware {
 }
