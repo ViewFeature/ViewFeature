@@ -84,13 +84,15 @@ public final class MiddlewareManager<Action, State> {
   }
 
   /// Adds multiple middleware to the execution pipeline.
+  ///
+  /// Equivalent to calling ``addMiddleware(_:)`` for each middleware in the array.
+  /// Order is preserved.
+  ///
+  /// - Parameter newMiddlewares: Array of middleware to add
   public func addMiddlewares(_ newMiddlewares: [any BaseActionMiddleware]) {
-    middlewares.append(contentsOf: newMiddlewares)
-
-    // Update cached middleware lists
-    beforeMiddlewares.append(contentsOf: newMiddlewares.compactMap { $0 as? any BeforeActionMiddleware })
-    afterMiddlewares.append(contentsOf: newMiddlewares.compactMap { $0 as? any AfterActionMiddleware })
-    errorMiddlewares.append(contentsOf: newMiddlewares.compactMap { $0 as? any ErrorHandlingMiddleware })
+    for middleware in newMiddlewares {
+      addMiddleware(middleware)
+    }
   }
 
   /// Executes all before-action middleware in registration order.
