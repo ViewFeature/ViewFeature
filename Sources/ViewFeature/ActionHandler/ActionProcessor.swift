@@ -50,6 +50,22 @@ public final class ActionProcessor<Action, State> {
   public func process(action: Action, state: State) async -> ActionTask<Action, State> {
     let startTime = ContinuousClock.now
 
+    // ========================================
+    // Middleware Execution Flow
+    // ========================================
+    // Order of execution:
+    // 1. Before-action middleware (line 68)
+    // 2. Action logic (baseExecution, line 69)
+    // 3. After-action middleware (line 73-74)
+    // 4. Error middleware + error handler (line 58-60, if error thrown)
+    //
+    // Why this order?
+    // - Before: Setup (logging, validation, state preparation)
+    // - Action: Core business logic
+    // - After: Cleanup (analytics, side effects tracking)
+    // - Error: Recovery (error logging, state rollback)
+    //
+    // This order ensures middleware can observe and react to the complete action lifecycle.
     do {
       let result = try await executeWithMiddleware(
         action: action, state: state, startTime: startTime)

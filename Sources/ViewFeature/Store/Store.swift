@@ -163,6 +163,19 @@ public final class Store<F: Feature> {
 
   // MARK: - Private Implementation
 
+  // ========================================
+  // Sequential Action Processing
+  // ========================================
+  // Actions are processed sequentially to ensure state consistency and prevent race conditions.
+  // This method awaits both the handler execution AND the task execution, ensuring the next
+  // action cannot start until the current one (including its async task) completes.
+  //
+  // Why sequential?
+  // - State mutations are predictable and ordered
+  // - No concurrent access to mutable state
+  // - Simpler mental model for developers
+  //
+  // See Store.send() DocC for full sequential execution rationale.
   private func processAction(_ action: F.Action) async {
     let actionTask = await handler.handle(action: action, state: _state)
     await executeTask(actionTask.storeTask)
@@ -195,6 +208,30 @@ public final class Store<F: Feature> {
         }
       )
 
+      // ========================================
+      // Why await task.value?
+      // ========================================
+      // This await is CRITICAL for sequential action processing. Without it, the next action
+      // would start immediately while this task is still running, breaking our sequential
+      // execution guarantee.
+      //
+      // Example without await:
+      //   send(.longTask)   // Starts 5-second task, returns immediately
+      //   send(.quickTask)  // Starts while longTask is still running ❌
+      //
+      // Example with await:
+      //   send(.longTask)   // Starts 5-second task, waits for completion
+      //   send(.quickTask)  // Starts only after longTask completes ✅
+      //
+      // This ensures:
+      // - Actions complete in the order they were sent
+      // - State mutations are serialized (no race conditions)
+      // - Predictable execution flow for developers
+      //
+      // TaskManager tracks the task for cancellation, but doesn't enforce sequential execution.
+      // That's the Store's responsibility, implemented here via await.
+      //
+      // See Store.send() DocC (lines 128-156) for full sequential execution rationale.
       await task.value
 
     case .cancels(let ids):
