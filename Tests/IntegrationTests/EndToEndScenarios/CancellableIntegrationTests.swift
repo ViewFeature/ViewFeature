@@ -57,24 +57,25 @@ import Testing
       feature: SearchFeature()
     )
 
-    // WHEN: Send multiple search actions rapidly
+    // WHEN: Send multiple search actions with cooperative scheduling
     sut.send(.search("swift"))
-    try? await Task.sleep(for: .milliseconds(10))
+    await Task.yield()  // Give first task a chance to start
 
-    sut.send(.search("kotlin"))
-    try? await Task.sleep(for: .milliseconds(10))
+    sut.send(.search("kotlin"))  // This should cancel "swift"
+    await Task.yield()  // Give second task a chance to start (and cancel first)
 
-    sut.send(.search("rust"))
+    // Wait for last task to complete (deterministic: waits for actual completion)
+    await sut.send(.search("rust")).value  // This should cancel "kotlin"
 
-    // Wait for last search to complete
-    try? await Task.sleep(for: .milliseconds(150))
-
-    // THEN: Last query should be set
+    // THEN: Only the last search should have completed
     #expect(sut.state.query == "rust")
     #expect(sut.state.results == ["rust"])
-    // Note: searchCount might be > 1 if tasks complete before cancellation
-    // The key behavior is that the last search result is correct
-    #expect(sut.state.searchCount >= 1)
+
+    // KEY: If cancelInFlight worked, only 1 task completed.
+    // If it didn't work, searchCount would be 2 or 3.
+    #expect(sut.state.searchCount == 1)
+
+    #expect(!sut.isTaskRunning(id: "search"))
   }
 
   @Test func cancelInFlight_false_allowsConcurrentTasks() async {
