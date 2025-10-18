@@ -236,18 +236,3 @@ public final class TaskManager {
     }
   }
 }
-
-// MARK: - TaskExecuting Conformance
-
-extension TaskManager: TaskExecuting {
-  /// Cancels multiple tasks by their string identifiers.
-  ///
-  /// This is a public wrapper around ``cancelTasksInternal(ids:)`` to satisfy
-  /// the ``TaskExecuting`` protocol. The implementation delegates to the internal
-  /// method to maintain backward compatibility.
-  ///
-  /// - Parameter ids: The string identifiers of the tasks to cancel
-  public func cancelTasks(ids: [String]) {
-    cancelTasksInternal(ids: ids)
-  }
-}
