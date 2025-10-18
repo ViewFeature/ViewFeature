@@ -31,7 +31,7 @@ import Testing
             .cancellable(id: "search", cancelInFlight: false)
 
         // THEN: Should have the specified ID and cancelInFlight = false
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(let id, _, _, let cancelInFlight, _):
             #expect(id == "search")
             #expect(!cancelInFlight)
@@ -46,7 +46,7 @@ import Testing
             .cancellable(id: "search", cancelInFlight: true)
 
         // THEN: Should have cancelInFlight = true
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(let id, _, _, let cancelInFlight, _):
             #expect(id == "search")
             #expect(cancelInFlight)
@@ -61,7 +61,7 @@ import Testing
             .cancellable(id: "new-id", cancelInFlight: false)
 
         // THEN: Should use the new ID from cancellable
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(let id, _, _, _, _):
             #expect(id == "new-id")
         default:
@@ -75,7 +75,7 @@ import Testing
             .cancellable(id: "test", cancelInFlight: true)
 
         // THEN: Should remain none task
-        switch sut.storeTask {
+        switch sut.operation {
         case .none:
             #expect(Bool(true))
         default:
@@ -89,7 +89,7 @@ import Testing
             .cancellable(id: "new-id", cancelInFlight: true)
 
         // THEN: Should remain cancels task with original IDs
-        switch sut.storeTask {
+        switch sut.operation {
         case .cancels(let ids):
             #expect(ids == ["test"])
         default:
@@ -104,7 +104,7 @@ import Testing
             .catch { _, _ in }
 
         // THEN: Should have both ID, cancelInFlight, and error handler
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(let id, _, let onError, let cancelInFlight, _):
             #expect(id == "search")
             #expect(cancelInFlight)
@@ -121,7 +121,7 @@ import Testing
             .cancellable(id: "search", cancelInFlight: true)
 
         // THEN: Should preserve error handler and set cancellable
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(let id, _, let onError, let cancelInFlight, _):
             #expect(id == "search")
             #expect(cancelInFlight)
@@ -137,7 +137,7 @@ import Testing
             .cancellable(id: 42, cancelInFlight: true)
 
         // THEN: Should convert Int to String
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(let id, _, _, let cancelInFlight, _):
             #expect(id == "42")
             #expect(cancelInFlight)
@@ -153,7 +153,7 @@ import Testing
             .cancellable(id: uuid, cancelInFlight: true)
 
         // THEN: Should convert UUID to String
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(let id, _, _, let cancelInFlight, _):
             #expect(id == uuid.uuidString)
             #expect(cancelInFlight)
@@ -173,7 +173,7 @@ import Testing
             .cancellable(id: TaskId.search, cancelInFlight: true)
 
         // THEN: Should use enum raw value
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(let id, _, _, let cancelInFlight, _):
             #expect(id == "search")
             #expect(cancelInFlight)
@@ -188,7 +188,7 @@ import Testing
             .cancellable(id: "test")
 
         // THEN: cancelInFlight should default to false
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(_, _, _, let cancelInFlight, _):
             #expect(!cancelInFlight)
         default:
@@ -203,7 +203,7 @@ import Testing
             .cancellable(id: "second", cancelInFlight: true)
 
         // THEN: Last call should override
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(let id, _, _, let cancelInFlight, _):
             #expect(id == "second")
             #expect(cancelInFlight)

@@ -89,7 +89,7 @@ import Testing
 
         // THEN: Should update state
         #expect(state.count == 5)
-        if case .none = task.storeTask {
+        if case .none = task.operation {
             #expect(Bool(true))
         } else {
             Issue.record("Expected noTask")
@@ -110,7 +110,7 @@ import Testing
 
         // THEN: Should return run task
         #expect(state.isLoading)
-        if case .run(let id, _, _, _, _) = task.storeTask {
+        if case .run(let id, _, _, _, _) = task.operation {
             #expect(id == "test")
         } else {
             Issue.record("Expected run task")
@@ -128,7 +128,7 @@ import Testing
         let task = await sut.handle(action: .increment, state: state)
 
         // THEN: Should return cancels task
-        if case .cancels(let ids) = task.storeTask {
+        if case .cancels(let ids) = task.operation {
             #expect(ids == ["cancel-me"])
         } else {
             Issue.record("Expected cancels task")
@@ -272,7 +272,7 @@ import Testing
             return .run { _ in }
         }
         .transform { task in
-            switch task.storeTask {
+            switch task.operation {
             case .run:
                 return .run { _ in }
                     .cancellable(id: "transformed")
@@ -287,7 +287,7 @@ import Testing
 
         // THEN: Task should be transformed
         #expect(state.count == 1)
-        if case .run(let id, _, _, _, _) = task.storeTask {
+        if case .run(let id, _, _, _, _) = task.operation {
             #expect(id == "transformed")
         } else {
             Issue.record("Expected run task")
@@ -301,7 +301,7 @@ import Testing
                 .cancellable(id: "convert")
         }
         .transform { task in
-            switch task.storeTask {
+            switch task.operation {
             case .run(let id, _, _, _, _):
                 return .cancel(id: id)
             default:
@@ -314,7 +314,7 @@ import Testing
         let task = await sut.handle(action: .asyncOp, state: state)
 
         // THEN: Should convert to cancels
-        if case .cancels(let ids) = task.storeTask {
+        if case .cancels(let ids) = task.operation {
             #expect(ids == ["convert"])
         } else {
             Issue.record("Expected cancels task")
@@ -328,7 +328,7 @@ import Testing
             return .none
         }
         .transform { task in
-            switch task.storeTask {
+            switch task.operation {
             case .run:
                 return .cancel(id: "modified")
             default:
@@ -341,7 +341,7 @@ import Testing
         let task = await sut.handle(action: .increment, state: state)
 
         // THEN: noTask should remain
-        if case .none = task.storeTask {
+        if case .none = task.operation {
             #expect(Bool(true))
         } else {
             Issue.record("Expected noTask")
@@ -368,7 +368,7 @@ import Testing
 
         // THEN: Should work with all features
         #expect(state.count == 1)
-        if case .run = task.storeTask {
+        if case .run = task.operation {
             #expect(Bool(true))
         }
     }
@@ -467,7 +467,7 @@ import Testing
 
         let task = await sut.handle(action: .asyncOp, state: state)
         #expect(state.isLoading)
-        if case .run(let id, _, _, _, _) = task.storeTask {
+        if case .run(let id, _, _, _, _) = task.operation {
             #expect(id == "complex")
         }
 

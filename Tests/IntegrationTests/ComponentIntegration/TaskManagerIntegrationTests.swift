@@ -209,20 +209,15 @@ import Testing
                     switch action {
                     case .fetch(let id):
                         state.isLoading[id] = true
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "error-\(id)",
-                                operation: { _ in
-                                    try await Task.sleep(for: .milliseconds(10))
-                                    throw NSError(domain: "TestError", code: 1)
-                                },
-                                onError: { error, errorState in
-                                    errorState.errors[id] = error.localizedDescription
-                                    errorState.isLoading[id] = false
-                                },
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                        return .run { _ in
+                            try await Task.sleep(for: .milliseconds(10))
+                            throw NSError(domain: "TestError", code: 1)
+                        }
+                        .catch { error, errorState in
+                            errorState.errors[id] = error.localizedDescription
+                            errorState.isLoading[id] = false
+                        }
+                        .cancellable(id: "error-\(id)")
                     default:
                         return .none
                     }

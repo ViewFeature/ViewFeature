@@ -49,7 +49,7 @@ import Testing
         let task = await sut.process(action: .increment, state: state)
 
         #expect(state.count == 1)
-        if case .none = task.storeTask {
+        if case .none = task.operation {
             #expect(Bool(true))
         } else {
             Issue.record("Expected noTask")
@@ -102,7 +102,7 @@ import Testing
         // THEN: Should execute and mutate state
         #expect(executionCount == 1)
         #expect(state.count == 1)
-        if case .none = task.storeTask {
+        if case .none = task.operation {
             #expect(Bool(true))
         } else {
             Issue.record("Expected noTask")
@@ -123,7 +123,7 @@ import Testing
 
         // THEN: Should return run task
         #expect(state.isLoading)
-        if case .run(let id, _, _, _, _) = task.storeTask {
+        if case .run(let id, _, _, _, _) = task.operation {
             #expect(id == "test-task")
         } else {
             Issue.record("Expected run task")
@@ -141,7 +141,7 @@ import Testing
         let task = await sut.process(action: .increment, state: state)
 
         // THEN: Should return cancels task
-        if case .cancels(let ids) = task.storeTask {
+        if case .cancels(let ids) = task.operation {
             #expect(ids == ["cancel-me"])
         } else {
             Issue.record("Expected cancels task")
@@ -170,7 +170,7 @@ import Testing
         // THEN: Should return noTask on error and not execute action
         // swiftlint:disable:next empty_count
         #expect(state.count == 0)  // Action not executed due to middleware error
-        if case .none = task.storeTask {
+        if case .none = task.operation {
             #expect(Bool(true))
         } else {
             Issue.record("Expected noTask on error")
@@ -410,7 +410,7 @@ import Testing
                 .cancellable(id: "original")
         }
         .transform { task in
-            switch task.storeTask {
+            switch task.operation {
             case .run:
                 return .run { _ in }
                     .cancellable(id: "transformed")
@@ -425,7 +425,7 @@ import Testing
 
         // THEN: Task should be transformed
         #expect(state.count == 1)
-        if case .run(let id, _, _, _, _) = task.storeTask {
+        if case .run(let id, _, _, _, _) = task.operation {
             #expect(id == "transformed")
         } else {
             Issue.record("Expected run task")
@@ -439,7 +439,7 @@ import Testing
                 .cancellable(id: "will-cancel")
         }
         .transform { task in
-            switch task.storeTask {
+            switch task.operation {
             case .run(let id, _, _, _, _):
                 return .cancel(id: id)
             default:
@@ -452,7 +452,7 @@ import Testing
         let task = await sut.process(action: .asyncOperation, state: state)
 
         // THEN: Should convert to cancels task
-        if case .cancels(let ids) = task.storeTask {
+        if case .cancels(let ids) = task.operation {
             #expect(ids == ["will-cancel"])
         } else {
             Issue.record("Expected cancels task")
@@ -466,7 +466,7 @@ import Testing
             return .none
         }
         .transform { task in
-            switch task.storeTask {
+            switch task.operation {
             case .run:
                 return .cancel(id: "transformed")
             default:
@@ -479,7 +479,7 @@ import Testing
         let task = await sut.process(action: .increment, state: state)
 
         // THEN: noTask should remain unchanged
-        if case .none = task.storeTask {
+        if case .none = task.operation {
             #expect(Bool(true))
         } else {
             Issue.record("Expected noTask")
@@ -507,7 +507,7 @@ import Testing
 
         // THEN: Should work with all features
         #expect(state.count == 1)
-        if case .run = task.storeTask {
+        if case .run = task.operation {
             #expect(Bool(true))
         } else {
             Issue.record("Expected run task")
@@ -541,7 +541,7 @@ import Testing
         #expect(state.count == 15)
         #expect(middlewareExecuted)
         #expect(state.errorMessage == nil)
-        if case .run(let id, _, _, _, _) = task.storeTask {
+        if case .run(let id, _, _, _, _) = task.operation {
             #expect(id == "main-task")
         }
     }
@@ -575,7 +575,7 @@ import Testing
         #expect(state.count == 0)
         #expect(state.errorMessage != nil)
         #expect(state.errorMessage?.contains("Pipeline error") ?? false)
-        if case .none = task.storeTask {
+        if case .none = task.operation {
             #expect(Bool(true))
         }
     }

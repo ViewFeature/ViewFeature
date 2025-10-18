@@ -399,20 +399,15 @@ import Testing
                     switch action {
                     case .throwingOp:
                         state.isLoading = true
-                        // Return StoreTask with onError handler
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "errorTest",
-                                operation: { _ in
-                                    throw NSError(domain: "TestError", code: 999)
-                                },
-                                onError: { error, errorState in
-                                    errorState.errorMessage = "Error caught: \(error.localizedDescription)"
-                                    errorState.isLoading = false
-                                },
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                        // Return task with onError handler using new API
+                        return .run { _ in
+                            throw NSError(domain: "TestError", code: 999)
+                        }
+                        .catch { error, errorState in
+                            errorState.errorMessage = "Error caught: \(error.localizedDescription)"
+                            errorState.isLoading = false
+                        }
+                        .cancellable(id: "errorTest")
                     default:
                         return .none
                     }
@@ -444,17 +439,11 @@ import Testing
                 ActionHandler { action, _ in
                     switch action {
                     case .throwingOp:
-                        // Return StoreTask with nil onError (default behavior)
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "noHandler",
-                                operation: { _ in
-                                    throw NSError(domain: "TestError", code: 123)
-                                },
-                                onError: nil,
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                        // Return task with no error handler (default behavior) using new API
+                        return .run { _ in
+                            throw NSError(domain: "TestError", code: 123)
+                        }
+                        .cancellable(id: "noHandler")
                     default:
                         return .none
                     }
@@ -486,19 +475,14 @@ import Testing
                     switch action {
                     case .throwingOp:
                         state.count = 10
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "stateModify",
-                                operation: { _ in
-                                    throw NSError(domain: "Test", code: 1)
-                                },
-                                onError: { _, state in
-                                    state.count = 999
-                                    state.errorMessage = "Modified"
-                                },
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                        return .run { _ in
+                            throw NSError(domain: "Test", code: 1)
+                        }
+                        .catch { _, state in
+                            state.count = 999
+                            state.errorMessage = "Modified"
+                        }
+                        .cancellable(id: "stateModify")
                     default:
                         return .none
                     }

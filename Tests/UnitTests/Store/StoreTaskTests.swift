@@ -81,7 +81,7 @@ import Testing
         case .run(let id, _, let errorHandler, _, _):
             #expect(id == taskId)
             #expect(errorHandler == nil)
-        case .none, .cancels:
+        default:
             Issue.record("Expected run case")
         }
     }
@@ -348,7 +348,7 @@ import Testing
         switch sut {
         case .cancels(let ids):
             #expect(ids == taskIds)
-        case .none, .run:
+        default:
             Issue.record("Expected cancels case")
         }
     }

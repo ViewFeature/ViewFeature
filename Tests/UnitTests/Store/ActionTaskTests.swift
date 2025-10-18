@@ -31,10 +31,10 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .none
 
         // THEN: Should have noTask storeTask
-        switch sut.storeTask {
+        switch sut.operation {
         case .none:
             #expect(true, "noTask created successfully")
-        case .run, .cancels:
+        default:
             Issue.record("Expected noTask, got different task type")
         }
     }
@@ -45,14 +45,14 @@ import Testing
         let task2: ActionTask<TestAction, TestState> = .none
 
         // THEN: Both should be noTask type
-        switch task1.storeTask {
+        switch task1.operation {
         case .none:
             #expect(Bool(true))
         default:
             Issue.record("task1 should be noTask")
         }
 
-        switch task2.storeTask {
+        switch task2.operation {
         case .none:
             #expect(Bool(true))
         default:
@@ -71,10 +71,10 @@ import Testing
             .cancellable(id: taskId)
 
         // THEN: Should have run storeTask with correct ID
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(let id, _, _, _, _):
             #expect(id == taskId)
-        case .none, .cancels:
+        default:
             Issue.record("Expected run task, got different type")
         }
     }
@@ -84,11 +84,11 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .run { _ in }
 
         // THEN: Should have run storeTask with auto-generated ID
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(let id, _, _, _, _):
             #expect(id.hasPrefix("auto-task-"), "ID should have auto-task prefix")
             #expect(id.count > "auto-task-".count, "ID should have unique suffix")
-        case .none, .cancels:
+        default:
             Issue.record("Expected run task, got different type")
         }
     }
@@ -102,11 +102,11 @@ import Testing
         var id1: String?
         var id2: String?
 
-        if case .run(let id, _, _, _, _) = task1.storeTask {
+        if case .run(let id, _, _, _, _) = task1.operation {
             id1 = id
         }
 
-        if case .run(let id, _, _, _, _) = task2.storeTask {
+        if case .run(let id, _, _, _, _) = task2.operation {
             id2 = id
         }
 
@@ -127,12 +127,12 @@ import Testing
             .cancellable(id: "test")
 
         // THEN: Should store the operation (cannot directly test, but can verify task type)
-        switch sut.storeTask {
+        switch sut.operation {
         case .run:
             // Operation is stored - we can't easily test it's the same closure
             // but we verify it's a run task with an operation
             #expect(Bool(true))  // Verified it's a run task
-        case .none, .cancels:
+        default:
             Issue.record("Expected run task")
         }
     }
@@ -146,7 +146,7 @@ import Testing
             .cancellable(id: longId)
 
         // THEN: Should accept and store the long ID
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(let id, _, _, _, _):
             #expect(id == longId)
             #expect(id.count == 1000)
@@ -164,7 +164,7 @@ import Testing
             .cancellable(id: specialId)
 
         // THEN: Should accept and store the ID with special characters
-        switch sut.storeTask {
+        switch sut.operation {
         case .run(let id, _, _, _, _):
             #expect(id == specialId)
         default:
@@ -182,10 +182,10 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .cancel(id: taskId)
 
         // THEN: Should have cancels storeTask with single ID in array
-        switch sut.storeTask {
+        switch sut.operation {
         case .cancels(let ids):
             #expect(ids == [taskId])
-        case .none, .run:
+        default:
             Issue.record("Expected cancels task, got different type")
         }
     }
@@ -198,10 +198,10 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .cancel(id: taskId)
 
         // THEN: Should convert to string and store in array
-        switch sut.storeTask {
+        switch sut.operation {
         case .cancels(let ids):
             #expect(ids == ["42"])
-        case .none, .run:
+        default:
             Issue.record("Expected cancels task")
         }
     }
@@ -217,10 +217,10 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .cancel(id: TaskId.fetchData)
 
         // THEN: Should convert enum to string and store in array
-        switch sut.storeTask {
+        switch sut.operation {
         case .cancels(let ids):
             #expect(ids == ["fetchData"])
-        case .none, .run:
+        default:
             Issue.record("Expected cancels task")
         }
     }
@@ -238,10 +238,10 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .cancel(id: taskId)
 
         // THEN: Should use CustomStringConvertible and store in array
-        switch sut.storeTask {
+        switch sut.operation {
         case .cancels(let ids):
             #expect(ids == ["custom-123"])
-        case .none, .run:
+        default:
             Issue.record("Expected cancels task")
         }
     }
@@ -254,10 +254,10 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .cancel(id: uuid)
 
         // THEN: Should convert UUID to string and store in array
-        switch sut.storeTask {
+        switch sut.operation {
         case .cancels(let ids):
             #expect(ids == [uuid.uuidString])
-        case .none, .run:
+        default:
             Issue.record("Expected cancels task")
         }
     }
@@ -271,17 +271,17 @@ import Testing
         let cancelTask: ActionTask<TestAction, TestState> = .cancel(id: "test")
 
         // THEN: All should be valid tasks
-        switch noTask.storeTask {
+        switch noTask.operation {
         case .none: #expect(Bool(true))
         default: Issue.record("noTask failed")
         }
 
-        switch runTask.storeTask {
+        switch runTask.operation {
         case .run: #expect(Bool(true))
         default: Issue.record("runTask failed")
         }
 
-        switch cancelTask.storeTask {
+        switch cancelTask.operation {
         case .cancels: #expect(Bool(true))
         default: Issue.record("cancelTask failed")
         }
@@ -297,7 +297,7 @@ import Testing
         let result = sut.catch { _, _ in }
 
         // THEN: Should return unchanged none task
-        switch result.storeTask {
+        switch result.operation {
         case .none:
             #expect(true, "Task should remain as none")
         default:
@@ -313,7 +313,7 @@ import Testing
         let result = sut.catch { _, _ in }
 
         // THEN: Should return unchanged cancels task
-        switch result.storeTask {
+        switch result.operation {
         case .cancels(let ids):
             #expect(ids == ["test"], "Task should remain as cancels with same IDs")
         default:
@@ -332,7 +332,7 @@ import Testing
         }
 
         // THEN: Should have run task with error handler
-        switch result.storeTask {
+        switch result.operation {
         case .run(let id, _, let onError, _, _):
             #expect(id == "test")
             #expect(onError != nil, "Error handler should be attached")
@@ -349,7 +349,7 @@ import Testing
         let result = sut.catch { _, _ in }
 
         // THEN: Should preserve auto-generated ID and attach handler
-        switch result.storeTask {
+        switch result.operation {
         case .run(let id, _, let onError, _, _):
             #expect(id.hasPrefix("auto-task-"), "Should preserve auto-generated ID")
             #expect(onError != nil, "Error handler should be attached")
@@ -370,7 +370,7 @@ import Testing
             .catch { _, state in state.count = 2 }
 
         // THEN: Should have the last error handler
-        switch result.storeTask {
+        switch result.operation {
         case .run(_, _, let onError, _, _):
             #expect(onError != nil, "Should have error handler")
         // Note: Can't easily test which handler is attached in unit test
@@ -390,7 +390,7 @@ import Testing
         let result = sut.catch { _, _ in }
 
         // THEN: Should preserve the original task ID
-        switch result.storeTask {
+        switch result.operation {
         case .run(let id, _, _, _, _):
             #expect(id == originalId, "Task ID should be preserved")
         default:
@@ -410,7 +410,7 @@ import Testing
         }
 
         // THEN: Should successfully attach the handler
-        switch result.storeTask {
+        switch result.operation {
         case .run(let id, _, let onError, _, _):
             #expect(id == "test")
             #expect(onError != nil)
@@ -429,10 +429,10 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
 
         // THEN: Should have cancels storeTask with all IDs
-        switch sut.storeTask {
+        switch sut.operation {
         case .cancels(let ids):
             #expect(ids == taskIds)
-        case .none, .run:
+        default:
             Issue.record("Expected cancels task, got different type")
         }
     }
@@ -445,10 +445,10 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
 
         // THEN: Should convert to strings and store
-        switch sut.storeTask {
+        switch sut.operation {
         case .cancels(let ids):
             #expect(ids == ["1", "2", "3"])
-        case .none, .run:
+        default:
             Issue.record("Expected cancels task")
         }
     }
@@ -467,10 +467,10 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
 
         // THEN: Should convert enums to strings
-        switch sut.storeTask {
+        switch sut.operation {
         case .cancels(let ids):
             #expect(ids == ["fetchData", "saveData", "deleteData"])
-        case .none, .run:
+        default:
             Issue.record("Expected cancels task")
         }
     }
@@ -483,10 +483,10 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
 
         // THEN: Should have cancels storeTask with empty array
-        switch sut.storeTask {
+        switch sut.operation {
         case .cancels(let ids):
             #expect(ids.isEmpty)
-        case .none, .run:
+        default:
             Issue.record("Expected cancels task, got different type")
         }
     }
@@ -499,10 +499,10 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
 
         // THEN: Should have cancels storeTask with single ID
-        switch sut.storeTask {
+        switch sut.operation {
         case .cancels(let ids):
             #expect(ids == ["single-task"])
-        case .none, .run:
+        default:
             Issue.record("Expected cancels task, got different type")
         }
     }
@@ -518,10 +518,10 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
 
         // THEN: Should convert UUIDs to strings
-        switch sut.storeTask {
+        switch sut.operation {
         case .cancels(let ids):
             #expect(ids == [uuid1.uuidString, uuid2.uuidString, uuid3.uuidString])
-        case .none, .run:
+        default:
             Issue.record("Expected cancels task")
         }
     }
@@ -534,10 +534,10 @@ import Testing
         let sut: ActionTask<TestAction, TestState> = .cancel(ids: taskIds)
 
         // THEN: Should preserve duplicates (TaskManager will handle them)
-        switch sut.storeTask {
+        switch sut.operation {
         case .cancels(let ids):
             #expect(ids == ["task-1", "task-2", "task-1", "task-3"])
-        case .none, .run:
+        default:
             Issue.record("Expected cancels task, got different type")
         }
     }

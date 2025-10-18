@@ -58,20 +58,15 @@ import Testing
                 ActionHandler { action, _ in
                     switch action {
                     case .fetchData(let id):
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "fetch-\(id)",
-                                operation: { _ in
-                                    try await Task.sleep(for: .milliseconds(10))
+                        return .run { _ in
+try await Task.sleep(for: .milliseconds(10))
                                     throw NetworkError.timeout
-                                },
-                                onError: { error, errorState in
-                                    errorState.errors[id] = "\(error)"
+                                                        }
+                        .catch { error, errorState in
+errorState.errors[id] = "\(error)"
                                     errorState.lastError = "\(error)"
-                                },
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                                                        }
+                        .cancellable(id: "fetch-\(id)")
                     default:
                         return .none
                     }
@@ -103,19 +98,14 @@ import Testing
                     switch action {
                     case .fetchData(let id):
                         let errorType: NetworkError = id == "data1" ? .timeout : .unauthorized
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "fetch-\(id)",
-                                operation: { _ in
-                                    try await Task.sleep(for: .milliseconds(10))
+                        return .run { _ in
+try await Task.sleep(for: .milliseconds(10))
                                     throw errorType
-                                },
-                                onError: { error, state in
-                                    state.errors[id] = "\(error)"
-                                },
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                                                        }
+                        .catch { error, state in
+state.errors[id] = "\(error)"
+                                                        }
+                        .cancellable(id: "fetch-\(id)")
                     default:
                         return .none
                     }
@@ -150,19 +140,14 @@ import Testing
                 ActionHandler { action, state in
                     switch action {
                     case .fetchData(let id):
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "fetch-\(id)",
-                                operation: { _ in
-                                    throw NetworkError.timeout
-                                },
-                                onError: { error, errorState in
-                                    errorState.errors[id] = "\(error)"
+                        return .run { _ in
+throw NetworkError.timeout
+                                                        }
+                        .catch { error, errorState in
+errorState.errors[id] = "\(error)"
                                     errorState.lastError = "\(error)"
-                                },
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                                                        }
+                        .cancellable(id: "fetch-\(id)")
 
                     case .recoverFromError:
                         state.errors.removeAll()
@@ -173,17 +158,11 @@ import Testing
                     case .retryFetch(let id):
                         state.retryCount += 1
                         state.errors[id] = nil
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "retry-\(id)",
-                                operation: { _ in
-                                    try await Task.sleep(for: .milliseconds(10))
-                                    // Simulate success on retry
-                                },
-                                onError: nil,
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                        return .run { _ in
+                            try await Task.sleep(for: .milliseconds(10))
+                            // Simulate success on retry
+                        }
+                        .cancellable(id: "retry-\(id)")
 
                     default:
                         return .none
@@ -219,18 +198,13 @@ import Testing
                 ActionHandler { action, state in
                     switch action {
                     case .fetchData(let id):
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "fetch-\(id)",
-                                operation: { _ in
-                                    throw NetworkError.timeout
-                                },
-                                onError: { error, state in
-                                    state.errors[id] = "\(error)"
-                                },
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                        return .run { _ in
+throw NetworkError.timeout
+                                                        }
+                        .catch { error, state in
+state.errors[id] = "\(error)"
+                                                        }
+                        .cancellable(id: "retry-\(id)")
 
                     case .retryFetch(let id):
                         state.retryCount += 1
@@ -276,19 +250,14 @@ import Testing
                     switch action {
                     case .fetchData(let id):
                         state.data[id] = "loading"
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "fetch-\(id)",
-                                operation: { _ in
-                                    throw NetworkError.serverError(500)
-                                },
-                                onError: { error, state in
-                                    state.data[id] = "failed"
+                        return .run { _ in
+throw NetworkError.serverError(500)
+                                                        }
+                        .catch { error, state in
+state.data[id] = "failed"
                                     state.errors[id] = "\(error)"
-                                },
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                                                        }
+                        .cancellable(id: "fetch-\(id)")
 
                     default:
                         return .none
@@ -323,21 +292,16 @@ import Testing
                 ActionHandler { action, state in
                     switch action {
                     case .fetchData(let id):
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "fetch-\(id)",
-                                operation: { _ in
-                                    try await Task.sleep(for: .milliseconds(100))
-                                },
-                                onError: { error, state in
-                                    // Cancellation should not add errors
+                        return .run { _ in
+try await Task.sleep(for: .milliseconds(100))
+                                                        }
+                        .catch { error, state in
+// Cancellation should not add errors
                                     if !(error is CancellationError) {
                                         state.errors[id] = "\(error)"
                                     }
-                                },
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                                                        }
+                        .cancellable(id: "fetch-\(id)")
 
                     default:
                         return .none
@@ -404,20 +368,15 @@ import Testing
                 ActionHandler { action, state in
                     switch action {
                     case .fetchData(let id):
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "fetch-\(id)",
-                                operation: { _ in
-                                    throw NetworkError.unauthorized
-                                },
-                                onError: { error, state in
-                                    state.errors[id] = "\(error)"
+                        return .run { _ in
+throw NetworkError.unauthorized
+                                                        }
+                        .catch { error, state in
+state.errors[id] = "\(error)"
                                     // Trigger recovery
                                     state.isRecovering = true
-                                },
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                                                        }
+                        .cancellable(id: "fetch-\(id)")
 
                     case .recoverFromError:
                         state.errors.removeAll()
@@ -459,20 +418,15 @@ import Testing
                 ActionHandler { action, state in
                     switch action {
                     case .fetchData(let id):
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "fetch-\(id)",
-                                operation: { _ in
-                                    throw NetworkError.serverError(500)
-                                },
-                                onError: { error, state in
-                                    // Safe error handling
+                        return .run { _ in
+throw NetworkError.serverError(500)
+                                                        }
+                        .catch { error, state in
+// Safe error handling
                                     state.errors[id] = "\(error)"
                                     state.lastError = "\(error)"
-                                },
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                                                        }
+                        .cancellable(id: "fetch-\(id)")
 
                     default:
                         return .none
@@ -506,19 +460,14 @@ import Testing
                 ActionHandler { action, state in
                     switch action {
                     case .fetchData(let id):
-                        return ActionTask(
-                            storeTask: .run(
-                                id: "fetch-\(id)",
-                                operation: { _ in
-                                    throw NetworkError.timeout
-                                },
-                                onError: { error, errorState in
-                                    errorState.errors[id] = "\(error)"
+                        return .run { _ in
+throw NetworkError.timeout
+                                                        }
+                        .catch { error, errorState in
+errorState.errors[id] = "\(error)"
                                     errorState.lastError = "\(error)"
-                                },
-                                cancelInFlight: false,
-                                priority: nil
-                            ))
+                                                        }
+                        .cancellable(id: "fetch-\(id)")
 
                     case .retryFetch(let id):
                         state.retryCount += 1
@@ -526,30 +475,19 @@ import Testing
 
                         if state.retryCount < 3 {
                             // Simulate failure on first 2 retries
-                            return ActionTask(
-                                storeTask: .run(
-                                    id: "retry-\(id)",
-                                    operation: { _ in
-                                        throw NetworkError.timeout
-                                    },
-                                    onError: { error, state in
-                                        state.errors[id] = "\(error)"
-                                    },
-                                    cancelInFlight: false,
-                                    priority: nil
-                                ))
+                            return .run { _ in
+                                throw NetworkError.timeout
+                            }
+                            .catch { error, state in
+                                state.errors[id] = "\(error)"
+                            }
+                            .cancellable(id: "retry-\(id)")
                         } else {
                             // Success on 3rd retry
-                            return ActionTask(
-                                storeTask: .run(
-                                    id: "retry-\(id)",
-                                    operation: { _ in
-                                        // Success
-                                    },
-                                    onError: nil,
-                                    cancelInFlight: false,
-                                    priority: nil
-                                ))
+                            return .run { _ in
+                                // Success
+                            }
+                            .cancellable(id: "retry-\(id)")
                         }
 
                     case .recoverFromError:

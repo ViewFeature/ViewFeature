@@ -202,11 +202,11 @@ public final class Store<F: Feature> {
     // See Store.send() DocC for full sequential execution rationale.
     private func processAction(_ action: F.Action) async {
         let actionTask = await handler.handle(action: action, state: _state)
-        await executeTask(actionTask.storeTask)
+        await executeTask(actionTask)
     }
 
-    private func executeTask(_ storeTask: StoreTask<F.Action, F.State>) async {
-        switch storeTask {
+    private func executeTask(_ task: ActionTask<F.Action, F.State>) async {
+        switch task.operation {
         case .none:
             break
 
@@ -218,7 +218,7 @@ public final class Store<F: Feature> {
 
             // Pass operation directly to TaskManager
             // TaskManager will create and track the Task
-            let task = taskManager.executeTask(
+            let runningTask = taskManager.executeTask(
                 id: id,
                 operation: { @MainActor [weak self] in
                     guard let self else { return }
@@ -257,10 +257,51 @@ public final class Store<F: Feature> {
             // That's the Store's responsibility, implemented here via await.
             //
             // See Store.send() DocC (lines 128-156) for full sequential execution rationale.
-            await task.value
+            await runningTask.value
 
         case .cancels(let ids):
             taskManager.cancelTasksInternal(ids: ids)
+
+        case .merged(let left, let right):
+            // ========================================
+            // Parallel Execution (merge)
+            // ========================================
+            // Execute both tasks concurrently using withTaskGroup.
+            // This allows multiple async operations to run in parallel while still
+            // maintaining structured concurrency guarantees.
+            //
+            // Example:
+            //   .merge(
+            //     .run { state in state.users = try await api.fetchUsers() },
+            //     .run { state in state.posts = try await api.fetchPosts() }
+            //   )
+            //
+            // Both API calls execute simultaneously, reducing total wait time.
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    await self.executeTask(left)
+                }
+                group.addTask {
+                    await self.executeTask(right)
+                }
+            }
+
+        case .concatenated(let left, let right):
+            // ========================================
+            // Sequential Execution (concatenate)
+            // ========================================
+            // Execute tasks one after another. The right task only starts
+            // after the left task completes.
+            //
+            // Example:
+            //   .concatenate(
+            //     .run { state in state.step = 1 },
+            //     .run { state in state.step = 2 }
+            //   )
+            //
+            // Step 2 only executes after step 1 completes.
+            await self.executeTask(left)
+            await self.executeTask(right)
         }
     }
 
