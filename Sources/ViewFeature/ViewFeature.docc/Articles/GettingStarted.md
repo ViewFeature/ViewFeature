@@ -280,6 +280,99 @@ let store = Store(
 )
 ```
 
+## Task Composition
+
+Combine multiple async operations for complex workflows.
+
+### Parallel Execution
+
+Execute tasks concurrently with `.merge()`:
+
+```swift
+struct DataFeature: Feature {
+    @Observable
+    final class State {
+        var users: [User] = []
+        var posts: [Post] = []
+    }
+
+    enum Action: Sendable {
+        case loadAll
+    }
+
+    func handle() -> ActionHandler<Action, State> {
+        ActionHandler { action, state in
+            switch action {
+            case .loadAll:
+                // Fetch both in parallel - faster than sequential
+                return .merge(
+                    .run { state in
+                        state.users = try await api.fetchUsers()
+                    },
+                    .run { state in
+                        state.posts = try await api.fetchPosts()
+                    }
+                )
+            }
+        }
+    }
+}
+```
+
+### Sequential Execution
+
+Execute tasks one after another with `.concatenate()`:
+
+```swift
+struct OnboardingFeature: Feature {
+    @Observable
+    final class State {
+        var step = 1
+        var profile: UserProfile?
+    }
+
+    enum Action: Sendable {
+        case complete
+    }
+
+    func handle() -> ActionHandler<Action, State> {
+        ActionHandler { action, state in
+            switch action {
+            case .complete:
+                // Multi-step workflow in order
+                return .concatenate(
+                    .run { state in
+                        state.step = 1
+                    },
+                    .run { state in
+                        state.step = 2
+                        state.profile = try await api.createProfile()
+                    },
+                    .run { state in
+                        state.step = 3
+                    }
+                )
+            }
+        }
+    }
+}
+```
+
+### Nested Composition
+
+Combine both patterns for sophisticated workflows:
+
+```swift
+return .concatenate(
+    .run { state in state.loading = true },
+    .merge(
+        .run { state in state.profile = try await api.fetchProfile() },
+        .run { state in state.settings = try await api.fetchSettings() }
+    ),
+    .run { state in state.loading = false }
+)
+```
+
 ## Next Steps
 
 - Learn about the <doc:Architecture> and how data flows

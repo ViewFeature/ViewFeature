@@ -112,18 +112,66 @@ Represents side effects returned from action processing.
 
 **Types:**
 - `.none`: Synchronous state-only changes
-- `.run(id:operation:)`: Async operations with unique ID
+- `.run(operation:)`: Async operations with auto-generated ID
 - `.cancel(id:)`: Cancel running task by ID
+- `.merge(...)`: Parallel execution of multiple tasks
+- `.concatenate(...)`: Sequential execution of multiple tasks
 
 **Task Management:**
 ```swift
-return .run(id: "fetch") {
-    try await performNetworkRequest()
+// Simple async task
+return .run { state in
+    state.data = try await api.fetch()
 }
+.cancellable(id: "fetch")
 
-// Later, cancel if needed:
+// Later, cancel if needed
 return .cancel(id: "fetch")
 ```
+
+**Task Composition:**
+
+Combine multiple tasks with composition primitives:
+
+```swift
+// Parallel execution - all tasks run concurrently
+return .merge(
+    .run { state in state.users = try await api.fetchUsers() },
+    .run { state in state.posts = try await api.fetchPosts() },
+    .run { state in state.comments = try await api.fetchComments() }
+)
+
+// Sequential execution - tasks run one after another
+return .concatenate(
+    .run { state in state.step = 1 },
+    .run { state in state.step = 2 },
+    .run { state in state.step = 3 }
+)
+
+// Nested composition - combine both patterns
+return .concatenate(
+    .run { state in state.loading = true },
+    .merge(
+        .run { state in /* parallel task 1 */ },
+        .run { state in /* parallel task 2 */ }
+    ),
+    .run { state in state.loading = false }
+)
+```
+
+**Composition Properties:**
+
+Task composition follows mathematical Monoid laws:
+- **Identity**: `.merge(.none, task) == task`
+- **Associativity**: `.merge(a, .merge(b, c)) == .merge(.merge(a, b), c)`
+
+This ensures predictable behavior and safe refactoring.
+
+**Implementation Details:**
+- `.merge()` uses `withTaskGroup` for structured concurrency
+- `.concatenate()` executes tasks sequentially via `await`
+- Both support recursive composition (tasks within tasks)
+- All state mutations remain on MainActor
 
 ### TaskManager
 

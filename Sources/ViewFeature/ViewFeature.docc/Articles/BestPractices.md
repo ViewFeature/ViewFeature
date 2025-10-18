@@ -566,6 +566,222 @@ struct EverythingMiddleware: ActionMiddleware {
 }
 ```
 
+## Task Composition
+
+### Choose the Right Composition Primitive
+
+Use `.merge()` for parallel execution and `.concatenate()` for sequential execution:
+
+**✅ Do: Use merge for independent operations**
+```swift
+case .loadDashboard:
+    // These can run in parallel - no dependencies
+    return .merge(
+        .run { state in
+            state.users = try await api.fetchUsers()
+        },
+        .run { state in
+            state.posts = try await api.fetchPosts()
+        },
+        .run { state in
+            state.notifications = try await api.fetchNotifications()
+        }
+    )
+```
+
+**✅ Do: Use concatenate for dependent operations**
+```swift
+case .submitOrder:
+    // These must run in sequence - each depends on previous
+    return .concatenate(
+        .run { state in
+            state.orderId = try await api.createOrder()
+        },
+        .run { state in
+            try await api.processPayment(state.orderId!)
+        },
+        .run { state in
+            try await api.sendConfirmation(state.orderId!)
+        }
+    )
+```
+
+**❌ Don't: Use concatenate when merge would work**
+```swift
+case .loadDashboard:
+    // ⚠️ This is slow! These are independent and should use .merge()
+    return .concatenate(
+        .run { state in state.users = try await api.fetchUsers() },
+        .run { state in state.posts = try await api.fetchPosts() }
+    )
+```
+
+### Prefer Merge for Better Performance
+
+When operations are independent, always prefer `.merge()` for better performance:
+
+**✅ Do: Parallel for speed**
+```swift
+// Completes in ~500ms (max of all tasks)
+return .merge(
+    .run { try await Task.sleep(for: .milliseconds(100)) },
+    .run { try await Task.sleep(for: .milliseconds(500)) },
+    .run { try await Task.sleep(for: .milliseconds(200)) }
+)
+```
+
+**❌ Don't: Sequential when unnecessary**
+```swift
+// ⚠️ Takes ~800ms (sum of all tasks)
+return .concatenate(
+    .run { try await Task.sleep(for: .milliseconds(100)) },
+    .run { try await Task.sleep(for: .milliseconds(500)) },
+    .run { try await Task.sleep(for: .milliseconds(200)) }
+)
+```
+
+### Use Nested Composition for Complex Workflows
+
+Combine both primitives for sophisticated workflows:
+
+**✅ Do: Nest composition for clarity**
+```swift
+case .initialize:
+    return .concatenate(
+        // Step 1: Show loading
+        .run { state in state.isLoading = true },
+
+        // Step 2: Load data in parallel
+        .merge(
+            .run { state in state.profile = try await api.fetchProfile() },
+            .run { state in state.settings = try await api.fetchSettings() },
+            .run { state in state.cache = try await cache.load() }
+        ),
+
+        // Step 3: Process (only after all parallel tasks complete)
+        .run { state in
+            state.processedData = process(state.profile, state.settings)
+        },
+
+        // Step 4: Hide loading
+        .run { state in state.isLoading = false }
+    )
+```
+
+### Handle Errors in Composition
+
+Add error handling to composed tasks:
+
+**✅ Do: Add catch to composition**
+```swift
+case .syncData:
+    return .merge(
+        .run { state in state.local = try await syncLocal() },
+        .run { state in state.remote = try await syncRemote() }
+    )
+    .catch { error, state in
+        state.syncError = error.localizedDescription
+        state.lastSyncFailed = true
+    }
+```
+
+**❌ Don't: Forget error handling**
+```swift
+case .syncData:
+    // ⚠️ Errors will crash if not caught
+    return .merge(
+        .run { state in state.local = try await syncLocal() },
+        .run { state in state.remote = try await syncRemote() }
+    )
+```
+
+### Use Array-Based Composition for Dynamic Lists
+
+When the number of tasks is dynamic, use array-based composition:
+
+**✅ Do: Array-based for dynamic tasks**
+```swift
+case .loadUsers(let userIDs):
+    let fetchTasks = userIDs.map { id in
+        ActionTask.run { state in
+            state.users[id] = try await api.fetchUser(id: id)
+        }
+    }
+    return .merge(fetchTasks)
+```
+
+**❌ Don't: Hardcode when dynamic**
+```swift
+case .loadUsers(let userIDs):
+    // ⚠️ Only works for exactly 3 users
+    return .merge(
+        .run { state in state.users[userIDs[0]] = try await api.fetchUser(id: userIDs[0]) },
+        .run { state in state.users[userIDs[1]] = try await api.fetchUser(id: userIDs[1]) },
+        .run { state in state.users[userIDs[2]] = try await api.fetchUser(id: userIDs[2]) }
+    )
+```
+
+### Combine with Cancellation
+
+Composed tasks work seamlessly with cancellation:
+
+**✅ Do: Make composed tasks cancellable**
+```swift
+case .searchAll(let query):
+    return .merge(
+        .run { state in state.userResults = try await searchUsers(query) },
+        .run { state in state.postResults = try await searchPosts(query) },
+        .run { state in state.tagResults = try await searchTags(query) }
+    )
+    .cancellable(id: "search-all", cancelInFlight: true)
+
+case .cancelSearch:
+    return .cancel(id: "search-all")  // Cancels all parallel searches
+```
+
+### Keep Composition Shallow
+
+Avoid deeply nested composition for readability:
+
+**✅ Do: Keep it readable**
+```swift
+case .initialize:
+    return .concatenate(
+        initStep1(),
+        initStep2(),
+        initStep3()
+    )
+
+private func initStep2() -> ActionTask<Action, State> {
+    .merge(
+        .run { state in state.profile = try await api.fetchProfile() },
+        .run { state in state.settings = try await api.fetchSettings() }
+    )
+}
+```
+
+**❌ Don't: Deeply nest**
+```swift
+case .initialize:
+    // ⚠️ Hard to read and maintain
+    return .concatenate(
+        .run { state in state.step = 1 },
+        .concatenate(
+            .merge(
+                .run { /* ... */ },
+                .concatenate(
+                    .run { /* ... */ },
+                    .merge(
+                        .run { /* ... */ },
+                        .run { /* ... */ }
+                    )
+                )
+            ),
+            .run { state in state.step = 2 }
+        )
+    )
+```
+
 ## See Also
 
 - <doc:GettingStarted>

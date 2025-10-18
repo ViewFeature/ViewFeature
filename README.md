@@ -617,6 +617,230 @@ return .run { state in
   - Perfect for: downloads, parallel operations, independent tasks
   - Ensures: all tasks complete unless explicitly cancelled
 
+### Task Composition with `.merge()` and `.concatenate()`
+
+Combine multiple asynchronous operations using powerful composition primitives inspired by functional programming and The Composable Architecture. Task composition enables you to build complex workflows with precise control over execution order and concurrency.
+
+#### Parallel Execution with `.merge()`
+
+Execute multiple tasks concurrently using structured concurrency. All tasks run in parallel and the composition completes when all tasks finish:
+
+```swift
+struct DataFeature: Feature {
+    @Observable
+    final class State {
+        var users: [User] = []
+        var posts: [Post] = []
+        var comments: [Comment] = []
+        var isLoading = false
+    }
+
+    enum Action: Sendable {
+        case loadAll
+    }
+
+    func handle() -> ActionHandler<Action, State> {
+        ActionHandler { action, state in
+            switch action {
+            case .loadAll:
+                state.isLoading = true
+
+                // Fetch all resources in parallel - much faster than sequential
+                return .merge(
+                    .run { state in
+                        state.users = try await api.fetchUsers()
+                    },
+                    .run { state in
+                        state.posts = try await api.fetchPosts()
+                    },
+                    .run { state in
+                        state.comments = try await api.fetchComments()
+                    }
+                )
+                .catch { error, state in
+                    state.isLoading = false
+                    state.errorMessage = "\(error)"
+                }
+            }
+        }
+    }
+}
+```
+
+**Benefits:**
+- ⚡ **Performance**: All tasks run concurrently, reducing total wait time
+- 🛡️ **Structured Concurrency**: Uses `withTaskGroup` under the hood
+- 🔒 **Thread-Safe**: All state mutations still happen on MainActor
+
+#### Sequential Execution with `.concatenate()`
+
+Execute tasks one after another with guaranteed ordering. Each task starts only after the previous one completes:
+
+```swift
+struct OnboardingFeature: Feature {
+    @Observable
+    final class State {
+        var step = 1
+        var isProcessing = false
+        var profile: UserProfile?
+        var settings: Settings?
+    }
+
+    enum Action: Sendable {
+        case completeOnboarding
+    }
+
+    func handle() -> ActionHandler<Action, State> {
+        ActionHandler { action, state in
+            switch action {
+            case .completeOnboarding:
+                state.isProcessing = true
+
+                // Multi-step workflow with guaranteed order
+                return .concatenate(
+                    .run { state in
+                        state.step = 1
+                        try await Task.sleep(for: .milliseconds(500))
+                    },
+                    .run { state in
+                        state.step = 2
+                        let profile = try await api.createProfile()
+                        state.profile = profile
+                    },
+                    .run { state in
+                        state.step = 3
+                        let settings = try await api.initializeSettings()
+                        state.settings = settings
+                    },
+                    .run { state in
+                        state.step = 4
+                        state.isProcessing = false
+                    }
+                )
+                .catch { error, state in
+                    state.isProcessing = false
+                }
+            }
+        }
+    }
+}
+```
+
+**Benefits:**
+- 📋 **Guaranteed Order**: Tasks execute in exact sequence
+- 🎯 **Clear Flow**: Complex workflows are easy to understand
+- 🔄 **Dependency Support**: Each task can depend on previous results
+
+#### Nested Composition
+
+Combine both patterns for sophisticated workflows. You can nest `merge` inside `concatenate` and vice versa:
+
+```swift
+struct AppInitFeature: Feature {
+    @Observable
+    final class State {
+        var isInitializing = false
+        var userProfile: UserProfile?
+        var appSettings: Settings?
+        var notifications: [Notification] = []
+    }
+
+    enum Action: Sendable {
+        case initialize
+    }
+
+    func handle() -> ActionHandler<Action, State> {
+        ActionHandler { action, state in
+            switch action {
+            case .initialize:
+                state.isInitializing = true
+
+                // Complex workflow: sequential steps with parallel substeps
+                return .concatenate(
+                    // Step 1: Set loading state
+                    .run { state in
+                        state.isInitializing = true
+                    },
+
+                    // Step 2: Fetch critical data in parallel
+                    .merge(
+                        .run { state in
+                            state.userProfile = try await api.fetchProfile()
+                        },
+                        .run { state in
+                            state.appSettings = try await api.fetchSettings()
+                        },
+                        .run { state in
+                            state.notifications = try await api.fetchNotifications()
+                        }
+                    ),
+
+                    // Step 3: Finalize (only after all parallel tasks complete)
+                    .run { state in
+                        state.isInitializing = false
+                    }
+                )
+                .catch { error, state in
+                    state.isInitializing = false
+                }
+            }
+        }
+    }
+}
+```
+
+**Use Cases:**
+- 🚀 **App Initialization**: Load critical data in parallel, then proceed
+- 📱 **Form Submission**: Validate sequentially, submit in parallel
+- 🔄 **Data Sync**: Fetch in parallel, process sequentially
+- 🎬 **Animations**: Coordinate sequential animations with parallel effects
+
+#### Mathematical Properties (Monoid Laws)
+
+Task composition follows mathematical Monoid laws, ensuring predictable and composable behavior:
+
+**Identity Law:**
+```swift
+.merge(.none, task) == task
+.merge(task, .none) == task
+
+.concatenate(.none, task) == task
+.concatenate(task, .none) == task
+```
+
+**Associativity Law:**
+```swift
+.merge(a, .merge(b, c)) == .merge(.merge(a, b), c)
+.concatenate(a, .concatenate(b, c)) == .concatenate(.concatenate(a, b), c)
+```
+
+This mathematical foundation means you can:
+- ✅ Compose tasks without worrying about edge cases
+- ✅ Refactor composition structure safely
+- ✅ Build complex workflows from simple primitives
+
+#### Array-Based Composition
+
+Both methods accept arrays for dynamic task lists:
+
+```swift
+// Dynamic parallel tasks
+let fetchTasks = userIDs.map { id in
+    ActionTask.run { state in
+        state.users[id] = try await api.fetchUser(id: id)
+    }
+}
+return .merge(fetchTasks)
+
+// Dynamic sequential tasks
+let processTasks = items.map { item in
+    ActionTask.run { state in
+        state.processed.append(try await process(item))
+    }
+}
+return .concatenate(processTasks)
+```
+
 ### Task Priority with `.priority(_:)`
 
 Control the execution priority of asynchronous tasks to optimize responsiveness and resource usage. Task priority helps the system schedule work efficiently, ensuring user-facing operations get preferential treatment over background work.
