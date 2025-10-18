@@ -15,7 +15,7 @@ index_exclude:
   - Tests/TestFixtures.swift
 
 # Options
-baseline: .periphery.baseline.json
+# baseline: .periphery.baseline.json  # Currently no baseline needed
 strict: false
 disable_update_check: true
 
