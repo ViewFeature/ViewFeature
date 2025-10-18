@@ -114,6 +114,15 @@ public protocol AfterActionMiddleware: BaseActionMiddleware {
 /// - User notification
 /// - Error analytics
 ///
+/// ## Error Handling Semantics
+///
+/// Error handlers follow **Resilient Semantics**:
+/// - This method **never throws** and cannot fail the error handling pipeline
+/// - If your implementation needs to call throwing functions, use `do-catch` or `try?` internally
+/// - All error handlers are guaranteed to execute, even if some encounter issues
+///
+/// This design ensures best-effort error reporting that doesn't compound failures.
+///
 /// ## Example Implementation
 /// ```swift
 /// struct ErrorLoggingMiddleware: ErrorHandlingMiddleware {
@@ -123,12 +132,19 @@ public protocol AfterActionMiddleware: BaseActionMiddleware {
 ///     _ error: Error,
 ///     action: Action,
 ///     state: State
-///   ) async throws {
+///   ) async {
 ///     // Log error with context
 ///     logger.error("Action failed: \(error)", metadata: [
 ///       "action": String(describing: action),
 ///       "state": String(describing: state)
 ///     ])
+///
+///     // If you need to call throwing functions, handle errors explicitly
+///     do {
+///       try await sendToAnalytics(error)
+///     } catch {
+///       logger.warning("Analytics failed: \(error)")
+///     }
 ///   }
 /// }
 /// ```
@@ -139,12 +155,17 @@ public protocol AfterActionMiddleware: BaseActionMiddleware {
 public protocol ErrorHandlingMiddleware: BaseActionMiddleware {
   /// Called when an error occurs during action processing.
   ///
+  /// This method executes with **Resilient Semantics** and never throws. The error handling
+  /// pipeline always continues to completion, ensuring all error handlers get a chance to execute.
+  ///
   /// - Parameters:
   ///   - error: The error that occurred
   ///   - action: The action that caused the error
   ///   - state: The current state (read-only)
-  /// - Throws: Any error (will be logged but won't stop other error handlers)
-  func onError<Action, State>(_ error: Error, action: Action, state: State) async throws
+  ///
+  /// - Note: This method does not throw. If you need to call throwing functions internally,
+  ///   use `do-catch` blocks or `try?` to handle errors explicitly.
+  func onError<Action, State>(_ error: Error, action: Action, state: State) async
 }
 
 /// Full-featured middleware that supports all processing stages.
@@ -172,7 +193,7 @@ public protocol ErrorHandlingMiddleware: BaseActionMiddleware {
 ///     print("After: \(action) (\(duration)s)")
 ///   }
 ///
-///   func onError<Action, State>(_ error: Error, action: Action, state: State) async throws {
+///   func onError<Action, State>(_ error: Error, action: Action, state: State) async {
 ///     print("Error: \(error)")
 ///   }
 /// }
@@ -221,7 +242,7 @@ extension AfterActionMiddleware {
 ///   you should override this method to provide meaningful functionality. The default implementation
 ///   exists only to support protocol composition in ``ActionMiddleware``.
 extension ErrorHandlingMiddleware {
-  public func onError<Action, State>(_ error: Error, action: Action, state: State) async throws {
+  public func onError<Action, State>(_ error: Error, action: Action, state: State) async {
     // Default no-op implementation
     // Override this method to add error handling logic
   }

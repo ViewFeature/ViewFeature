@@ -204,11 +204,13 @@ public struct LoggingMiddleware: ActionMiddleware {
   /// Action: DataAction.fetchUser(id: 123)
   /// Error: The Internet connection appears to be offline.
   /// ```
+  ///
+  /// - Note: This method never throws, following the Resilient Semantics of error handling middleware.
   public func onError<Action, State>(
     _ error: Error,
     action: Action,
     state: State
-  ) async throws {
+  ) async {
     logger.error(
       """
       ❌ Action Failed

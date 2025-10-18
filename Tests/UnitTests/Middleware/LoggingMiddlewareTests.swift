@@ -183,7 +183,7 @@ import Testing
 
   // MARK: - onError(_:action:state:)
 
-  @Test func onError_logsError() async throws {
+  @Test func onError_logsError() async {
     // GIVEN: Middleware with any log level
     let sut = LoggingMiddleware(
       category: "Test",
@@ -195,11 +195,11 @@ import Testing
     let state = TestState()
 
     // WHEN: Call onError
-    // THEN: Should not throw
-    try await sut.onError(error, action: action, state: state)
+    // THEN: Should execute without issues
+    await sut.onError(error, action: action, state: state)
   }
 
-  @Test func onError_alwaysLogsRegardlessOfLevel() async throws {
+  @Test func onError_alwaysLogsRegardlessOfLevel() async {
     // GIVEN: Middleware with critical level (highest)
     let sut = LoggingMiddleware(
       category: "Test",
@@ -212,10 +212,10 @@ import Testing
 
     // WHEN: Call onError
     // THEN: Should always log errors
-    try await sut.onError(error, action: action, state: state)
+    await sut.onError(error, action: action, state: state)
   }
 
-  @Test func onError_handlesErrorWithLocalizedDescription() async throws {
+  @Test func onError_handlesErrorWithLocalizedDescription() async {
     // GIVEN: Middleware
     let sut = LoggingMiddleware(
       category: "Test",
@@ -231,7 +231,7 @@ import Testing
 
     // WHEN: Call onError
     // THEN: Should handle localized error message
-    try await sut.onError(error, action: action, state: state)
+    await sut.onError(error, action: action, state: state)
   }
 
   // MARK: - Integration Tests
@@ -252,7 +252,7 @@ import Testing
     try await sut.afterAction(action, state: state, result: result, duration: duration)
 
     let error = NSError(domain: "TestError", code: 1)
-    try await sut.onError(error, action: action, state: state)
+    await sut.onError(error, action: action, state: state)
 
     // Should not crash
     #expect(Bool(true))
@@ -273,7 +273,7 @@ import Testing
     // THEN: Should log everything
     try await traceLevelMiddleware.beforeAction(action, state: state)
     try await traceLevelMiddleware.afterAction(action, state: state, result: result, duration: 0.1)
-    try await traceLevelMiddleware.onError(
+    await traceLevelMiddleware.onError(
       NSError(domain: "Test", code: 1), action: action, state: state)
   }
 }

@@ -33,9 +33,13 @@ import Logging
 ///
 /// // Error-handling middleware for logging (resilient)
 /// struct ErrorLoggingMiddleware: ErrorHandlingMiddleware {
-///   func onError(_ error: Error, action: Action, state: State) async throws {
-///     // Even if this throws, other error handlers still run
-///     try await sendToAnalytics(error)
+///   func onError(_ error: Error, action: Action, state: State) async {
+///     // Handle errors explicitly when calling throwing functions
+///     do {
+///       try await sendToAnalytics(error)
+///     } catch {
+///       logger.warning("Analytics failed: \(error)")
+///     }
 ///   }
 /// }
 /// ```
@@ -124,19 +128,13 @@ public final class MiddlewareManager<Action, State> {
 
   /// Executes all error-handling middleware in registration order.
   ///
-  /// **Resilient Semantics**: If a middleware throws, the error is logged and execution continues.
-  /// All error handlers are guaranteed to run. Use for best-effort telemetry/logging.
+  /// **Resilient Semantics**: All error handlers are guaranteed to execute.
+  /// Error handlers cannot throw and must handle errors internally using `do-catch` or `try?`.
   ///
-  /// - Note: Never throws - middleware failures are logged but not propagated
+  /// - Note: This method never throws. All error handlers will execute to completion.
   public func executeErrorHandling(error: Error, action: Action, state: State) async {
     for middleware in errorMiddlewares {
-      do {
-        try await middleware.onError(error, action: action, state: state)
-      } catch {
-        logger.error(
-          "🚨 Middleware '\(middleware.id)' failed during error handling: \(error.localizedDescription)"
-        )
-      }
+      await middleware.onError(error, action: action, state: state)
     }
   }
 }

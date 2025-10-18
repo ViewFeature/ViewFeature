@@ -455,75 +455,104 @@ import Testing
     #expect(Bool(true))
   }
 
-  @Test func executeErrorHandling_resilientToMiddlewareFailures() async {
-    // GIVEN: Middleware that throws during error handling
-    struct FailingMiddleware: ErrorHandlingMiddleware {
-      let id = "FailingMiddleware"
+  @Test func executeErrorHandling_executesAllMiddleware() async {
+    // GIVEN: Multiple error handling middlewares
+    var firstExecuted = false
+    var secondExecuted = false
+
+    struct FirstMiddleware: ErrorHandlingMiddleware {
+      let id = "FirstMiddleware"
+      let onExecute: () -> Void
 
       func onError<Action, State>(
         _ error: Error,
         action: Action,
         state: State
-      ) async throws {
-        // Simulate a middleware that fails during error handling
-        throw NSError(
-          domain: "MiddlewareError", code: 999,
-          userInfo: [
-            NSLocalizedDescriptionKey: "Middleware failed during error handling"
-          ])
+      ) async {
+        onExecute()
       }
     }
 
-    let failingMiddleware = FailingMiddleware()
-    let loggingMiddleware = LoggingMiddleware()
-    let sut = MiddlewareManager<TestAction, TestState>(middlewares: [
-      failingMiddleware,
-      loggingMiddleware  // This should still execute despite first one failing
-    ])
-    let originalError = NSError(domain: "OriginalError", code: 1)
+    struct SecondMiddleware: ErrorHandlingMiddleware {
+      let id = "SecondMiddleware"
+      let onExecute: () -> Void
 
-    // WHEN: Execute error handling with failing middleware
+      func onError<Action, State>(
+        _ error: Error,
+        action: Action,
+        state: State
+      ) async {
+        onExecute()
+      }
+    }
+
+    let firstMiddleware = FirstMiddleware { firstExecuted = true }
+    let secondMiddleware = SecondMiddleware { secondExecuted = true }
+    let sut = MiddlewareManager<TestAction, TestState>(middlewares: [
+      firstMiddleware,
+      secondMiddleware
+    ])
+    let error = NSError(domain: "TestError", code: 1)
+
+    // WHEN: Execute error handling
     await sut.executeErrorHandling(
-      error: originalError,
+      error: error,
       action: TestAction.increment,
       state: TestState()
     )
 
-    // THEN: Should not crash and should continue with remaining middleware
-    // The resilience mechanism logs the failure but doesn't throw
-    #expect(Bool(true))
+    // THEN: Both middleware should execute
+    #expect(firstExecuted)
+    #expect(secondExecuted)
   }
 
-  @Test func executeErrorHandling_logsMiddlewareFailures() async {
-    // GIVEN: Multiple middlewares where some fail
-    struct FirstFailingMiddleware: ErrorHandlingMiddleware {
-      let id = "FirstFailing"
+  @Test func executeErrorHandling_executesMiddlewareInOrder() async {
+    // GIVEN: Multiple middlewares with execution tracking
+    var executionOrder: [String] = []
+
+    struct FirstMiddleware: ErrorHandlingMiddleware {
+      let id = "First"
+      let track: (String) -> Void
 
       func onError<Action, State>(
         _ error: Error,
         action: Action,
         state: State
-      ) async throws {
-        throw NSError(domain: "Error1", code: 1)
+      ) async {
+        track("First")
       }
     }
 
-    struct SecondFailingMiddleware: ErrorHandlingMiddleware {
-      let id = "SecondFailing"
+    struct SecondMiddleware: ErrorHandlingMiddleware {
+      let id = "Second"
+      let track: (String) -> Void
 
       func onError<Action, State>(
         _ error: Error,
         action: Action,
         state: State
-      ) async throws {
-        throw NSError(domain: "Error2", code: 2)
+      ) async {
+        track("Second")
+      }
+    }
+
+    struct ThirdMiddleware: ErrorHandlingMiddleware {
+      let id = "Third"
+      let track: (String) -> Void
+
+      func onError<Action, State>(
+        _ error: Error,
+        action: Action,
+        state: State
+      ) async {
+        track("Third")
       }
     }
 
     let sut = MiddlewareManager<TestAction, TestState>(middlewares: [
-      FirstFailingMiddleware(),
-      SecondFailingMiddleware(),
-      LoggingMiddleware()  // This one succeeds
+      FirstMiddleware(track: { executionOrder.append($0) }),
+      SecondMiddleware(track: { executionOrder.append($0) }),
+      ThirdMiddleware(track: { executionOrder.append($0) })
     ])
     let error = NSError(domain: "Test", code: 1)
 
@@ -534,55 +563,8 @@ import Testing
       state: TestState()
     )
 
-    // THEN: Should execute all middleware despite failures
-    // Both failures are logged, last one succeeds
-    #expect(Bool(true))
-  }
-
-  @Test func executeErrorHandling_continuesToNextMiddlewareAfterFailure() async {
-    // GIVEN: Failing middleware followed by successful one
-    struct FailingMiddleware: ErrorHandlingMiddleware {
-      let id = "FailingMiddleware"
-
-      func onError<Action, State>(
-        _ error: Error,
-        action: Action,
-        state: State
-      ) async throws {
-        throw NSError(domain: "MiddlewareFailure", code: 500)
-      }
-    }
-
-    var successfulMiddlewareExecuted = false
-
-    struct SuccessfulMiddleware: ErrorHandlingMiddleware {
-      let id = "SuccessfulMiddleware"
-      let executed: () -> Void
-
-      func onError<Action, State>(
-        _ error: Error,
-        action: Action,
-        state: State
-      ) async throws {
-        executed()  // Mark as executed
-      }
-    }
-
-    let sut = MiddlewareManager<TestAction, TestState>(middlewares: [
-      FailingMiddleware(),
-      SuccessfulMiddleware(executed: { successfulMiddlewareExecuted = true })
-    ])
-    let error = NSError(domain: "Test", code: 1)
-
-    // WHEN: Execute error handling
-    await sut.executeErrorHandling(
-      error: error,
-      action: TestAction.increment,
-      state: TestState()
-    )
-
-    // THEN: Second middleware should still execute despite first one failing
-    #expect(successfulMiddlewareExecuted)
+    // THEN: Should execute in registration order
+    #expect(executionOrder == ["First", "Second", "Third"])
   }
 
   // MARK: - Integration Tests
