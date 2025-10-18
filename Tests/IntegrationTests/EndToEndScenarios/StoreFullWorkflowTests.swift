@@ -228,6 +228,8 @@ import Testing
       // WHEN: Start multiple tasks
       _ = store.send(.loadUser("user1"))
       _ = store.send(.refreshData)
+
+      // NOTE: Give tasks time to start before deinit
       try? await Task.sleep(for: .milliseconds(10))
 
       // Record task count before deinit
@@ -237,7 +239,25 @@ import Testing
       // Store goes out of scope here - automatic cancellation via deinit
     }
 
-    // Wait for deinit and cancellation
+    // ⚠️ ISOLATED DEINIT TIMING DEPENDENCY (SE-0371) ⚠️
+    //
+    // This test relies on Task.sleep to wait for Store's isolated deinit and deallocation.
+    // Due to Swift Evolution SE-0371 (isolated synchronous deinit), deinit executes
+    // asynchronously on MainActor. The deallocation timing is non-deterministic.
+    //
+    // Why this sleep exists:
+    // - Store's isolated deinit must execute on MainActor
+    // - All running tasks must be cancelled
+    // - Store instance must be fully deallocated (weakStore becomes nil)
+    //
+    // Limitations:
+    // - 100ms may be insufficient in slow CI environments
+    // - Weak reference timing is unreliable (see TaskManagerIntegrationTests.swift:140-142)
+    // - No deterministic way to verify deallocation completion
+    //
+    // Future improvement:
+    // If Swift provides deterministic deinit completion signals, replace this sleep.
+    // Alternative: Test only functional behavior (task cancellation) without deallocation check.
     await Task.yield()
     try? await Task.sleep(for: .milliseconds(100))
 

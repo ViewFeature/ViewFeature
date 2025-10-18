@@ -229,13 +229,36 @@ import Testing
         _ = store.send(.heavyComputation)
       }
 
+      // NOTE: Give tasks time to start before deinit
       try? await Task.sleep(for: .milliseconds(10))
 
       // WHEN: Store goes out of scope (automatic cancellation via deinit)
       startTime = Date()
     }
 
-    // Deinit executes here, cancelling all tasks automatically
+    // ⚠️ ISOLATED DEINIT TIMING DEPENDENCY (SE-0371) ⚠️
+    //
+    // This performance test has inherent limitations due to isolated deinit.
+    // The Task.sleep below is necessary but affects measurement accuracy.
+    //
+    // Why this sleep exists:
+    // - Store's isolated deinit must complete on MainActor
+    // - 100 tasks must be cancelled
+    // - We need to measure the total time, but deinit timing is non-deterministic
+    //
+    // Limitations:
+    // - The 50ms sleep is included in the measured duration
+    // - Actual cancellation may complete before or after the sleep
+    // - Cannot accurately measure pure cancellation performance
+    // - May fail in very slow CI environments if deinit takes >1000ms
+    //
+    // Interpretation:
+    // This test verifies that cancellation + deinit completes within 1 second,
+    // but the exact cancellation performance cannot be isolated from deinit overhead.
+    //
+    // Future improvement:
+    // Consider redesigning this as a functional test rather than performance test,
+    // or removing it entirely due to measurement unreliability.
     try? await Task.sleep(for: .milliseconds(50))
     duration = Date().timeIntervalSince(startTime)
 

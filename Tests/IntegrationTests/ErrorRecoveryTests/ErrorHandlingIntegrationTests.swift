@@ -350,6 +350,8 @@ import Testing
 
       // WHEN: Start task and let Store deinit (automatic cancellation)
       _ = store.send(.fetchData("data1"))
+
+      // NOTE: Give task time to start before deinit
       try? await Task.sleep(for: .milliseconds(10))
 
       // Capture state before deinit
@@ -358,6 +360,25 @@ import Testing
       // Store goes out of scope here - automatic cancellation via deinit
     }
 
+    // ⚠️ ISOLATED DEINIT TIMING DEPENDENCY (SE-0371) ⚠️
+    //
+    // This test relies on Task.sleep to wait for Store's isolated deinit to complete.
+    // Due to Swift Evolution SE-0371 (isolated synchronous deinit), deinit executes
+    // asynchronously on MainActor. The completion timing is non-deterministic and
+    // environment-dependent.
+    //
+    // Why this sleep exists:
+    // - Store's deinit needs to execute on MainActor
+    // - Task cancellation must propagate
+    // - Error handlers must complete (or not fire for CancellationError)
+    //
+    // Limitations:
+    // - 30ms may be insufficient in slow CI environments
+    // - No deterministic way to know when deinit has completed
+    // - Cannot reliably check weak references due to async deinit
+    //
+    // Future improvement:
+    // If Swift provides deterministic deinit completion signals, replace this sleep.
     try? await Task.sleep(for: .milliseconds(30))
 
     // THEN: Automatic cancellation should not have added errors
