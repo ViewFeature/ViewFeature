@@ -174,7 +174,28 @@ public final class TaskManager {
       runningTasks.removeValue(forKey: id)
     }
 
-    // Create task with automatic cleanup using defer
+    // DESIGN: Why [weak self]?
+    //
+    // This breaks a retain cycle:
+    //   TaskManager → runningTasks → Task → (captures) TaskManager → ...
+    //
+    // Without weak self:
+    //   - TaskManager.refCount = 2 (Store + Task closure)
+    //   - When Store deallocates, TaskManager.refCount = 1 (still held by Task)
+    //   - deinit never runs → tasks never cancelled → memory leak
+    //
+    // With weak self:
+    //   - TaskManager.refCount = 1 (Store only, weak doesn't increase count)
+    //   - When Store deallocates, TaskManager.refCount = 0
+    //   - deinit runs immediately → all tasks cancelled (line 99)
+    //   - Running tasks exit early at 'guard let self'
+    //
+    // Alternative designs considered:
+    //   - External monitoring: Task { await task.value; cleanup() } → doubles task count
+    //   - Completion handler injection → breaks encapsulation
+    //   - TaskGroup → cannot cancel individual tasks by ID
+    //
+    // Current approach is Swift's standard pattern for async closures.
     let task = Task { @MainActor [weak self] in
       guard let self else { return }
 
